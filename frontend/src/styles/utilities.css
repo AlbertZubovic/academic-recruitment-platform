@@ -1,0 +1,140 @@
+/* --------------------------------------------------
+  utilities.css
+  Global utility classes for layout, spacing, text,
+  display helpers, and responsiveness.
+-------------------------------------------------- */
+
+/* ========== LAYOUT HELPERS ========== */
+
+/* Flex utilities */
+.flex {
+    display: flex;
+  }
+  
+  .flex-col {
+    flex-direction: column;
+  }
+  
+  .flex-row {
+    flex-direction: row;
+  }
+  
+  .items-center {
+    align-items: center;
+  }
+  
+  .justify-center {
+    justify-content: center;
+  }
+  
+  .justify-between {
+    justify-content: space-between;
+  }
+  
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+  
+  /* Grid utilities */
+  .grid {
+    display: grid;
+  }
+  
+  .grid-center {
+    place-items: center;
+  }
+  
+  .full-width {
+    width: 100%;
+  }
+  
+  .full-height {
+    height: 100%;
+  }
+  
+  
+  /* ========== SPACING ========== */
+  
+  .p-1 { padding: var(--spacing-xs); }
+  .p-2 { padding: var(--spacing-sm); }
+  .p-3 { padding: var(--spacing-md); }
+  .p-4 { padding: var(--spacing-lg); }
+  
+  .m-1 { margin: var(--spacing-xs); }
+  .m-2 { margin: var(--spacing-sm); }
+  .m-3 { margin: var(--spacing-md); }
+  .m-4 { margin: var(--spacing-lg); }
+  
+  .mt-1 { margin-top: var(--spacing-xs); }
+  .mt-2 { margin-top: var(--spacing-sm); }
+  .mt-3 { margin-top: var(--spacing-md); }
+  .mt-4 { margin-top: var(--spacing-lg); }
+    
+  
+  /* ========== TEXT UTILS ========== */
+  
+  .text-center {
+    text-align: center;
+  }
+  
+  .text-bold {
+    font-weight: var(--font-bold);
+  }
+  
+  .text-lg {
+    font-size: var(--font-lg);
+  }
+  
+  .text-md {
+    font-size: var(--font-md);
+  }
+  
+  .text-sm {
+    font-size: var(--font-sm);
+  }
+  
+  
+  /* ========== BORDERS & RADIUS ========== */
+  
+  .rounded-sm {
+    border-radius: var(--radius-sm);
+  }
+  
+  .rounded-md {
+    border-radius: var(--radius-md);
+  }
+  
+  .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
+  
+  .border {
+    border: 1px solid var(--border-color);
+  }
+  
+  
+  /* ========== VISIBILITY ========== */
+  
+  .hidden {
+    display: none !important;
+  }
+  
+  .visible {
+    display: block;
+  }
+  
+  
+  /* ========== RESPONSIVE BREAKPOINTS ========== */
+  
+  @media (max-width: 768px) {
+    .mobile-hidden {
+      display: none;
+    }
+  }
+  
+  @media (min-width: 769px) {
+    .desktop-hidden {
+      display: none;
+    }
+  }
+  

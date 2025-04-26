@@ -1,0 +1,40 @@
+/* src/styles/modules/variables.css */
+
+:root {
+    /* COLORS */
+    --color-primary: #333;          /* Dark gray for headers, nav, footers */
+    --color-secondary: #555;        /* Slightly lighter gray */
+    --color-background: #f7f7f7;    /* Light background for pages */
+    --color-white: #ffffff;
+    --color-text: #1a1a1a;          /* Default text */
+    --color-accent: #0070f3;        /* Accent color for buttons/links */
+  
+    /* TYPOGRAPHY */
+    --font-base: 16px;
+    --font-lg: 1.25rem;
+    --font-xl: 2rem;
+    --font-title: 2.5rem;
+  
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-bold: 600;
+  
+    /* SPACING */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+  
+    /* BORDER RADIUS */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+
+    /* -------- BREAKPOINTS -------- */
+    --breakpoint-sm: 548px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1068px;
+    --breakpoint-xl: 1238px;
+  }
+  

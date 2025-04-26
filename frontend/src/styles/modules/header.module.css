@@ -1,0 +1,40 @@
+/* ---------------------------------------------
+ * header.css
+ * Styles for the header section
+ * --------------------------------------------- */
+
+ .header {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  height: 10%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.logoTitle {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.logo {
+  font-size: 2.5rem;
+  padding-left: var(--spacing-md);
+}
+
+.title {
+  font-size: 2.3rem;
+  font-weight: var(--font-weight-medium);
+  padding-left: var(--spacing-md);
+  flex-grow: 1;
+}
+
+.authButton {
+  margin-right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+}

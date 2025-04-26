@@ -1,0 +1,116 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "email": "alice.smith@example.com",
+      "password": "Password123!",
+      "isLecturer": true,
+      "isTutor": false,
+      "availability": "full-time",
+      "skills": ["Course Design", "Assessment", "Python"],
+      "credentials": "PhD CompSci",
+      "pastRoles": [],
+      "appliedCourses": []
+    },
+    {
+      "id": "u2",
+      "firstName": "Bob",
+      "lastName": "Jones",
+      "email": "bob.jones@example.com",
+      "password": "Password123!",
+      "isLecturer": true,
+      "isTutor": false,
+      "availability": "full-time",
+      "skills": ["Java", "Web Development", "Database Management"],
+      "credentials": "MSc Software Eng",
+      "pastRoles": [],
+      "appliedCourses": []
+    },
+    {
+      "id": "u3",
+      "firstName": "Charlie",
+      "lastName": "Brown",
+      "email": "charlie.brown@example.com",
+      "password": "Password123!",
+      "isLecturer": false,
+      "isTutor": true,
+      "availability": "part-time",
+      "skills": ["Python", "Data Analysis", "Pandas", "Debugging"],
+      "credentials": "BSc Data Science",
+      "pastRoles": [
+        {
+          "role": "Tutor",
+          "courseName": "Intro to Python",
+          "courseCode": "PY101",
+          "semester": "Spring 2024"
+        }
+      ],
+      "appliedCourses": []
+    },
+    {
+      "id": "u4",
+      "firstName": "Diana",
+      "lastName": "Prince",
+      "email": "diana.prince@example.com",
+      "password": "Password123!",
+      "isLecturer": false,
+      "isTutor": true,
+      "availability": "full-time", 
+      "skills": ["Java", "Spring Boot", "Algorithms", "Data Structures", "SQL"],
+      "credentials": "BSc CompSci",
+      "pastRoles": [],
+      "appliedCourses": []
+    },
+    {
+      "id": "u5",
+      "firstName": "Ethan",
+      "lastName": "Hunt",
+      "email": "ethan.hunt@example.com",
+      "password": "Password123!",
+      "isLecturer": false,
+      "isTutor": true,
+      "availability": "full-time",
+      "skills": ["JavaScript", "React", "Node.js", "HTML", "CSS", "MongoDB"],
+      "credentials": "Web Dev Bootcamp Cert.",
+      "pastRoles": [
+         {
+          "role": "Lab Assistant",
+          "courseName": "Web Fundamentals",
+          "courseCode": "WEB101",
+          "semester": "Fall 2024"
+        }
+      ],
+      "appliedCourses": []
+    },
+    {
+      "id": "u6",
+      "firstName": "Fiona",
+      "lastName": "Glenanne",
+      "email": "fiona.glenanne@example.com",
+      "password": "Password123!",
+      "isLecturer": false,
+      "isTutor": true,
+      "availability": "part-time",
+      "skills": ["C++", "Operating Systems", "Linux", "System Programming"],
+      "credentials": "BEng CompSys Eng",
+      "pastRoles": [],
+      "appliedCourses": []
+    },
+    {
+      "id": "u7",
+      "firstName": "George",
+      "lastName": "Costanza",
+      "email": "george.costanza@example.com",
+      "password": "Password123!",
+      "isLecturer": false,
+      "isTutor": true,
+      "availability": "part-time",
+      "skills": ["SQL", "Database Design", "Normalization", "PostgreSQL"],
+      "credentials": "BSc Information Systems",
+      "pastRoles": [],
+      "appliedCourses": []
+    }
+  ]
+}

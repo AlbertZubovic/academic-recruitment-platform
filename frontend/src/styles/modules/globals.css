@@ -1,0 +1,28 @@
+/* --------------------------------------------------
+ * globals.css
+ * Global element resets, layout wide typography, etc.
+ * -------------------------------------------------- */
+
+ @import "../variables.css";
+
+ html {
+   font-size: var(--font-base);
+ }
+ 
+ *, *::before, *::after {
+   box-sizing: border-box;
+   object-fit: cover;
+ }
+ 
+ body {
+   margin: 0;
+   font-family: Arial, sans-serif;
+   background-color: var(--color-background);
+   color: var(--color-text);
+ }
+ 
+ h1 {
+   font-size: var(--font-title);
+   font-weight: var(--font-weight-bold);
+ }
+ 

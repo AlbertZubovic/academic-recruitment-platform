@@ -1,0 +1,19 @@
+/* ---------------------------------------------
+ * navBar.css
+ * Navigation bar styles
+ * --------------------------------------------- */
+
+ .navBar {
+  width: 100%;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  height: 5%;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: var(--breakpoint-md)) {
+  .navBar {
+    height: 20%;
+  }
+}

@@ -1,0 +1,114 @@
+[
+    {
+      "id": "c1",
+      "name": "Introduction To Programming",
+      "courseCode": "COSC101",
+      "semester": "Fall 2025",
+      "requiredAvailability": "part-time",
+      "skills": ["Python", "Problem Solving", "Basic Algorithms"],
+      "applicants": [
+        { "userId": "u3", "appliedSkills": ["Python", "Debugging", "Problem Solving"], "appliedAvailability": "part-time" },
+        { "userId": "u5", "appliedSkills": ["Python", "JavaScript"], "appliedAvailability": "part-time" }
+      ]
+    },
+    {
+      "id": "c2",
+      "name": "Data Structures And Algorithms",
+      "courseCode": "COSC202",
+      "semester": "Spring 2026",
+      "requiredAvailability": "full-time",
+      "skills": ["Java", "Data Structures", "Time Complexity", "Algorithms"],
+      "applicants": [
+        { "userId": "u4", "appliedSkills": ["Java", "Algorithms", "Data Structures", "Spring Boot"], "appliedAvailability": "full-time" }
+      ]
+    },
+    {
+      "id": "c3",
+      "name": "Web Development Fundamentals",
+      "courseCode": "COSC303",
+      "semester": "Fall 2025",
+      "requiredAvailability": "any",
+      "skills": ["HTML", "CSS", "JavaScript"],
+      "applicants": [
+        { "userId": "u5", "appliedSkills": ["HTML", "CSS", "JavaScript", "React", "Node.js"], "appliedAvailability": "full-time" },
+        { "userId": "u3", "appliedSkills": ["HTML", "CSS", "Python"], "appliedAvailability": "part-time" }
+      ]
+    },
+    {
+      "id": "c4",
+      "name": "Database Systems",
+      "courseCode": "COSC404",
+      "semester": "Spring 2026",
+      "requiredAvailability": "part-time",
+      "skills": ["SQL", "Database Design", "Normalization"],
+      "applicants": [
+        { "userId": "u7", "appliedSkills": ["SQL", "Database Design", "PostgreSQL", "Normalization"], "appliedAvailability": "part-time" },
+        { "userId": "u4", "appliedSkills": ["SQL", "Java"], "appliedAvailability": "part-time" }
+      ]
+    },
+    {
+      "id": "c5",
+      "name": "Operating Systems Concepts",
+      "courseCode": "COSC505",
+      "semester": "Fall 2025",
+      "requiredAvailability": "full-time",
+      "skills": ["C", "Process Management", "Memory Management", "Linux"],
+      "applicants": [
+         { "userId": "u6", "appliedSkills": ["C++", "Linux", "System Programming", "Process Management"], "appliedAvailability": "full-time" }
+      ]
+    },
+    {
+      "id": "c6",
+      "name": "Advanced Algorithms",
+      "courseCode": "COSC601",
+      "semester": "Fall 2025",
+      "requiredAvailability": "part-time",
+      "skills": ["Algorithms", "Complexity Analysis", "Graph Theory"],
+      "applicants": [
+        { "userId": "u4", "appliedSkills": ["Algorithms", "Java", "Data Structures"], "appliedAvailability": "part-time" }
+      ]
+    },
+    {
+      "id": "c7",
+      "name": "Software Engineering Principles",
+      "courseCode": "COSC211", 
+      "semester": "Spring 2026",
+      "requiredAvailability": "full-time",
+      "skills": ["UML", "Agile", "Requirements Engineering", "Git"],
+      "applicants": []
+    },
+    {
+      "id": "c8",
+      "name": "Introduction to AI",
+      "courseCode": "COSC410", 
+      "semester": "Fall 2025",
+      "requiredAvailability": "part-time",
+      "skills": ["Python", "Machine Learning Concepts", "Search Algorithms"],
+      "applicants": [
+        { "userId": "u3", "appliedSkills": ["Python", "Pandas", "Data Analysis"], "appliedAvailability": "part-time" }
+      ]
+    },
+     {
+      "id": "c9",
+      "name": "Network Fundamentals",
+      "courseCode": "COSC151",
+      "semester": "Spring 2026",
+      "requiredAvailability": "any",
+      "skills": ["TCP/IP", "Routing", "Switching", "OSI Model"],
+      "applicants": [
+          { "userId": "u6", "appliedSkills": ["Linux", "Networking Basics"], "appliedAvailability": "part-time" },
+          { "userId": "u7", "appliedSkills": ["Networking", "SQL"], "appliedAvailability": "part-time" }
+      ]
+    },
+     {
+      "id": "c10",
+      "name": "Mobile Application Development",
+      "courseCode": "COSC351",
+      "semester": "Fall 2025",
+      "requiredAvailability": "full-time",
+      "skills": ["Swift", "Kotlin", "iOS", "Android", "UI/UX Principles"],
+      "applicants": [
+          { "userId": "u5", "appliedSkills": ["JavaScript", "React Native", "CSS"], "appliedAvailability": "full-time" }
+      ]
+    }
+  ]
