@@ -53,11 +53,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/.test(pwd);
 
   // Form submission handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate required fields
-    if (!email || !password) {
+    if (type === "signup" && !isStrongPassword(password)) {
       toast({
         title: "Missing Fields",
         description: "All fields are required.",
@@ -68,8 +68,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       });
       return;
     }
-
-    // Validate password for signup
+    
     if (type === "signup" && !isStrongPassword(password)) {
       toast({
         title: "Weak Password",
@@ -85,54 +84,64 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
     setIsLoading(true);
 
-    // Add small delay for UX
-    setTimeout(() => {
-      if (type === "signin") {
-        const success = login(email, password);
+    const endpoint = type === "signin" ? "/api/auth/signin" : "/api/auth/signup";
+    const payload =
+      type === "signin"
+        ? { email, password }
+        : {
+            email,
+            password,
+            firstname: "firstName",
+            lastname: "lastName",
+          };
 
-        if (success) {
-          toast({
-            title: "Success",
-            description: "Login successful!",
-            status: "success",
-            duration: 2500,
-            isClosable: true,
-            position: "bottom",
-          });
+          try {
+            const response = await fetch(`http://localhost:5000${endpoint}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+        
+            const data = await response.json();
+        
+            if (!response.ok) {
+              throw new Error(data.message || "Something went wrong");
+            }
+        
+            toast({
+              title: "Success",
+              description:
+                type === "signin"
+                  ? `Welcome ${data.user.firstname}`
+                  : "Account created successfully!",
+              status: "success",
+              duration: 3000,
+              isClosable: true,
+              position: "bottom",
+            });
+        
+            setEmail("");
+            setPassword("");
+        
+            if (type === "signin") {
+              router.push("/");
+            }
+          } catch (err: any) {
+            toast({
+              title: "Error",
+              description: err.message,
+              status: "error",
+              duration: 3000,
+              isClosable: true,
+              position: "bottom",
+            });
+          } finally {
+            setIsLoading(false);
+          }
+        };
 
-          // Reset form fields
-          setEmail("");
-          setPassword("");
-
-          // Redirect to homepage
-          setTimeout(() => {
-            router.push("/");
-          }, 1200);
-        } else {
-          toast({
-            title: "Login Failed",
-            description: "Incorrect email or password.",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-            position: "bottom",
-          });
-        }
-      } else {
-        // Signup not implemented
-        toast({
-          title: "Coming Soon",
-          description: "Sign-up will be implemented in Assignment 2.",
-          status: "info",
-          duration: 3000,
-          isClosable: true,
-          position: "bottom",
-        });
-      }
-
-      setIsLoading(false);
-    }, 500);
-  };
 
   return (
     <Box
