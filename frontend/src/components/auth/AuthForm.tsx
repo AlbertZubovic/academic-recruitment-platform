@@ -39,6 +39,8 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   // Form state
+  const [firstname, setFirstname] = useState("");
+  const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +59,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     e.preventDefault();
 
     // Validate required fields
-    if (type === "signup" && !isStrongPassword(password)) {
+    if (
+      (type === "signup" && (!firstname || !lastname || !email || !password)) ||
+      (type === "signin" && (!email || !password))
+    ) {
       toast({
         title: "Missing Fields",
         description: "All fields are required.",
@@ -68,6 +73,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       });
       return;
     }
+    
     
     if (type === "signup" && !isStrongPassword(password)) {
       toast({
@@ -91,8 +97,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         : {
             email,
             password,
-            firstname: "firstName",
-            lastname: "lastName",
+            firstname,
+            lastname,
           };
 
           try {
@@ -143,85 +149,114 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         };
 
 
-  return (
-    <Box
-      minH="90vh"
-      bgGradient="linear(to-r, blue.50, blue.100)"
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      px={4}
-    >
-      <Box maxW="md" w="100%" p={8} bg="white" boxShadow="lg" borderRadius="xl">
-        {/* Heading section */}
-        <Box textAlign="center" mb={4}>
-          <Heading size="lg" color="blue.600">
-            {type === "signin" ? "Welcome Back" : "Create Your Account"}
-          </Heading>
-          <Text fontSize="sm" color="gray.500">
-            {type === "signin"
-              ? "Enter your credentials to continue"
-              : "Sign up to get started"}
-          </Text>
-        </Box>
-
-        {/* Auth form */}
-        <form onSubmit={handleSubmit}>
-          <VStack spacing={4}>
-            {/* Email field */}
-            <FormControl isRequired>
-              <FormLabel>Email</FormLabel>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                _hover={{ borderColor: "blue.400" }}
-                focusBorderColor="blue.500"
-              />
-            </FormControl>
-
-            {/* Password field */}
-            <FormControl isRequired>
-              <FormLabel>Password</FormLabel>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                _hover={{ borderColor: "blue.400" }}
-                focusBorderColor="blue.500"
-              />
-            </FormControl>
-
-            {/* Submit button */}
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              colorScheme="blue"
-              width="100%"
-              borderRadius="md"
-              fontWeight="bold"
-            >
-              {type === "signin" ? "Sign In" : "Sign Up"}
-            </Button>
-
-            {/* Link to signup */}
-            {type === "signin" && (
-              <Text fontSize="sm">
-                Need an account?{" "}
-                <NextLink href="/signup" passHref legacyBehavior>
-                  <Link color="blue.500" fontWeight="semibold">
-                    Sign up
-                  </Link>
-                </NextLink>
-              </Text>
-            )}
-          </VStack>
-        </form>
-      </Box>
-    </Box>
-  );
-};
+        return (
+          <Box
+            minH="90vh"
+            bgGradient="linear(to-r, blue.50, blue.100)"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            px={4}
+          >
+            <Box maxW="md" w="100%" p={8} bg="white" boxShadow="lg" borderRadius="xl">
+              {/* Heading section */}
+              <Box textAlign="center" mb={4}>
+                <Heading size="lg" color="blue.600">
+                  {type === "signin" ? "Welcome Back" : "Create Your Account"}
+                </Heading>
+                <Text fontSize="sm" color="gray.500">
+                  {type === "signin"
+                    ? "Enter your credentials to continue"
+                    : "Sign up to get started"}
+                </Text>
+              </Box>
+        
+              {/* Auth form */}
+              <form onSubmit={handleSubmit}>
+                <VStack spacing={4}>
+                  {/* Firstname and Lastname only for signup */}
+                  {type === "signup" && (
+                    <>
+                      <FormControl isRequired>
+                        <FormLabel>First Name</FormLabel>
+                        <Input
+                          type="text"
+                          value={firstname}
+                          onChange={(e) => setFirstname(e.target.value)}
+                          placeholder="Enter your first name"
+                          _hover={{ borderColor: "blue.400" }}
+                          focusBorderColor="blue.500"
+                        />
+                      </FormControl>
+        
+                      <FormControl isRequired>
+                        <FormLabel>Last Name</FormLabel>
+                        <Input
+                          type="text"
+                          value={lastname}
+                          onChange={(e) => setLastname(e.target.value)}
+                          placeholder="Enter your last name"
+                          _hover={{ borderColor: "blue.400" }}
+                          focusBorderColor="blue.500"
+                        />
+                      </FormControl>
+                    </>
+                  )}
+        
+                  {/* Email field */}
+                  <FormControl isRequired>
+                    <FormLabel>Email</FormLabel>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      _hover={{ borderColor: "blue.400" }}
+                      focusBorderColor="blue.500"
+                    />
+                  </FormControl>
+        
+                  {/* Password field */}
+                  <FormControl isRequired>
+                    <FormLabel>Password</FormLabel>
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      _hover={{ borderColor: "blue.400" }}
+                      focusBorderColor="blue.500"
+                    />
+                  </FormControl>
+        
+                  {/* Submit button */}
+                  <Button
+                    type="submit"
+                    isLoading={isLoading}
+                    colorScheme="blue"
+                    width="100%"
+                    borderRadius="md"
+                    fontWeight="bold"
+                  >
+                    {type === "signin" ? "Sign In" : "Sign Up"}
+                  </Button>
+        
+                  {/* Link to signup */}
+                  {type === "signin" && (
+                    <Text fontSize="sm">
+                      Need an account?{" "}
+                      <NextLink href="/signup" passHref legacyBehavior>
+                        <Link color="blue.500" fontWeight="semibold">
+                          Sign up
+                        </Link>
+                      </NextLink>
+                    </Text>
+                  )}
+                </VStack>
+              </form>
+            </Box>
+          </Box>
+        );
+      }
 
 export default AuthForm;
