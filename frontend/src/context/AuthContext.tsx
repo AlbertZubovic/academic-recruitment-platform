@@ -28,7 +28,7 @@ interface AuthContextProps {
   user: User | null;
   setUser: (user: User) => void;
   setAuthTrigger: (value: number) => void;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
 }
@@ -58,66 +58,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize mock data if localStorage is empty
   useEffect(() => {
-    try {
-      const existingUsersRaw = localStorage.getItem(LS_KEYS.USERS);
-      const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : [];
-  
-      const shouldSeedUsers = !Array.isArray(existingUsers) || existingUsers.length === 0;
-  
-      if (shouldSeedUsers) {
-        console.log('Seeding mock users');
-        localStorage.setItem(LS_KEYS.USERS, JSON.stringify(mockUsers.users));
+    const restoreUser = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        return;
       }
   
-      const existingCoursesRaw = localStorage.getItem(LS_KEYS.COURSES);
-      const existingCourses = existingCoursesRaw ? JSON.parse(existingCoursesRaw) : [];
+      try {
+        const response = await fetch("http://localhost:5000/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
   
-      const shouldSeedCourses = !Array.isArray(existingCourses) || existingCourses.length === 0;
+        if (!response.ok) throw new Error("Failed to restore session");
   
-      if (shouldSeedCourses) {
-        console.log('Seeding mock courses');
-        localStorage.setItem(LS_KEYS.COURSES, JSON.stringify(mockCourses));
+        const user = await response.json();
+        setUser(user);
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error("Session restore failed:", error);
+        localStorage.removeItem("token");
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+    };
   
-  // Restore user session from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem(LS_KEYS.SIGNED_IN_USER);
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsLoggedIn(true);
-    }
-    setLoading(false);
+    restoreUser();
   }, [authTrigger]);
+  
 
   // Login function - validates credentials against localStorage
-  const login = (email: string, password: string): boolean => {
-    const storedUsers = localStorage.getItem(LS_KEYS.USERS);
-    if (storedUsers) {
-      const users: User[] = JSON.parse(storedUsers);
-      const foundUser = users.find(
-        (u) => u.email === email && u.password === password
-      );
-      if (foundUser) {
-        localStorage.setItem(LS_KEYS.SIGNED_IN_USER, JSON.stringify(foundUser));
-        setUser(foundUser);
-        setIsLoggedIn(true);
-        return true;
-      }
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) throw new Error(data.message || "Login failed");
+  
+      // Save token and user to localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("signedInUser", JSON.stringify(data.user));
+  
+      setUser(data.user);
+      setIsLoggedIn(true);
+      return true;
+    } catch (err) {
+      console.error("Login error:", err);
+      return false;
     }
-    return false;
   };
+  
 
   // Logout function - clears session
   const logout = () => {
-    localStorage.removeItem(LS_KEYS.SIGNED_IN_USER);
+    localStorage.removeItem("token");
+    localStorage.removeItem("signedInUser");
     setUser(null);
     setIsLoggedIn(false);
     setAuthTrigger(Date.now());
   };
+  
 
   // Update user data in both session and users collection
   const setUserAndPersist = (updatedUser: User) => {

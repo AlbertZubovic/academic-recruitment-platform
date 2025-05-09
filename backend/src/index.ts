@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import { AppDataSource } from "./data-source";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());

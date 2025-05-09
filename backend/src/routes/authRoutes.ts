@@ -1,5 +1,8 @@
 import { Router, Request, Response } from "express";
 import { signUp, signIn } from "../controllers/authController";
+import { authenticate } from "../middleware/authMiddleware";
+import { AppDataSource } from "../data-source";
+import { User } from "../entities/User";
 
 const router = Router();
 
@@ -10,5 +13,23 @@ router.post("/signup", (req: Request, res: Response) => {
 router.post("/signin", (req: Request, res: Response) => {
   signIn(req, res);
 });
+
+router.get("/me", authenticate, async (req: Request, res: Response): Promise<void> => {
+    const repo = AppDataSource.getRepository(User);
+    const { userId } = (req as any).user;
+  
+    try {
+      const user = await repo.findOne({ where: { user_ID: userId } });
+      if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+  
+      res.json(user);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+  
 
 export default router;

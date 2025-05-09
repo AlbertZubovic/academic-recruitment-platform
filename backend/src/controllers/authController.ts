@@ -33,19 +33,25 @@ export const signUp = async (req: Request, res: Response): Promise<Response> => 
   }
 };
 
-export const signIn = async (req: Request, res: Response): Promise<Response> => {
-  const repo = AppDataSource.getRepository(User);
-  const { email, password } = req.body;
-
-  try {
-    const user = await repo.findOne({ where: { email } });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
-
-    const match = await comparePassword(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
-
-    return res.status(200).json({ message: `Welcome ${user.firstname}`, user });
-  } catch (err) {
-    return res.status(500).json({ message: "Signin failed" });
-  }
-};
+export const signIn = async (req: Request, res: Response): Promise<void> => {
+    const repo = AppDataSource.getRepository(User);
+    const { email, password } = req.body;
+  
+    try {
+      const user = await repo.findOne({ where: { email } });
+      if (!user) {
+        res.status(401).json({ message: "Invalid credentials" });
+        return;
+      }
+  
+      const match = await comparePassword(password, user.password);
+      if (!match) {
+        res.status(401).json({ message: "Invalid credentials" });
+        return;
+      }
+  
+      res.status(200).json({ message: `Welcome ${user.firstname}`, user });
+    } catch (err) {
+      res.status(500).json({ message: "Signin failed" });
+    }
+  };
