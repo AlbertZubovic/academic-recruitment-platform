@@ -6,11 +6,11 @@ import React, {
   useState,
   useEffect,
   ReactNode,
-  useCallback, // <-- Make sure useCallback is imported
+  useCallback,
 } from "react";
 import { Course } from "@/types/course";
-import { Applicant } from "@/types/applicant"; // <-- Import Applicant type
-import mockCourses from "../data/mockCourseList.json";
+import { Applicant } from "@/types/applicant";
+import { useAuth } from "./AuthContext"; // Add this to get auth token
 
 declare global {
   interface Window {
@@ -18,8 +18,6 @@ declare global {
   }
 }
 
-// Centralize the localStorage key - Use "Courses" for consistency
-const LS_COURSES_KEY = "Courses";
 
 // Define context
 interface CourseContextProps {
@@ -31,8 +29,8 @@ interface CourseContextProps {
     courseId: string,
     userId: string,
     updatedDetails: Partial<Pick<Applicant, 'appliedSkills' | 'appliedAvailability'>> // Allow partial updates
-  ) => boolean; // Return success status
-  deleteApplication: (courseId: string, userId: string) => boolean; // Return success status
+  ) => Promise<boolean>; // Return success status
+  deleteApplication: (courseId: string, userId: string) => Promise<boolean>; // Return success status
 }
 
 // Create context
@@ -54,159 +52,149 @@ interface CourseProviderProps {
 // Context provider component
 export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [, setLoading] = useState(true);
+  const { user } = useAuth(); // Get user for auth token
 
-  // Load courses on mount (ensure it handles the Applicant object structure)
+  // Load courses on mount
   useEffect(() => {
-    try {
-      const storedCourses = localStorage.getItem(LS_COURSES_KEY);
-      let initialCourses: Course[] = [];
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setCourses([]);
+          return;
+        }
 
-      if (storedCourses) {
-        const parsedCourses: Course[] = JSON.parse(storedCourses);
-        // Basic validation/mapping to ensure structure
-        const validatedCourses = parsedCourses.map(course => ({
-          ...course,
-          applicants: Array.isArray(course.applicants)
-            ? course.applicants.map((app: Applicant) => ({
-                userId: String(app.userId ?? ''),
-                appliedSkills: Array.isArray(app.appliedSkills) ? app.appliedSkills : [],
-                appliedAvailability: String(app.appliedAvailability ?? '')
-              })) as Applicant[]
-            : []
-        }));
-        initialCourses = validatedCourses;
-      } else {
-        // Seed if empty
-        initialCourses = mockCourses.map(course => ({
-             ...course,
-             requiredAvailability: course.requiredAvailability as Course['requiredAvailability'],
-             applicants: Array.isArray(course.applicants) ? course.applicants as Applicant[] : []
-          }));
-        localStorage.setItem(LS_COURSES_KEY, JSON.stringify(initialCourses));
+        const response = await fetch("http://localhost:5000/api/courses", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch courses");
+        }
+
+        const data = await response.json();
+        setCourses(data);
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+        setCourses([]); // Set empty array instead of mock data
+      } finally {
+        setLoading(false);
       }
-      setCourses(initialCourses);
-    } catch (err) {
-      console.error("Failed to load/parse courses, resetting to mock data", err);
-      const fallbackCourses = mockCourses.map(course => ({
-             ...course,
-             requiredAvailability: course.requiredAvailability as Course['requiredAvailability'],
-             applicants: Array.isArray(course.applicants) ? course.applicants as Applicant[] : []
-          }));
-      localStorage.setItem(LS_COURSES_KEY, JSON.stringify(fallbackCourses));
-      setCourses(fallbackCourses);
-    }
-  }, []);
+    };
+
+    fetchCourses();
+  }, [user]); // Re-fetch when user changes
 
   // Update ALL courses manually
-  const updateCourseData = useCallback((updatedCourses: Course[]) => {
-    // Add validation/ensure structure before saving if needed
-     const validatedCourses = updatedCourses.map(course => ({
-        ...course,
-        applicants: Array.isArray(course.applicants) ? course.applicants : []
-    }));
-    setCourses(validatedCourses);
-    localStorage.setItem(LS_COURSES_KEY, JSON.stringify(validatedCourses));
-  }, []);
+  const updateCourseData = useCallback(async (updatedCourses: Course[]) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-  // Refresh ALL courses from localStorage manually
-  const refreshCourses = useCallback(() => {
-    // ... (implementation as before) ...
-     try {
-        const stored = localStorage.getItem(LS_COURSES_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            // Add validation here too if needed
-            if (Array.isArray(parsed)) {
-                setCourses(parsed);
-            }
-        }
+      const response = await fetch("http://localhost:5000/api/courses", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedCourses),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update courses");
+      }
+
+      const data = await response.json();
+      setCourses(data);
     } catch (err) {
-        console.error("Failed to refresh courses", err);
+      console.error("Failed to update courses:", err);
     }
   }, []);
 
-  // --- NEW: Update specific application details ---
-  const updateApplicationDetails = useCallback((
+  // Refresh courses from API
+  const refreshCourses = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch("http://localhost:5000/api/courses", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh courses");
+      }
+
+      const data = await response.json();
+      setCourses(data);
+    } catch (err) {
+      console.error("Failed to refresh courses:", err);
+    }
+  }, []);
+
+  // Update application details
+  const updateApplicationDetails = useCallback(async (
     courseId: string,
     userId: string,
     updatedDetails: Partial<Pick<Applicant, 'appliedSkills' | 'appliedAvailability'>>
-  ): boolean => {
-    let success = false;
-    setCourses(currentCourses => {
-      const courseIndex = currentCourses.findIndex(c => c.id === courseId);
-      if (courseIndex === -1) return currentCourses; // Course not found
+  ): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
 
-      const targetCourse = currentCourses[courseIndex];
-      const applicantIndex = targetCourse.applicants.findIndex(app => String(app.userId) === String(userId));
-      if (applicantIndex === -1) return currentCourses; // Applicant not found in this course
+      const response = await fetch(`http://localhost:5000/api/courses/${courseId}/applications/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedDetails),
+      });
 
-      // Create updated applicant object immutably
-      const updatedApplicant = {
-        ...targetCourse.applicants[applicantIndex], // Keep existing details (like userId)
-        ...updatedDetails, // Overwrite with new details
-      };
-
-      // Create updated applicants array immutably
-      const updatedApplicants = [
-        ...targetCourse.applicants.slice(0, applicantIndex),
-        updatedApplicant,
-        ...targetCourse.applicants.slice(applicantIndex + 1),
-      ];
-
-      // Create updated course object immutably
-      const updatedCourse = { ...targetCourse, applicants: updatedApplicants };
-
-      // Create updated courses array immutably
-      const finalCourses = [
-        ...currentCourses.slice(0, courseIndex),
-        updatedCourse,
-        ...currentCourses.slice(courseIndex + 1),
-      ];
-
-      // Persist and set flag
-      localStorage.setItem(LS_COURSES_KEY, JSON.stringify(finalCourses));
-      success = true;
-      return finalCourses; // Return new state
-    });
-    return success;
-  }, []);
-
-  // --- NEW: Delete a specific application ---
-  const deleteApplication = useCallback((courseId: string, userId: string): boolean => {
-    let success = false;
-    setCourses(currentCourses => {
-      const courseIndex = currentCourses.findIndex(c => c.id === courseId);
-      if (courseIndex === -1) return currentCourses; // Course not found
-
-      const targetCourse = currentCourses[courseIndex];
-
-      // Filter out the applicant immutably
-      const updatedApplicants = targetCourse.applicants.filter(app => String(app.userId) !== String(userId));
-
-      // Only proceed if the applicant was actually found and removed
-      if (updatedApplicants.length === targetCourse.applicants.length) {
-          console.warn(`Applicant ${userId} not found in course ${courseId} for deletion.`);
-          return currentCourses; // No change needed
+      if (!response.ok) {
+        throw new Error("Failed to update application");
       }
 
-      // Create updated course object immutably
-      const updatedCourse = { ...targetCourse, applicants: updatedApplicants };
+      // Refresh courses to get updated data
+      await refreshCourses();
+      return true;
+    } catch (err) {
+      console.error("Failed to update application:", err);
+      return false;
+    }
+  }, [refreshCourses]);
 
-      // Create updated courses array immutably
-      const finalCourses = [
-        ...currentCourses.slice(0, courseIndex),
-        updatedCourse,
-        ...currentCourses.slice(courseIndex + 1),
-      ];
+  // Delete application
+  const deleteApplication = useCallback(async (courseId: string, userId: string): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
 
-      // Persist and set flag
-      localStorage.setItem(LS_COURSES_KEY, JSON.stringify(finalCourses));
-      success = true;
-      return finalCourses; // Return new state
-    });
-     return success;
-  }, []);
+      const response = await fetch(`http://localhost:5000/api/courses/${courseId}/applications/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error("Failed to delete application");
+      }
+
+      // Refresh courses to get updated data
+      await refreshCourses();
+      return true;
+    } catch (err) {
+      console.error("Failed to delete application:", err);
+      return false;
+    }
+  }, [refreshCourses]);
 
   // Make refresh available via window for debug/dev
   useEffect(() => {
@@ -218,7 +206,6 @@ export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
     courses,
     updateCourseData,
     refreshCourses,
-    // --- Provide new functions ---
     updateApplicationDetails,
     deleteApplication,
   };

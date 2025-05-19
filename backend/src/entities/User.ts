@@ -5,29 +5,36 @@ import {
   CreateDateColumn
 } from "typeorm";
 
+// Define and export the enum for UserAvailability BEFORE the User class
+export enum UserAvailability {
+  FULL_TIME = "Full-Time",
+  PART_TIME = "Part-Time",
+  // Consider adding other relevant statuses like UNAVAILABLE if needed in the future
+}
+
 @Entity()
 export class User {
-  @PrimaryColumn("char", { length: 36} )
+  @PrimaryColumn("char", { length: 36 })
   user_ID!: string;
 
-  @Column({ length: 255, unique: true})
+  @Column({ length: 255, unique: true })
   email!: string;
 
   @Column({ length: 60 })
   password!: string;
 
   @Column("json", { nullable: true })
-  default_skills!: string[];
+  default_skills!: string[] | null;
 
   @Column({
     type: "enum",
-    enum: ["Full-Time", "Part-Time"],
+    enum: UserAvailability, // Now UserAvailability is defined
     nullable: true
   })
-  default_availability!: "Full-Time" | "Part-Time";
+  default_availability!: UserAvailability | null;
 
-  @Column({ nullable: true })
-  academic_credentials!: string;
+  @Column({ type: "text", nullable: true })
+  academic_credentials!: string | null;
 
   @Column({ length: 100 })
   firstname!: string;
@@ -50,3 +57,5 @@ export class User {
   @Column({ default: false })
   is_blocked!: boolean;
 }
+
+// UserAvailability enum is now defined above the User class

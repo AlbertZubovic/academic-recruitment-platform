@@ -15,6 +15,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import { useAuth } from "./AuthContext";
 
 // Define localStorage key
 const LS_KEY = "selectedApplicants";
@@ -27,6 +28,7 @@ interface SelectedApplicantsContextType {
     courseId: string,
     toast?: (status: "selected" | "deselected") => void
   ) => void;
+  loading: boolean;
 }
 
 // Create context
@@ -52,26 +54,51 @@ export const SelectedApplicantsProvider: React.FC<SelectedApplicantsProviderProp
   children,
 }) => {
   const [selectedApplicants, setSelectedApplicants] = useState<Record<string, string[]>>({});
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Load from localStorage on mount
+  // Fetch selected applicants from API
   useEffect(() => {
-    const stored = localStorage.getItem(LS_KEY);
-    if (stored) {
+    const fetchSelectedApplicants = async () => {
       try {
-        const parsed = JSON.parse(stored);
-        if (typeof parsed === "object") {
-          setSelectedApplicants(parsed);
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setSelectedApplicants({});
+          return;
         }
-      } catch {
-        console.warn("Failed to parse selected applicants from localStorage");
-      }
-    }
-  }, []);
 
-  // Persist to localStorage on change
-  useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(selectedApplicants));
-  }, [selectedApplicants]);
+        const response = await fetch("http://localhost:5000/api/applications/selected", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch selected applicants");
+        }
+
+        const data = await response.json();
+        // Transform API response to our format if needed
+        const transformedData = data.reduce((acc: Record<string, string[]>, curr: any) => {
+          if (!acc[curr.courseId]) {
+            acc[curr.courseId] = [];
+          }
+          acc[curr.courseId].push(curr.userId);
+          return acc;
+        }, {});
+        
+        setSelectedApplicants(transformedData);
+      } catch (err) {
+        console.error("Failed to fetch selected applicants:", err);
+        setSelectedApplicants({});
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSelectedApplicants();
+  }, [user]); // Re-fetch when user changes
 
   /**
    * Toggles an applicant selection for a given course.
@@ -79,31 +106,48 @@ export const SelectedApplicantsProvider: React.FC<SelectedApplicantsProviderProp
    * Removes if already selected
    * Optional toast callback returns the action for UI feedback
    */
-  const toggleApplicantSelection = (
+  const toggleApplicantSelection = async (
     applicantId: string,
     courseId: string,
     toast?: (status: "selected" | "deselected") => void
   ) => {
-    const currentSelections = selectedApplicants[courseId] || [];
-    const isSelected = currentSelections.includes(applicantId);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-    const updatedSelections = isSelected
-      ? currentSelections.filter((id) => id !== applicantId)
-      : [...currentSelections, applicantId];
+      const currentSelections = selectedApplicants[courseId] || [];
+      const isSelected = currentSelections.includes(applicantId);
 
-    const action: "selected" | "deselected" = isSelected ? "deselected" : "selected";
+      const response = await fetch(`http://localhost:5000/api/applications/${courseId}/select/${applicantId}`, {
+        method: isSelected ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    setSelectedApplicants({
-      ...selectedApplicants,
-      [courseId]: updatedSelections,
-    });
+      if (!response.ok) {
+        throw new Error(`Failed to ${isSelected ? "deselect" : "select"} applicant`);
+      }
 
-    if (toast) toast(action);
+      // Update local state
+      const updatedSelections = isSelected
+        ? currentSelections.filter((id) => id !== applicantId)
+        : [...currentSelections, applicantId];
+
+      setSelectedApplicants({
+        ...selectedApplicants,
+        [courseId]: updatedSelections,
+      });
+
+      if (toast) toast(isSelected ? "deselected" : "selected");
+    } catch (err) {
+      console.error("Failed to toggle applicant selection:", err);
+    }
   };
 
   return (
     <SelectedApplicantsContext.Provider
-      value={{ selectedApplicants, toggleApplicantSelection }}
+      value={{ selectedApplicants, toggleApplicantSelection, loading }}
     >
       {children}
     </SelectedApplicantsContext.Provider>

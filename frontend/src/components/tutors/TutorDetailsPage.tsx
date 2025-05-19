@@ -11,7 +11,7 @@
  * All data is synced to localStorage and displayed via the TutorDetailsCard and AuthContext.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Container,
   Heading,
@@ -37,59 +37,90 @@ import { useAuth } from '@/context/AuthContext';
 
 const TutorDetailsPage = () => {
   const { user, setUser } = useAuth();
-
-  // Local state to store editable tutor profile information
   const [tutorDetails, setTutorDetails] = useState<Partial<Tutor>>(user ?? {});
+  const isInitialMountOrUserLoad = useRef(true);
 
-// On first load: initialize tutorDetails from AuthContext or fallback
-// eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {
-  if (!user) return;
+  // On first load or when user context changes: initialize/reset tutorDetails from user
+  useEffect(() => {
+    if (user) {
+      console.log("TutorDetailsPage: Populating tutorDetails from user context:", user);
+      
+      setTutorDetails({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        credentials: user.academicCredentials || '',
+        skills: user.defaultSkills || [],
+        pastRoles: [], // Initialize pastRoles as empty; actual data will be fetched elsewhere
+      });
+    } else {
+      console.log("TutorDetailsPage: No user in context, clearing tutorDetails.");
+      setTutorDetails({}); // Clear details if user logs out or is not available
+    }
+  }, [user]);
 
-  const storedManual = localStorage.getItem('tutorDetails');
-  const parsed = storedManual ? JSON.parse(storedManual) : {};
+  // Update backend when tutorDetails changes, but skip the very initial population
+  useEffect(() => {
+    // Skip if user is not loaded or tutorDetails is not yet populated (or empty)
+    // This check is important to prevent updates if the user logs out or data is otherwise invalid.
+    if (!user || !tutorDetails || Object.keys(tutorDetails).length === 0) {
+      console.log("TutorDetailsPage: Skipping update - no user or tutorDetails are empty.");
+      return;
+    }
 
-  setTutorDetails({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    credentials: user.credentials,
-    skills: user.skills,
-    pastRoles: user.pastRoles,
-    ...parsed,
-  });
-}, []);
+    // If it's the initial population phase (isInitialMountOrUserLoad is true),
+    // mark it as done for subsequent runs and skip the API call for now.
+    if (isInitialMountOrUserLoad.current) {
+      console.log("TutorDetailsPage: Initial population of tutorDetails complete, skipping immediate backend update.");
+      isInitialMountOrUserLoad.current = false; // Prevent this block from running again for this page load
+      return; 
+    }
+    
+    console.log("TutorDetailsPage: tutorDetails changed by user interaction, attempting backend update:", tutorDetails);
 
+    const updateUserOnBackend = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.warn("TutorDetailsPage: No token found, cannot update user.");
+          return;
+        }
 
-// Whenever tutorDetails changes, persist to localStorage + update user and Users[]
-// eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {
-  if (!user || !tutorDetails) return;
+        // Construct payload carefully, only send fields backend expects
+        const payload = {
+          firstname: tutorDetails.firstName,
+          lastname: tutorDetails.lastName,
+          email: tutorDetails.email, 
+          academic_credentials: tutorDetails.credentials,
+          default_skills: tutorDetails.skills,
+          // pastRoles is intentionally omitted from payload as it's derived data
+        };
 
-  localStorage.setItem('tutorDetails', JSON.stringify(tutorDetails));
+        const response = await fetch("http://localhost:5000/api/users/me", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
 
-  const updatedUser = {
-    ...user,
-    firstName: tutorDetails.firstName ?? user.firstName,
-    lastName: tutorDetails.lastName ?? user.lastName,
-    email: tutorDetails.email ?? user.email,
-    credentials: tutorDetails.credentials ?? user.credentials,
-  
-    skills: tutorDetails.skills?.length ? tutorDetails.skills : user.skills,
-    pastRoles: tutorDetails.pastRoles?.length ? tutorDetails.pastRoles : user.pastRoles,
-  };
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: "Failed to update user and parse error response" }));
+          console.error("TutorDetailsPage: API error response on update:", errorData);
+          throw new Error(errorData.message || "Failed to update user");
+        }
 
-  const userString = JSON.stringify(user);
-  const updatedString = JSON.stringify(updatedUser);
+        const updatedUser = await response.json();
+        console.log("TutorDetailsPage: User updated on backend, updating AuthContext:", updatedUser);
+        setUser(updatedUser); // Update the user context with fresh data from backend
+      } catch (err) {
+        console.error("TutorDetailsPage: Failed to update user details:", err);
+      }
+    };
 
-  if (userString !== updatedString) {
-    setUser(updatedUser);
-  }
-}, [tutorDetails]);
-
-  
-
-  
+    updateUserOnBackend();
+  }, [tutorDetails, user, setUser]);
 
   return (
     <Container maxW="container.md" py={10}>
@@ -99,7 +130,7 @@ useEffect(() => {
 
       {/* Display full profile details */}
       <Box mb={8}>
-        <TutorDetailsCard user={tutorDetails as Tutor} />
+        {user && <TutorDetailsCard user={tutorDetails as Tutor} />}
       </Box>
 
       {/* Editable form sections in accordion */}

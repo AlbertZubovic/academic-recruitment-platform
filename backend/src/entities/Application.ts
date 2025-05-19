@@ -1,8 +1,9 @@
 import {
-    Entity, PrimaryColumn, Column, ManyToOne, JoinColumn
+    Entity, PrimaryColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable
   } from "typeorm";
   import { User } from "./User";
   import { Course } from "./Course";
+  import { Skill } from "./Skill";
   
   @Entity()
   export class Application {
@@ -37,5 +38,13 @@ import {
   
     @Column({ length: 255, nullable: true })
     lecturer_comment!: string;
+
+    @ManyToMany(() => Skill)
+    @JoinTable({
+      name: "applied_skill",
+      joinColumn: { name: "application_ID", referencedColumnName: "application_ID" },
+      inverseJoinColumn: { name: "skill_ID", referencedColumnName: "skill_ID" },
+    })
+    appliedSkills!: Skill[];
   }
   

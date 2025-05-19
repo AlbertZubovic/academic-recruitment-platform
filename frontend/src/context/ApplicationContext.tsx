@@ -21,6 +21,7 @@ import React, {
   useCallback,
 } from "react";
 import { useCourse } from "@/context/CourseContext";
+import { useAuth } from "./AuthContext";
 import { Course } from "@/types/course";
 import { User } from "@/types/user";
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -33,6 +34,7 @@ interface ApplicationContextProps {
   searchTerm: string;
   availabilityFilter: "all" | "full-time" | "part-time";
   sortCriteria: string;
+  loading: boolean;
   setFilteredApplicants: (data: Course[]) => void;
   setSortCriteria: (criteria: string) => void;
   setSearchTerm: (term: string) => void;
@@ -60,41 +62,56 @@ export const useApplicationContext = (): ApplicationContextProps => {
 // Provider component
 export const ApplicationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { courses } = useCourse();
-
-  // Core state for filtered courses/applicants
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [filteredApplicants, setFilteredApplicants] = useState<Course[]>(courses);
   const [sortCriteria, setSortCriteria] = useState("course");
   const [searchTerm, setSearchTerm] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "full-time" | "part-time">("all");
   const [openPanels, setOpenPanels] = useState<number[]>([]); // which accordions are expanded
 
-  // Get all users from localStorage and filter to only tutors
-  const allUsers = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return (JSON.parse(localStorage.getItem("Users") || "[]") as User[]).filter(
-        (u) => u.isTutor && !u.isLecturer
-      );
-    }
-    return [];
-  }, []);
+  // Fetch all tutor users
+  useEffect(() => {
+    const fetchTutors = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setAllUsers([]);
+          return;
+        }
+
+        const response = await fetch("http://localhost:5000/api/users/tutors", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch tutors");
+        }
+
+        const data = await response.json();
+        setAllUsers(data);
+      } catch (err) {
+        console.error("Failed to fetch tutors:", err);
+        setAllUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTutors();
+  }, [user]);
+
+  // Update filtered applicants when courses change
+  useEffect(() => {
+    setFilteredApplicants(courses);
+  }, [courses]);
 
   // Determine if the view is filtered, which disables dragging
   const isFilteredView = sortCriteria === "availability" || searchTerm.trim() !== "";
-
-  // On first load, restore from saved Rankings if available
-  useEffect(() => {
-    const saved = localStorage.getItem("Rankings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setFilteredApplicants(parsed);
-        return;
-      } catch (e) {
-        console.error("Failed to parse saved rankings", e);
-      }
-    }
-    setFilteredApplicants(courses);
-  }, [courses]);
 
   // Filters applicants based on search term and availability.
   const handleSearch = useCallback(
@@ -169,31 +186,51 @@ export const ApplicationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   // Handles drag and drop ranking of applicants within a course.
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-  
-    const [courseCode] = String(active.id).split("-");
-    const course = filteredApplicants.find((c) => c.courseCode === courseCode);
-    if (!course) return;
-  
-    const oldIndex = course.applicants.findIndex(
-      (id) => `${courseCode}-${id}` === String(active.id)
-    );
-    const newIndex = course.applicants.findIndex(
-      (id) => `${courseCode}-${id}` === String(over.id)
-    );
-  
-    const reordered = [...course.applicants];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-  
-    const updatedCourses = filteredApplicants.map((c) =>
-      c.courseCode === courseCode ? { ...c, applicants: reordered } : c
-    );
-  
-    setFilteredApplicants(updatedCourses);
-    localStorage.setItem("Rankings", JSON.stringify(updatedCourses));
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const [courseCode] = String(active.id).split("-");
+      const course = filteredApplicants.find((c) => c.courseCode === courseCode);
+      if (!course) return;
+
+      const oldIndex = course.applicants.findIndex(
+        (id) => `${courseCode}-${id}` === String(active.id)
+      );
+      const newIndex = course.applicants.findIndex(
+        (id) => `${courseCode}-${id}` === String(over.id)
+      );
+
+      const reordered = [...course.applicants];
+      const [moved] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, moved);
+
+      // Update ranking in backend
+      const response = await fetch(`http://localhost:5000/api/courses/${course.id}/rankings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rankings: reordered }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update rankings");
+      }
+
+      const updatedCourses = filteredApplicants.map((c) =>
+        c.courseCode === courseCode ? { ...c, applicants: reordered } : c
+      );
+
+      setFilteredApplicants(updatedCourses);
+    } catch (err) {
+      console.error("Failed to update rankings:", err);
+    }
   };
   
 
@@ -205,6 +242,7 @@ export const ApplicationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         searchTerm,
         availabilityFilter,
         sortCriteria,
+        loading,
         openPanels,
         isFilteredView,
         setFilteredApplicants,

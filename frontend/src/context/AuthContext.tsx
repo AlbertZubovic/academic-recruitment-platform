@@ -10,17 +10,18 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import { User } from "@/types/user";
-import mockCourses from "../data/mockCourseList.json";
-import mockUsers from "../data/dummyLogins.json";
+//import mockCourses from "../data/mockCourseList.json";
+//import mockUsers from "../data/dummyLogins.json";
 
 // Constants for localStorage keys
-const LS_KEYS = {
-  USERS: "Users",
-  SIGNED_IN_USER: "signedInUser",
-  COURSES: "Courses",
-};
+// const LS_KEYS = {
+//   USERS: "Users",
+//   SIGNED_IN_USER: "signedInUser",
+//   COURSES: "Courses",
+// };
 
 // Context interface
 interface AuthContextProps {
@@ -31,6 +32,17 @@ interface AuthContextProps {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
+  signup: (
+    email: string,
+    password: string,
+    firstname: string,
+    lastname: string,
+    isTutor: boolean,
+    isLecturer: boolean,
+    availability: "Full-Time" | "Part-Time",
+    skills: string[]
+  ) => Promise<boolean>;
+  isSignupComplete: boolean;
 }
 
 // Create context
@@ -38,7 +50,9 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 // Hook for consuming the context
 export const useAuth = (): AuthContextProps => {
+  // console.log("useAuth called"); // Keep for debugging if needed
   const context = useContext(AuthContext);
+  // console.log("context", context); // Keep for debugging if needed
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
@@ -52,9 +66,10 @@ interface AuthProviderProps {
 // Auth provider component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [authTrigger, setAuthTrigger] = useState<number>(Date.now());
+  const [userState, setUserState] = useState<User | null>(null);
+  const [authTrigger, setAuthTrigger] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isSignupComplete, setIsSignupComplete] = useState<boolean>(false);
 
   // Initialize mock data if localStorage is empty
   useEffect(() => {
@@ -64,32 +79,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setLoading(false);
         return;
       }
-  
+
       try {
         const response = await fetch("http://localhost:5000/api/auth/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-  
-        if (!response.ok) throw new Error("Failed to restore session");
-  
-        const user = await response.json();
-        setUser(user);
+
+        if (!response.ok) {
+          throw new Error("Failed to restore session");
+        }
+
+        const fetchedUser = await response.json();
+        setUserState(fetchedUser);
         setIsLoggedIn(true);
       } catch (error) {
         console.error("Session restore failed:", error);
         localStorage.removeItem("token");
+        setUserState(null);
+        setIsLoggedIn(false);
       } finally {
         setLoading(false);
       }
     };
-  
+
     restoreUser();
   }, [authTrigger]);
   
 
-  // Login function - validates credentials against localStorage
+  // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch("http://localhost:5000/api/auth/signin", {
@@ -102,13 +121,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
       if (!response.ok) throw new Error(data.message || "Login failed");
   
-      // Save token and user to localStorage
       localStorage.setItem("token", data.token);
-      localStorage.setItem("signedInUser", JSON.stringify(data.user));
-  
-      setUser(data.user);
+      
+      const userResponse = await fetch("http://localhost:5000/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${data.token}`,
+        },
+      });
+
+      const userData = await userResponse.json();
+      setUserState(userData);
       setIsLoggedIn(true);
       return true;
+      
     } catch (err) {
       console.error("Login error:", err);
       return false;
@@ -116,48 +141,96 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
   
 
-  // Logout function - clears session
+  // Logout function
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("signedInUser");
-    setUser(null);
+    setUserState(null);
     setIsLoggedIn(false);
     setAuthTrigger(Date.now());
   };
   
 
-  // Update user data in both session and users collection
-  const setUserAndPersist = (updatedUser: User) => {
+  // Memoize updateUser, which is exposed as 'setUser' in the context value
+  const updateUser = useCallback((updatedUserData: User) => {
+    setUserState(updatedUserData);
+  }, []);
+
+  // Signup function
+  const signup = async (
+    email: string,
+    password: string,
+    firstname: string,
+    lastname: string,
+    isTutor: boolean,
+    isLecturer: boolean,
+    availability: "Full-Time" | "Part-Time",
+    skills: string[]
+  ): Promise<boolean> => {
+    setLoading(true);
+    setIsSignupComplete(false);
     try {
-      // Update signed in user
-      localStorage.setItem(LS_KEYS.SIGNED_IN_USER, JSON.stringify(updatedUser));
-      setUser(updatedUser);
-  
-      // Update in users collection
-      const allUsersRaw = localStorage.getItem(LS_KEYS.USERS);
-      if (allUsersRaw) {
-        const allUsers: User[] = JSON.parse(allUsersRaw);
-  
-        const updatedUsers = allUsers.map((u) =>
-          String(u.id) === String(updatedUser.id) ? { ...u, ...updatedUser } : u
-        );
-  
-        localStorage.setItem(LS_KEYS.USERS, JSON.stringify(updatedUsers));
+      localStorage.removeItem("token");
+      setUserState(null);
+      setIsLoggedIn(false);
+
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          firstname,
+          lastname,
+          is_tutor: isTutor,
+          is_lecturer: isLecturer,
+          default_availability: availability,
+          default_skills: skills
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message || "Signup failed");
+
+      localStorage.setItem("token", data.token);
+      
+      const userResponseAfterSignup = await fetch("http://localhost:5000/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${data.token}`,
+        },
+      });
+
+      if (!userResponseAfterSignup.ok) {
+        throw new Error("Failed to fetch user data after signup");
       }
-    } catch (error) {
-      console.error('Failed to persist user:', error);
+
+      const userData = await userResponseAfterSignup.json();
+      
+      setUserState(userData);
+      setIsLoggedIn(true);
+      setIsSignupComplete(true);
+      
+      return true;
+    } catch (err) {
+      console.error("Signup error:", err);
+      setIsSignupComplete(false);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
-     
-  // Context value
+
+  // Update the context value
   const value: AuthContextProps = {
     isLoggedIn,
-    user,
-    setUser: setUserAndPersist,
+    user: userState,
+    setUser: updateUser,
     setAuthTrigger,
     login,
     logout,
     loading,
+    signup,
+    isSignupComplete,
   };
 
   return (

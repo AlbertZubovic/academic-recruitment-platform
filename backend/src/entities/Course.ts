@@ -1,7 +1,8 @@
 import {
-    Entity, PrimaryColumn, Column, ManyToOne, JoinColumn
+    Entity, PrimaryColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable
   } from "typeorm";
   import { User } from "./User";
+  import { Skill } from "./Skill";
   
   @Entity()
   export class Course {
@@ -25,9 +26,17 @@ import {
       type: "enum",
       enum: ["Lab-Assistant", "Tutor"]
     })
-    availability_required!: "Lab-Assistant" | "Tutor";
+    role_required!: "Lab-Assistant" | "Tutor";
   
     @Column()
     is_disabled!: boolean;
+
+    @ManyToMany(() => Skill)
+    @JoinTable({
+      name: "course_skill",
+      joinColumn: { name: "course_ID", referencedColumnName: "course_ID" },
+      inverseJoinColumn: { name: "skill_ID", referencedColumnName: "skill_ID" },
+    })
+    skills!: Skill[];
   }
   

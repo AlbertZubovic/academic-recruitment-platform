@@ -10,6 +10,6 @@ export interface Course {
   semester: string;
   applicants: Applicant[];
   skills: string[];
-  requiredAvailability?: 'full-time' | 'part-time' | 'any';
+  roleRequired: "Lab-Assistant" | "Tutor";
 }
   
