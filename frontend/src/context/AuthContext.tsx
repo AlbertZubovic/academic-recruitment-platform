@@ -1,13 +1,5 @@
 // src/context/AuthContext.tsx
-
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User } from "@/types/user";
 
 interface AuthContextProps {
@@ -16,7 +8,7 @@ interface AuthContextProps {
   setUser: (user: User) => void;
   setAuthTrigger: (value: number) => void;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
   signup: (
     email: string,
@@ -46,24 +38,31 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userState, setUserState] = useState<User | null>(null);
-  const [authTrigger, setAuthTrigger] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [isSignupComplete, setIsSignupComplete] = useState(false);
+  const [authTrigger, setAuthTrigger] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isSignupComplete, setIsSignupComplete] = useState<boolean>(false);
 
-  const fetchUser = async (token: string) => {
+  const fetchUser = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch("http://localhost:5000/api/auth/me", {
+        credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to fetch user data");
-      const data = await response.json();
+
+      if (res.status === 401) {
+        setUserState(null);
+        setIsLoggedIn(false);
+        return;
+      }
+
+      if (!res.ok) throw new Error("Failed to fetch user");
+
+      const data = await res.json();
       setUserState(data);
       setIsLoggedIn(true);
-    } catch (error) {
-      console.error("Fetch user error:", error);
-      sessionStorage.removeItem("token");
+    } catch (err) {
+      console.error("Fetch user error:", err);
       setUserState(null);
       setIsLoggedIn(false);
     }
@@ -71,55 +70,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const restoreSession = async () => {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      await fetchUser(token);
+      setLoading(true);
+      await fetchUser();
       setLoading(false);
     };
     restoreSession();
   }, [authTrigger]);
 
-const login = async (email: string, password: string): Promise<boolean> => {
-  setLoading(true);
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/signin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    let data;
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
     try {
-      data = await response.json();
-    } catch (jsonError) {
-      data = {};
-    }
+      const res = await fetch("http://localhost:5000/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!response.ok) {
-      console.error("Login failed:", data.message || "Login failed");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Login failed");
+      }
+
+      await fetchUser();
+      return true;
+    } catch (err) {
+      console.error("Login error:", err);
       return false;
+    } finally {
+      setLoading(false);
     }
-
-    sessionStorage.setItem("token", data.token);
-    await fetchUser(data.token);
-    return true;
-  } catch (err) {
-    console.error("Login error:", err);
-    return false;
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  const logout = () => {
-    sessionStorage.removeItem("token");
-    setUserState(null);
-    setIsLoggedIn(false);
-    setAuthTrigger(Date.now());
   };
 
   const signup = async (
@@ -131,13 +111,14 @@ const login = async (email: string, password: string): Promise<boolean> => {
     isLecturer: boolean,
     availability: "Full-Time" | "Part-Time",
     skills: string[]
-  ) => {
+  ): Promise<boolean> => {
     setLoading(true);
     setIsSignupComplete(false);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email,
           password,
@@ -149,38 +130,51 @@ const login = async (email: string, password: string): Promise<boolean> => {
           default_skills: skills,
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Signup failed");
-      sessionStorage.setItem("token", data.token);
-      await fetchUser(data.token);
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Signup failed");
+      }
+
+      await fetchUser();
       setIsSignupComplete(true);
       return true;
     } catch (err) {
       console.error("Signup error:", err);
-      setIsSignupComplete(false);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        isLoggedIn,
-        user: userState,
-        setUser: setUserState,
-        setAuthTrigger,
-        login,
-        logout,
-        loading,
-        signup,
-        isSignupComplete,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const logout = async (): Promise<void> => {
+    try {
+      await fetch("http://localhost:5000/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      setUserState(null);
+      setIsLoggedIn(false);
+      setAuthTrigger(Date.now());
+    }
+  };
+
+  const value: AuthContextProps = {
+    isLoggedIn,
+    user: userState,
+    setUser: setUserState,
+    setAuthTrigger,
+    login,
+    logout,
+    loading,
+    signup,
+    isSignupComplete,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export { AuthContext };

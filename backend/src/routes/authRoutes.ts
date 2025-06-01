@@ -1,20 +1,16 @@
-import { Router, Request, Response } from "express";
-import { signUp, signIn } from "../controllers/authController";
+import { Router } from "express";
+import { signUp, signIn, signOut } from "../controllers/authController";
 import { authenticate } from "../middleware/authMiddleware";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 
 const router = Router();
 
-router.post("/signup", (req: Request, res: Response) => {
-  signUp(req, res);
-});
+router.post("/signup", signUp);
+router.post("/signin", signIn);
+router.post("/logout", signOut);
 
-router.post("/signin", (req: Request, res: Response) => {
-  signIn(req, res);
-});
-
-router.get("/me", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.get("/me", authenticate, async (req, res) => {
   const repo = AppDataSource.getRepository(User);
   const { userId } = (req as any).user;
 
@@ -25,7 +21,6 @@ router.get("/me", authenticate, async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Transform snake_case to camelCase
     const transformedUser = {
       id: user.user_ID,
       email: user.email,
@@ -38,7 +33,7 @@ router.get("/me", authenticate, async (req: Request, res: Response): Promise<voi
       defaultAvailability: user.default_availability,
       academicCredentials: user.academic_credentials,
       created: user.created,
-      isBlocked: user.is_blocked
+      isBlocked: user.is_blocked,
     };
 
     res.json(transformedUser);
@@ -46,6 +41,5 @@ router.get("/me", authenticate, async (req: Request, res: Response): Promise<voi
     res.status(500).json({ message: "Failed to fetch user" });
   }
 });
-  
 
 export default router;
