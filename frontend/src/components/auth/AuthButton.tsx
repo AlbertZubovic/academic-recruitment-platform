@@ -1,30 +1,18 @@
-// src/components/auth/authButton.tsx
-
-/**
- * AuthButton Component
- * Displays authentication-related buttons based on login status:
- * If logged in shows Logout button.
- * If logged out shows Sign In and Sign Up buttons.
- * 
- * Handles routing and logout via AuthContext.
- * Uses Chakra UI for styling and toast notifications.
- */
+// src/components/auth/AuthButton.tsx
 
 import React from "react";
 import { useRouter } from "next/router";
-import { Button, ButtonGroup, useToast } from "@chakra-ui/react";
+import { Button, ButtonGroup, useToast, Spinner } from "@chakra-ui/react";
 import { FaUnlock } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 
-// Component definition
 const AuthButton: React.FC = () => {
   const router = useRouter();
   const toast = useToast();
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout, loading } = useAuth();
 
-  
-  // Handles logout logic and feedback
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    logout();
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
@@ -33,19 +21,13 @@ const AuthButton: React.FC = () => {
       isClosable: true,
       position: "bottom",
     });
-
-    setTimeout(() => {
-      logout();
-      router.push("/");
-    }, 1200);
+    router.push("/");
   };
 
-  // Redirects to sign in page
   const handleSignIn = () => {
     router.push("/signin");
   };
 
-  // Redirects to sign up page
   const handleSignUp = () => {
     router.push("/signup");
   };
@@ -57,16 +39,28 @@ const AuthButton: React.FC = () => {
           colorScheme="blue"
           leftIcon={<FaUnlock />}
           onClick={handleLogout}
+          isLoading={loading}
           aria-label="Logout"
         >
           Logout
         </Button>
       ) : (
         <ButtonGroup spacing={4}>
-          <Button colorScheme="blue" onClick={handleSignIn} aria-label="Sign In">
+          <Button
+            colorScheme="blue"
+            onClick={handleSignIn}
+            isDisabled={loading}
+            aria-label="Sign In"
+          >
             Sign In
           </Button>
-          <Button variant="outline" colorScheme="blue" onClick={handleSignUp} aria-label="Sign Up">
+          <Button
+            variant="outline"
+            colorScheme="blue"
+            onClick={handleSignUp}
+            isDisabled={loading}
+            aria-label="Sign Up"
+          >
             Sign Up
           </Button>
         </ButtonGroup>

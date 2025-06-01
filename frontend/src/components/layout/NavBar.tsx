@@ -1,30 +1,17 @@
-// src/components/layout/navBar.tsx
-
-/**
- * NavBar Component
-
- * Displays page navigation buttons conditionally based on user role:
- * Tutors see the Opportunities page.
- * Lecturers see the Applications page.
- * Everyone sees the Home button.
- *
- * Requires user info from AuthContext to determine role based links.
- */
+// src/components/layout/NavBar.tsx
 
 import React from "react";
 import { Box, Wrap, WrapItem, Button, Link as ChakraLink } from "@chakra-ui/react";
-import { User } from "../../types/user";
+import { useAuth } from "@/context/AuthContext";
 import styles from "@/styles/modules/navBar.module.css";
 
-interface NavBarProps {
-  user: User | null;
-}
+const NavBar: React.FC = () => {
+  const { user, isLoggedIn } = useAuth();
 
-const NavBar: React.FC<NavBarProps> = ({ user }) => {
   return (
     <Box className={styles.navBar} bg="blue.500" color="white" p={1}>
       <Wrap spacing={2} justify="left" align="center" h="100%">
-        
+
         {/* Home link - always visible */}
         <WrapItem>
           <ChakraLink href="/" _hover={{ textDecoration: "none" }}>
@@ -35,7 +22,7 @@ const NavBar: React.FC<NavBarProps> = ({ user }) => {
         </WrapItem>
 
         {/* Tutor-specific link */}
-        {user?.isTutor && (
+        {isLoggedIn && user?.isTutor && (
           <WrapItem>
             <ChakraLink href="/tutors" _hover={{ textDecoration: "none" }}>
               <Button colorScheme="blue" size="sm" borderRadius={8}>
@@ -46,7 +33,7 @@ const NavBar: React.FC<NavBarProps> = ({ user }) => {
         )}
 
         {/* Lecturer-specific link */}
-        {user?.isLecturer && (
+        {isLoggedIn && user?.isLecturer && (
           <WrapItem>
             <ChakraLink href="/applications" _hover={{ textDecoration: "none" }}>
               <Button colorScheme="blue" size="sm" borderRadius={8}>

@@ -28,7 +28,7 @@ import {
     accepted!: boolean;
   
     @Column({ type: "int", nullable: true })
-    ranking!: number;
+    ranking!: number | null;
   
     @Column({
       type: "enum",
@@ -36,8 +36,9 @@ import {
     })
     role!: "Lab-Assistant" | "Tutor";
   
-    @Column({ length: 255, nullable: true })
-    lecturer_comment!: string;
+    @Column("varchar", { length: 255, nullable: true })
+    lecturer_comment!: string | null;
+
 
     @ManyToMany(() => Skill)
     @JoinTable({

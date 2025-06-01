@@ -11,10 +11,11 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string, iat: number, exp: number };
     (req as any).user = decoded;
     next();
   } catch (err) {
+    console.error("Auth error:", err);
     res.status(401).json({ message: "Invalid or expired token" });
     return;
   }

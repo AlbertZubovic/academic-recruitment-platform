@@ -18,6 +18,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "axios": "^1.9.0",
     "framer-motion": "^12.5.0",
     "fs": "^0.0.1-security",
     "next": "15.2.3",
