@@ -1,18 +1,3 @@
-// src/components/layout/layout.tsx
-
-/**
- * Layout Component
- * Provides the global layout wrapper used across all pages.
- * Includes:
- * Header
- * Conditional NavBar (only for logged-in users)
- * Page content container
- * Footer
- *
- * Usage:
- * Wraps every page through _app.tsx to ensure a consistent structure.
- */
-
 import React from "react";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -24,9 +9,8 @@ interface LayoutProps {
   pageProps: Record<string, unknown>;
 }
 
-// The Layout component wraps page content, receives Component & pageProps from _app.tsx
-const Layout: React.FC<LayoutProps> = ({ Component, pageProps}) => {
-  const { isLoggedIn, user } = useAuth();
+const Layout: React.FC<LayoutProps> = ({ Component, pageProps }) => {
+  const { isLoggedIn } = useAuth();
 
   return (
     <div
@@ -41,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ Component, pageProps}) => {
       <Header />
 
       {/* Show navigation bar only when user is logged in */}
-      {isLoggedIn && <NavBar user={user} />}
+      {isLoggedIn && <NavBar />}
 
       {/* Page-specific content */}
       <div className="pageBackground" style={{ flex: 1 }}>

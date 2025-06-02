@@ -16,8 +16,7 @@ import Head from "next/head";
 import Layout from "@/components/layout/Layout";
 import { AuthProvider } from "@/context/AuthContext";
 import { CourseProvider } from "@/context/CourseContext";
-// import { SelectedApplicantsProvider } from "@/context/SelectedApplicantsContext";
-// import { ApplicationProvider } from "@/context/ApplicationContext";
+
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -29,11 +28,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <ChakraProvider>
         <AuthProvider>
          <CourseProvider>
-            {/*  <SelectedApplicantsProvider>
-              <ApplicationProvider> */}
-              <Layout Component={Component} pageProps={pageProps} />
-            {/* </ApplicationProvider>
-          </SelectedApplicantsProvider>*/}
+            <Layout Component={Component} pageProps={pageProps} />
         </CourseProvider> 
       </AuthProvider>
     </ChakraProvider>

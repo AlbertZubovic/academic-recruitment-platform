@@ -1,7 +1,9 @@
-// src/components/auth/AuthForm.tsx
-
 import React, { useState, useEffect } from "react";
-import { Box, Button, FormControl, FormLabel, Heading, Input, useToast, VStack, Text, Select, Checkbox, Stack, Link } from "@chakra-ui/react";
+import {
+  Box, Button, FormControl, FormLabel, FormErrorMessage,
+  Heading, Input, useToast, VStack, Text, Select,
+  Checkbox, Stack, Link
+} from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import NextLink from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -15,18 +17,52 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isTutor, setIsTutor] = useState(false);
   const [isLecturer, setIsLecturer] = useState(false);
   const [availability, setAvailability] = useState<"Full-Time" | "Part-Time">("Full-Time");
   const [skills, setSkills] = useState<string[]>([]);
   const [currentSkill, setCurrentSkill] = useState("");
 
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const toast = useToast();
-  const { login, signup, loading, isSignupComplete, user } = useAuth();
+  const { login, signup, loading } = useAuth();
   const router = useRouter();
 
   const isStrongPassword = (pwd: string) =>
     /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/.test(pwd);
+
+  useEffect(() => {
+    if (type === "signin") {
+      const storedEmail = localStorage.getItem("rememberedEmail");
+      const storedPassword = localStorage.getItem("rememberedPassword");
+      const remember = localStorage.getItem("rememberMe") === "true";
+      if (storedEmail && storedPassword && remember) {
+        setEmail(storedEmail);
+        setPassword(storedPassword);
+        setRememberMe(true);
+      }
+    }
+  }, [type]);
+
+  const validateForm = () => {
+    const errs: { [key: string]: string } = {};
+    if (!email) errs.email = "Email is required.";
+    if (!password) errs.password = "Password is required.";
+    if (type === "signup") {
+      if (!firstname) errs.firstname = "First name is required.";
+      if (!lastname) errs.lastname = "Last name is required.";
+      if (!confirmPassword) errs.confirmPassword = "Confirm your password.";
+      if (password !== confirmPassword) errs.confirmPassword = "Passwords do not match.";
+      if (!isStrongPassword(password)) errs.password = "Password must have at least 8 characters, 1 uppercase letter, and 1 number.";
+      if (!isTutor && !isLecturer) errs.role = "Select Tutor or Lecturer.";
+      if (!availability) errs.availability = "Select availability.";
+      if (isTutor && skills.length === 0) errs.skills = "Add at least one skill for Tutor role.";
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleAddSkill = () => {
     if (currentSkill.trim()) {
@@ -35,119 +71,48 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     }
   };
 
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setSkills(skills.filter(skill => skill !== skillToRemove));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (
-      (type === "signup" && (!firstname || !lastname || !email || !password)) ||
-      (type === "signin" && (!email || !password))
-    ) {
-      toast({
-        title: "Missing Fields",
-        description: "All fields are required.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-        position: "bottom",
-      });
-      return;
-    }
+    let success = false;
 
-    if (type === "signup" && !isTutor && !isLecturer) {
-      toast({
-        title: "Role Required",
-        description: "Please select either Tutor or Lecturer role.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-        position: "bottom",
-      });
-      return;
-    }
-
-    if (type === "signup" && isTutor && skills.length === 0) {
-      toast({
-        title: "Skills Required",
-        description: "Please add at least one skill for Tutor role.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-        position: "bottom",
-      });
-      return;
-    }
-
-    if (type === "signup" && !isStrongPassword(password)) {
-      toast({
-        title: "Weak Password",
-        description: "Password must be at least 8 characters, include an uppercase letter and a number.",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-        position: "bottom",
-      });
-      return;
-    }
-
-    try {
-      let success = false;
-
-      if (type === "signin") {
-        success = await login(email, password);
+    if (type === "signin") {
+      success = await login(email, password, rememberMe);
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+        localStorage.setItem("rememberedPassword", password);
+        localStorage.setItem("rememberMe", "true");
       } else {
-        success = await signup(email, password, firstname, lastname, isTutor, isLecturer, availability, skills);
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberedPassword");
+        localStorage.removeItem("rememberMe");
       }
+    } else {
+      success = await signup({ email, password, confirmPassword, firstname, lastname, isTutor, isLecturer, availability, skills });
+    }
 
-      if (success) {
-        toast({
-          title: "Success",
-          description: type === "signin" ? "Welcome back!" : "Account created successfully!",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-          position: "bottom",
-        });
-        router.push("/");
-      } else {
-        toast({
-          title: "Error",
-          description: "Invalid credentials or signup failed.",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-          position: "bottom",
-        });
-      }
-    } catch (err: Error | unknown) {
+    if (success) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Something went wrong",
-        status: "error",
-        duration: 3000,
+        title: type === "signin" ? "Signed in successfully!" : "Account created successfully!",
+        description: type === "signin" ? `Welcome back, ${email}` : "You can now sign in.",
+        status: "success",
+        duration: 4000,
         isClosable: true,
         position: "bottom",
       });
-    } finally {
-      setEmail("");
-      setPassword("");
-      if (type === "signup") {
-        setFirstname("");
-        setLastname("");
-        setSkills([]);
-        setCurrentSkill("");
-      }
+      router.push("/");
+    } else {
+      toast({
+        title: "Authentication Error",
+        description: type === "signin" ? "Incorrect email or password." : "Signup failed. Email already in use.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+        position: "bottom",
+      });
     }
   };
-
-  useEffect(() => {
-    if (isSignupComplete && user && !loading) {
-      router.push("/");
-    }
-  }, [isSignupComplete, user, loading, router]);
 
   return (
     <Box minH="90vh" bgGradient="linear(to-r, blue.50, blue.100)" display="flex" alignItems="center" justifyContent="center" px={4}>
@@ -161,23 +126,25 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           </Text>
         </Box>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <VStack spacing={4}>
             {type === "signup" && (
               <>
-                <FormControl isRequired>
+                <FormControl isInvalid={!!errors.firstname} isRequired>
                   <FormLabel>First Name</FormLabel>
-                  <Input value={firstname} onChange={(e) => setFirstname(e.target.value)} placeholder="Enter your first name" />
+                  <Input value={firstname} onChange={(e) => setFirstname(e.target.value)} placeholder="First name" />
+                  <FormErrorMessage>{errors.firstname}</FormErrorMessage>
                 </FormControl>
 
-                <FormControl isRequired>
+                <FormControl isInvalid={!!errors.lastname} isRequired>
                   <FormLabel>Last Name</FormLabel>
-                  <Input value={lastname} onChange={(e) => setLastname(e.target.value)} placeholder="Enter your last name" />
+                  <Input value={lastname} onChange={(e) => setLastname(e.target.value)} placeholder="Last name" />
+                  <FormErrorMessage>{errors.lastname}</FormErrorMessage>
                 </FormControl>
 
-                <FormControl>
+                <FormControl isInvalid={!!errors.role}>
                   <FormLabel>Role</FormLabel>
-                  <Stack spacing={4}>
+                  <Stack spacing={2}>
                     <Checkbox isChecked={isTutor} onChange={(e) => { setIsTutor(e.target.checked); if (e.target.checked) setIsLecturer(false); }}>
                       Tutor
                     </Checkbox>
@@ -185,47 +152,62 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                       Lecturer
                     </Checkbox>
                   </Stack>
+                  <FormErrorMessage>{errors.role}</FormErrorMessage>
+                </FormControl>
+
+                <FormControl isInvalid={!!errors.availability} isRequired>
+                  <FormLabel>Availability</FormLabel>
+                  <Select value={availability} onChange={(e) => setAvailability(e.target.value as "Full-Time" | "Part-Time")}>
+                    <option value="Full-Time">Full-Time</option>
+                    <option value="Part-Time">Part-Time</option>
+                  </Select>
+                  <FormErrorMessage>{errors.availability}</FormErrorMessage>
                 </FormControl>
 
                 {isTutor && (
-                  <>
-                    <FormControl isRequired>
-                      <FormLabel>Availability</FormLabel>
-                      <Select value={availability} onChange={(e) => setAvailability(e.target.value as "Full-Time" | "Part-Time")}>
-                        <option value="Full-Time">Full-Time</option>
-                        <option value="Part-Time">Part-Time</option>
-                      </Select>
-                    </FormControl>
-
-                    <FormControl>
-                      <FormLabel>Skills</FormLabel>
-                      <Stack spacing={2}>
-                        <Input value={currentSkill} onChange={(e) => setCurrentSkill(e.target.value)} placeholder="Add a skill" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }} />
-                        <Button size="sm" onClick={handleAddSkill} isDisabled={!currentSkill.trim()}>Add Skill</Button>
-                        <Stack spacing={1}>
-                          {skills.map((skill, index) => (
-                            <Box key={index} p={2} bg="gray.100" borderRadius="md" display="flex" justifyContent="space-between" alignItems="center">
-                              <Text>{skill}</Text>
-                              <Button size="sm" colorScheme="red" onClick={() => handleRemoveSkill(skill)}>Remove</Button>
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Stack>
-                    </FormControl>
-                  </>
+                  <FormControl isInvalid={!!errors.skills}>
+                    <FormLabel>Skills</FormLabel>
+                    <Stack spacing={2}>
+                      <Input value={currentSkill} onChange={(e) => setCurrentSkill(e.target.value)} placeholder="Add a skill" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }} />
+                      <Button size="sm" onClick={handleAddSkill} isDisabled={!currentSkill.trim()}>Add Skill</Button>
+                      <FormErrorMessage>{errors.skills}</FormErrorMessage>
+                      {skills.map((skill, index) => (
+                        <Box key={index} p={2} bg="gray.100" borderRadius="md" display="flex" justifyContent="space-between" alignItems="center">
+                          <Text>{skill}</Text>
+                          <Button size="sm" colorScheme="red" onClick={() => setSkills(skills.filter(s => s !== skill))}>Remove</Button>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </FormControl>
                 )}
               </>
             )}
 
-            <FormControl isRequired>
+            <FormControl isInvalid={!!errors.email} isRequired>
               <FormLabel>Email</FormLabel>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoComplete="off" />
+              <FormErrorMessage>{errors.email}</FormErrorMessage>
             </FormControl>
 
-            <FormControl isRequired>
+            <FormControl isInvalid={!!errors.password} isRequired>
               <FormLabel>Password</FormLabel>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" />
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" autoComplete="off" />
+              <FormErrorMessage>{errors.password}</FormErrorMessage>
             </FormControl>
+
+            {type === "signup" && (
+              <FormControl isInvalid={!!errors.confirmPassword} isRequired>
+                <FormLabel>Confirm Password</FormLabel>
+                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" autoComplete="off" />
+                <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
+              </FormControl>
+            )}
+
+            {type === "signin" && (
+              <Checkbox isChecked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}>
+                Remember me
+              </Checkbox>
+            )}
 
             <Button type="submit" isLoading={loading} colorScheme="blue" width="100%" borderRadius="md" fontWeight="bold">
               {type === "signin" ? "Sign In" : "Sign Up"}

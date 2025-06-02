@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticate: RequestHandler = (req, res, next) => {
   const token = req.cookies.token;
 
   if (!token) {
@@ -12,8 +12,9 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
     (req as any).user = decoded;
-    next();
-  } catch (err) {
+    return next();
+  } catch {
     res.status(401).json({ message: "Invalid or expired token" });
+    return;
   }
 };
