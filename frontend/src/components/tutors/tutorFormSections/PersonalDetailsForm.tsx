@@ -1,107 +1,61 @@
-// src/components/tutors/TutorFormSections/PersonalDetailsForm.tsx
-
-/**
- * PersonalDetailsForm Component
- * A form section used within the tutor profile that allows the user
- * to update their personal information such as name, email, and credentials.
- * The data is saved to localStorage for persistence.
- */
-
 import React from 'react';
-import { FormControl, FormLabel, Input, Button, VStack, useToast } from '@chakra-ui/react';
+import { FormControl, FormLabel, Input, VStack, FormErrorMessage } from '@chakra-ui/react';
 import { Tutor } from '@/types/tutor';
 
-interface Props {
+interface PersonalDetailsFormProps {
   tutorDetails: Partial<Tutor>;
   setTutorDetails: React.Dispatch<React.SetStateAction<Partial<Tutor>>>;
+  setHasChanges: React.Dispatch<React.SetStateAction<boolean>>;
+  errors: { [key: string]: string };
+  setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+  saveToBackend: (showToastMessage?: boolean) => Promise<boolean>;
 }
 
-const PersonalDetailsForm: React.FC<Props> = ({ tutorDetails, setTutorDetails }) => {
-  const toast = useToast();
+const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ tutorDetails, setTutorDetails, setHasChanges, errors, setErrors }) => {
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'firstName':
+        return value.trim() ? '' : 'First name is required.';
+      case 'lastName':
+        return value.trim() ? '' : 'Last name is required.';
+      case 'email':
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? '' : 'Invalid email format.';
+      default:
+        return '';
+    }
+  };
 
-  // Handles input field changes and updates the parent state
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    console.log(`Updating ${name}:`, value);
-  
-    setTutorDetails((prev) => {
-      const updated = { ...prev, [name]: value };
-      console.log('New tutorDetails:', updated);
-      return updated;
-    });
+    setTutorDetails(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
+    setHasChanges(true);
   };
-  
-
-  // Validates and saves the entered personal details into localStorage
-  const handleSave = () => {
-    console.log('tutorDetails:', tutorDetails);
-  
-    const { firstName, lastName, email } = tutorDetails;
-    if (!firstName || !lastName || !email) {
-      toast({
-        title: 'All fields are required',
-        status: 'error',
-        isClosable: true,
-      });
-      return;
-    }
-  
-    toast({
-      title: 'Details Saved',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-  };
-  
 
   return (
     <VStack spacing={4} align="stretch">
-      {/* First Name */}
-      <FormControl isRequired>
+      <FormControl isRequired isInvalid={!!errors.firstName}>
         <FormLabel>First Name</FormLabel>
-        <Input
-          name="firstName"
-          value={tutorDetails.firstName || ''}
-          onChange={handleChange}
-        />
+        <Input name="firstName" value={tutorDetails.firstName || ''} onChange={handleChange} />
+        <FormErrorMessage>{errors.firstName}</FormErrorMessage>
       </FormControl>
 
-      {/* Last Name */}
-      <FormControl isRequired>
+      <FormControl isRequired isInvalid={!!errors.lastName}>
         <FormLabel>Last Name</FormLabel>
-        <Input
-          name="lastName"
-          value={tutorDetails.lastName || ''}
-          onChange={handleChange}
-        />
+        <Input name="lastName" value={tutorDetails.lastName || ''} onChange={handleChange} />
+        <FormErrorMessage>{errors.lastName}</FormErrorMessage>
       </FormControl>
 
-      {/* Email */}
-      <FormControl isRequired>
+      <FormControl isRequired isInvalid={!!errors.email}>
         <FormLabel>Email</FormLabel>
-        <Input
-          name="email"
-          type="email"
-          value={tutorDetails.email || ''}
-          onChange={handleChange}
-        />
+        <Input name="email" value={tutorDetails.email || ''} onChange={handleChange} />
+        <FormErrorMessage>{errors.email}</FormErrorMessage>
       </FormControl>
 
-      {/* Academic Credentials */}
       <FormControl>
         <FormLabel>Credentials</FormLabel>
-        <Input
-          name="credentials"
-          value={tutorDetails.credentials || ''}
-          onChange={handleChange}
-        />
+        <Input name="credentials" value={tutorDetails.credentials || ''} onChange={handleChange} />
       </FormControl>
-
-      {/* Save Button */}
-      <Button colorScheme="green" onClick={handleSave} alignSelf="flex-start">
-        Save Details
-      </Button>
     </VStack>
   );
 };

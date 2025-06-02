@@ -45,10 +45,9 @@ router.get("/tutors", authenticate, async (req, res) => {
   }
 });
 
-// Update current user's details
 router.put("/me", authenticate, async (req: Request, res: Response): Promise<void> => {
   const userRepository = AppDataSource.getRepository(User);
-  const { userId } = (req as any).user; // From authenticate middleware
+  const { userId } = (req as any).user;
 
   const {
     firstname,
@@ -56,7 +55,7 @@ router.put("/me", authenticate, async (req: Request, res: Response): Promise<voi
     email,
     academic_credentials,
     default_skills,
-    // Add other updatable fields here if needed, like default_availability
+    default_availability,
   } = req.body;
 
   try {
@@ -64,22 +63,19 @@ router.put("/me", authenticate, async (req: Request, res: Response): Promise<voi
 
     if (!userToUpdate) {
       res.status(404).json({ message: "User not found" });
-      return; // Ensure to return after sending response
+      return;
     }
 
-    // Update fields if they are provided in the request body
     if (firstname !== undefined) userToUpdate.firstname = firstname;
     if (lastname !== undefined) userToUpdate.lastname = lastname;
     if (email !== undefined) userToUpdate.email = email;
     if (academic_credentials !== undefined) userToUpdate.academic_credentials = academic_credentials;
     if (default_skills !== undefined) userToUpdate.default_skills = default_skills;
-    // Example for another field: if (default_availability !== undefined) userToUpdate.default_availability = default_availability;
-
+    if (default_availability !== undefined) userToUpdate.default_availability = default_availability;
 
     await userRepository.save(userToUpdate);
 
-    // Transform snake_case to camelCase for the response, similar to GET /me
-    const transformedUser = {
+    res.json({
       id: userToUpdate.user_ID,
       email: userToUpdate.email,
       firstName: userToUpdate.firstname,
@@ -91,20 +87,18 @@ router.put("/me", authenticate, async (req: Request, res: Response): Promise<voi
       defaultAvailability: userToUpdate.default_availability,
       academicCredentials: userToUpdate.academic_credentials,
       created: userToUpdate.created,
-      isBlocked: userToUpdate.is_blocked
-    };
+      isBlocked: userToUpdate.is_blocked,
+    });
 
-    res.json(transformedUser);
-
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error updating user:", err);
-    // Type guard for accessing err.code
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: unknown }).code === '23505') { 
-        res.status(409).json({ message: "Email already in use.", field: "email" });
-        return; // Ensure to return after sending response
+    if (err.code === '23505') {
+      res.status(409).json({ message: "Email already in use." });
+      return;
     }
     res.status(500).json({ message: "Server error while updating user" });
   }
 });
+
 
 export default router;

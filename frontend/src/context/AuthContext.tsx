@@ -4,6 +4,7 @@ import { User } from "@/types/user";
 interface AuthContextProps {
   isLoggedIn: boolean;
   user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   login: (email: string, password: string, rememberMe: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   signup: (data: SignUpData) => Promise<boolean>;
@@ -98,5 +99,5 @@ const signup = async (data: SignUpData) => {
     setIsLoggedIn(false);
   };
 
-  return <AuthContext.Provider value={{ isLoggedIn, user, login, logout, signup, loading, isSignupComplete }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ isLoggedIn, user, setUser,login, logout, signup, loading, isSignupComplete }}>{children}</AuthContext.Provider>;
 };

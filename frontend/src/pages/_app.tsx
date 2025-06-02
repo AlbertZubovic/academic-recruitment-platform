@@ -1,24 +1,31 @@
 // src/pages/_app.tsx
-
-/**
- * _app.tsx
- * This is the root of the application.
- * It wraps all pages with:
- * Chakra UI provider
- * Auth, Course, and Selection contexts
- * Global layout (header, footer, navbar)
- */
-
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, createStandaloneToast } from "@chakra-ui/react";
 import "@/styles/modules/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
 import Layout from "@/components/layout/Layout";
 import { AuthProvider } from "@/context/AuthContext";
 import { CourseProvider } from "@/context/CourseContext";
+import { useEffect } from "react";
 
+const { ToastContainer, toast: globalToast } = createStandaloneToast();
+export { globalToast };
 
 export default function App({ Component, pageProps }: AppProps) {
+  useEffect(() => {
+    if (sessionStorage.getItem("showSavedToast") === "true") {
+      globalToast({
+        title: 'Profile Saved',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom',
+        containerStyle: { marginBottom: '10%' },
+      });
+      sessionStorage.removeItem("showSavedToast");
+    }
+  }, []);
+
   return (
     <>
       <Head>
@@ -27,11 +34,12 @@ export default function App({ Component, pageProps }: AppProps) {
 
       <ChakraProvider>
         <AuthProvider>
-         <CourseProvider>
+          <CourseProvider>
             <Layout Component={Component} pageProps={pageProps} />
-        </CourseProvider> 
-      </AuthProvider>
-    </ChakraProvider>
+            <ToastContainer />
+          </CourseProvider>
+        </AuthProvider>
+      </ChakraProvider>
     </>
   );
 }
