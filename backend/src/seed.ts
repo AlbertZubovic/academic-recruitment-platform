@@ -1,11 +1,8 @@
-// backend/src/seed.ts
-
 import "reflect-metadata";
 import { AppDataSource } from "./data-source";
 import { User, UserAvailability } from "./entities/User";
 import { Skill } from "./entities/Skill";
 import { Course } from "./entities/Course";
-import { Application } from "./entities/Application";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 
@@ -16,140 +13,79 @@ async function seed() {
   const userRepo = AppDataSource.getRepository(User);
   const skillRepo = AppDataSource.getRepository(Skill);
   const courseRepo = AppDataSource.getRepository(Course);
-  const applicationRepo = AppDataSource.getRepository(Application);
 
-await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 0;`);
-
-await AppDataSource.manager.query(`DELETE FROM applied_skill;`);
-await AppDataSource.manager.query(`DELETE FROM application;`);
-await AppDataSource.manager.query(`DELETE FROM course_skill;`);
-await AppDataSource.manager.query(`DELETE FROM course;`);
-await AppDataSource.manager.query(`DELETE FROM skill;`);
-await AppDataSource.manager.query(`DELETE FROM user;`);
-
-await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 1;`);
+  await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 0;`);
+  await AppDataSource.manager.query(`DELETE FROM course_skill;`);
+  await AppDataSource.manager.query(`DELETE FROM course;`);
+  await AppDataSource.manager.query(`DELETE FROM skill;`);
+  await AppDataSource.manager.query(`DELETE FROM user;`);
+  await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 1;`);
 
   const passwordHash = await bcrypt.hash("Password123!", 10);
 
+  // Create users
   const users = [
+    { id: "u3", email: "sara@example.com", firstname: "Sara", lastname: "Lee" },
+    { id: "u4", email: "mike@example.com", firstname: "Mike", lastname: "Jones" },
+    { id: "u5", email: "emma@example.com", firstname: "Emma", lastname: "White" },
+    { id: "u6", email: "lucas@example.com", firstname: "Lucas", lastname: "Brown" },
+    { id: "u7", email: "ava@example.com", firstname: "Ava", lastname: "Taylor" },
+  ].map(u =>
     userRepo.create({
-      user_ID: uuidv4(),
-      email: "john@example.com",
+      user_ID: u.id,
+      email: u.email,
       password: passwordHash,
-      firstname: "John",
-      lastname: "Doe",
+      firstname: u.firstname,
+      lastname: u.lastname,
       is_tutor: true,
       is_lecturer: false,
       is_admin: false,
       is_blocked: false,
-      default_skills: ["React", "TypeScript"],
-      default_availability: UserAvailability.FULL_TIME
-    }),
-    userRepo.create({
-      user_ID: uuidv4(),
-      email: "alice@example.com",
-      password: passwordHash,
-      firstname: "Alice",
-      lastname: "Smith",
-      is_tutor: false,
-      is_lecturer: true,
-      is_admin: false,
-      is_blocked: false
-    }),
-    userRepo.create({
-      user_ID: uuidv4(),
-      email: "bob@example.com",
-      password: passwordHash,
-      firstname: "Bob",
-      lastname: "Brown",
-      is_tutor: true,
-      is_lecturer: false,
-      is_admin: false,
-      is_blocked: false,
-      default_skills: ["SQL"],
-      default_availability: UserAvailability.PART_TIME
-    }),
-    userRepo.create({
-      user_ID: uuidv4(),
-      email: "admin@example.com",
-      password: passwordHash,
-      firstname: "Admin",
-      lastname: "User",
-      is_tutor: false,
-      is_lecturer: false,
-      is_admin: true,
-      is_blocked: false
+      default_skills: [],
+      default_availability: UserAvailability.PART_TIME,
     })
-  ];
+  );
 
   await userRepo.save(users);
 
-  const [john, alice, bob, admin] = users;
-
-  const skills = [
-    skillRepo.create({ skill_ID: uuidv4(), name: "React" }),
-    skillRepo.create({ skill_ID: uuidv4(), name: "TypeScript" }),
-    skillRepo.create({ skill_ID: uuidv4(), name: "SQL" }),
-    skillRepo.create({ skill_ID: uuidv4(), name: "Python" })
+  // Create skills
+  const skillNames = [
+    "Python", "Problem Solving", "Basic Algorithms", "Java", "Data Structures", "Spring Boot",
+    "HTML", "CSS", "JavaScript", "React", "Node.js", "SQL", "Database Design", "PostgreSQL",
+    "C", "Process Management", "Linux", "System Programming", "Algorithms", "Graph Theory",
+    "UML", "Agile", "Requirements Engineering", "Git", "Machine Learning Concepts", "Search Algorithms",
+    "TCP/IP", "Routing", "Switching", "OSI Model", "Swift", "Kotlin", "iOS", "Android", "UI/UX Principles"
   ];
+  const skills = skillNames.map(name => skillRepo.create({ skill_ID: uuidv4(), name }));
   await skillRepo.save(skills);
 
+  const skillMap = Object.fromEntries(skills.map(skill => [skill.name, skill]));
+
+  // Create courses
   const courses = [
+    { id: "c1", code: "COSC101", name: "Introduction To Programming", semester: "Fall 2025", role: "Tutor", skills: ["Python", "Problem Solving", "Basic Algorithms"] },
+    { id: "c2", code: "COSC202", name: "Data Structures And Algorithms", semester: "Spring 2026", role: "Lab-Assistant", skills: ["Java", "Data Structures", "Time Complexity", "Algorithms"] },
+    { id: "c3", code: "COSC303", name: "Web Development Fundamentals", semester: "Fall 2025", role: "Tutor", skills: ["HTML", "CSS", "JavaScript"] },
+    { id: "c4", code: "COSC404", name: "Database Systems", semester: "Spring 2026", role: "Lab-Assistant", skills: ["SQL", "Database Design", "Normalization"] },
+    { id: "c5", code: "COSC505", name: "Operating Systems Concepts", semester: "Fall 2025", role: "Tutor", skills: ["C", "Process Management", "Memory Management", "Linux"] },
+    { id: "c6", code: "COSC601", name: "Advanced Algorithms", semester: "Fall 2025", role: "Lab-Assistant", skills: ["Algorithms", "Complexity Analysis", "Graph Theory"] },
+    { id: "c7", code: "COSC211", name: "Software Engineering Principles", semester: "Spring 2026", role: "Tutor", skills: ["UML", "Agile", "Requirements Engineering", "Git"] },
+    { id: "c8", code: "COSC410", name: "Introduction to AI", semester: "Fall 2025", role: "Lab-Assistant", skills: ["Python", "Machine Learning Concepts", "Search Algorithms"] },
+    { id: "c9", code: "COSC151", name: "Network Fundamentals", semester: "Spring 2026", role: "Tutor", skills: ["TCP/IP", "Routing", "Switching", "OSI Model"] },
+    { id: "c10", code: "COSC351", name: "Mobile Application Development", semester: "Fall 2025", role: "Lab-Assistant", skills: ["Swift", "Kotlin", "iOS", "Android", "UI/UX Principles"] },
+  ].map(c =>
     courseRepo.create({
-      course_ID: uuidv4(),
-      course_code: "COSC101",
-      display_name: "Web Dev 1",
-      semester: "2025S1",
-      lecturer: alice,
-      role_required: "Tutor",
-      is_disabled: false
-    }),
-    courseRepo.create({
-      course_ID: uuidv4(),
-      course_code: "COSC102",
-      display_name: "Web Dev 2",
-      semester: "2025S1",
-      lecturer: alice,
-      role_required: "Lab-Assistant",
-      is_disabled: false
-    }),
-    courseRepo.create({
-      course_ID: uuidv4(),
-      course_code: "COSC201",
-      display_name: "Databases",
-      semester: "2025S1",
-      lecturer: alice,
-      role_required: "Tutor",
-      is_disabled: false
+      course_ID: c.id,
+      course_code: c.code,
+      display_name: c.name,
+      semester: c.semester,
+      role_required: c.role as any,
+      is_disabled: false,
+      skills: c.skills.map(name => skillMap[name]).filter(Boolean),
+      lecturer: users[0],
     })
-  ];
+  );
   await courseRepo.save(courses);
-
-  const [web1, web2, db] = courses;
-
-  const applications = [
-    applicationRepo.create({
-      application_ID: uuidv4(),
-      user: john,
-      course: web1,
-      applied_availability: "Full-Time",
-      accepted: false,
-      ranking: null,
-      role: "Tutor",
-      lecturer_comment: null
-    }),
-    applicationRepo.create({
-      application_ID: uuidv4(),
-      user: bob,
-      course: web2,
-      applied_availability: "Part-Time",
-      accepted: false,
-      ranking: null,
-      role: "Lab-Assistant",
-      lecturer_comment: null
-    })
-  ];
-  await applicationRepo.save(applications);
 
   console.log("Seeding complete!");
   process.exit(0);
