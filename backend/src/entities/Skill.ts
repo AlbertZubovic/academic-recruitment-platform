@@ -1,10 +1,15 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+// src/entities/Skill.ts
+import { Entity, PrimaryColumn, Column, OneToMany } from "typeorm";
+import { UserSkill } from "./UserSkill";
 
 @Entity()
 export class Skill {
-  @PrimaryColumn("char", { length: 36 })
+  @PrimaryColumn("uuid")
   skill_ID!: string;
 
-  @Column({ length: 255 })
+  @Column()
   name!: string;
+
+  @OneToMany(() => UserSkill, userSkill => userSkill.skill)
+  userSkills!: UserSkill[];
 }

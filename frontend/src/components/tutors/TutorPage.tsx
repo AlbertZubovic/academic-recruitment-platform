@@ -19,35 +19,51 @@ import {
   Tag,
   Wrap,
   Icon,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
+  HStack,
 } from '@chakra-ui/react';
-import { FaPencilAlt } from 'react-icons/fa';
-
+import { FaPencilAlt, FaTrashAlt } from 'react-icons/fa';
 import ApplyModal from './tutorFormSections/ApplicationDetailsForm';
 
 const TutorPage: React.FC = () => {
   const router = useRouter();
-  const { courses } = useCourse();
+  const { courses, deleteApplication } = useCourse();
   const { user } = useAuth();
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [editing, setEditing] = useState(false);
 
-  if (!user || !courses) return <div>Loading...</div>;
+  const {
+    isOpen: isAppDetailOpen,
+    onOpen: onAppDetailOpen,
+    onClose: onAppDetailClose,
+  } = useDisclosure();
 
-const checkIfApplied = (courseId: string): boolean => {
-  const targetCourse = courses.find((course) => course.id === courseId);
-  return (targetCourse?.applicants ?? []).some(applicant => String(applicant.userId) === String(user.id));
-};
-
-  const handleOpenApplyModal = (course: Course) => {
+  const handleOpenApplyModal = (course: Course, edit = false) => {
     setSelectedCourse(course);
+    setEditing(edit);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedCourse(null);
+    setEditing(false);
   };
+
+  const checkIfApplied = (courseId: string): boolean => {
+    const targetCourse = courses.find((course) => course.id === courseId);
+    return (targetCourse?.application ?? null) !== null;
+  };
+
+  const myApplications = courses.filter((c) => (c as any).application);
 
   return (
     <Container maxW="container.lg" py={8}>
@@ -57,17 +73,17 @@ const checkIfApplied = (courseId: string): boolean => {
         </Heading>
 
         <Text fontSize="lg" textAlign="center" color="gray.600">
-          Welcome {user.firstName} {user.lastName}
+          Welcome {user?.firstName} {user?.lastName}
         </Text>
 
         <Button onClick={() => router.push('/mydetails')}>
           <Icon as={FaPencilAlt} mr={2} /> Edit Details
         </Button>
 
+        <Heading size="md">Available Courses</Heading>
         <Accordion allowToggle>
           {courses.map((course) => {
             const hasApplied = checkIfApplied(course.id);
-
             return (
               <AccordionItem key={course.id}>
                 <AccordionButton>
@@ -98,12 +114,12 @@ const checkIfApplied = (courseId: string): boolean => {
                     </Wrap>
 
                     <Button
-                      colorScheme={hasApplied ? 'blue' : 'green'}
+                      colorScheme={hasApplied ? 'gray' : 'green'}
                       size="sm"
                       onClick={() => handleOpenApplyModal(course)}
                       disabled={hasApplied}
                     >
-                      {hasApplied ? 'Applied' : 'Apply'}
+                      {hasApplied ? 'Already Applied' : 'Apply'}
                     </Button>
                   </VStack>
                 </AccordionPanel>
@@ -111,6 +127,41 @@ const checkIfApplied = (courseId: string): boolean => {
             );
           })}
         </Accordion>
+
+        <Heading size="md" mt={10}>My Applications</Heading>
+        {myApplications.length === 0 ? (
+          <Text>No applications yet.</Text>
+        ) : (
+          <Accordion allowToggle>
+            {myApplications.map((course) => (
+              <AccordionItem key={course.id}>
+                <AccordionButton>
+                  <Box flex="1" textAlign="left">
+                    <Text fontWeight="bold">{course.name}</Text>
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel>
+                  <VStack align="start">
+                    <Text><strong>Availability:</strong> {(course as any).application?.appliedAvailability}</Text>
+                    <Text><strong>Skills:</strong></Text>
+                    <Wrap>
+                      {(course as any).application?.appliedSkills?.map((s: string, idx: number) => (
+                        <Tag key={idx} colorScheme="blue">{s}</Tag>
+                      ))}
+                    </Wrap>
+                    <HStack>
+                      <Button size="sm" colorScheme="blue" onClick={() => handleOpenApplyModal(course, true)}>Edit</Button>
+                      <Button size="sm" colorScheme="red" leftIcon={<FaTrashAlt />} onClick={() => deleteApplication(course.id)}>
+                        Delete
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </AccordionPanel>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
       </VStack>
 
       {selectedCourse && (
@@ -118,6 +169,7 @@ const checkIfApplied = (courseId: string): boolean => {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           course={selectedCourse}
+          isEdit={editing}
         />
       )}
     </Container>

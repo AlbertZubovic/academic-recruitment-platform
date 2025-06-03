@@ -7,7 +7,6 @@ import { authenticate } from "../middleware/authMiddleware";
 
 const router = Router();
 
-// Get all selected (accepted) applications
 router.get("/selected", authenticate, async (req: Request, res: Response): Promise<void> => {
   const repo = AppDataSource.getRepository(Application);
   

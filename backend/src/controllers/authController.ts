@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
-import { User } from "../entities/User";
+import { User, UserAvailability } from "../entities/User";
+import { Skill } from "../entities/Skill";
+import { UserSkill } from "../entities/UserSkill";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
@@ -27,15 +29,22 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     skills,
   } = req.body;
 
-  const repo = AppDataSource.getRepository(User);
+  const userRepo = AppDataSource.getRepository(User);
+  const skillRepo = AppDataSource.getRepository(Skill);
+  const userSkillRepo = AppDataSource.getRepository(UserSkill);
 
-  // --- Validation ---
   if (!email || !validator.isEmail(email)) {
     res.status(400).json({ message: "Invalid email format." });
     return;
   }
 
-  if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+  if (
+    !password ||
+    password.length < 8 ||
+    !/[A-Z]/.test(password) ||
+    !/[a-z]/.test(password) ||
+    !/[0-9]/.test(password)
+  ) {
     res.status(400).json({
       message: "Password must be at least 8 characters, include an uppercase letter, a lowercase letter, and a number.",
     });
@@ -63,14 +72,15 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const existing = await repo.findOne({ where: { email } });
+    const existing = await userRepo.findOne({ where: { email } });
     if (existing) {
       res.status(400).json({ message: "Email already in use." });
       return;
     }
 
     const hashed = await hashPassword(password);
-    const user = repo.create({
+
+    const user = userRepo.create({
       user_ID: uuidv4(),
       email,
       password: hashed,
@@ -81,20 +91,27 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       is_admin: false,
       is_blocked: false,
       default_availability: isTutor ? availability : null,
-      default_skills: isTutor ? skills : null,
     });
 
-    await repo.save(user);
+    await userRepo.save(user);
+
+    if (isTutor && skills.length > 0) {
+      const skillEntities = await skillRepo.findByIds(skills);
+      const userSkills = skillEntities.map(skill =>
+        userSkillRepo.create({ user, skill })
+      );
+      await userSkillRepo.save(userSkills);
+    }
 
     const token = jwt.sign(
-    {
-      userId: user.user_ID,
-      isTutor: user.is_tutor,
-      isLecturer: user.is_lecturer,
-      isAdmin: user.is_admin,
-    },
+      {
+        userId: user.user_ID,
+        isTutor: user.is_tutor,
+        isLecturer: user.is_lecturer,
+        isAdmin: user.is_admin,
+      },
       process.env.JWT_SECRET as string,
-    { expiresIn: "7d" }
+      { expiresIn: "7d" }
     );
 
     res.cookie("token", token, COOKIE_OPTIONS);
@@ -108,7 +125,6 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
         lastname: user.lastname,
         isTutor: user.is_tutor,
         isLecturer: user.is_lecturer,
-        defaultSkills: user.default_skills,
         defaultAvailability: user.default_availability,
         created: user.created,
       },
@@ -122,7 +138,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 // --- SIGNIN ---
 export const signIn = async (req: Request, res: Response): Promise<void> => {
   const { email, password, rememberMe } = req.body;
-  const repo = AppDataSource.getRepository(User);
+  const userRepo = AppDataSource.getRepository(User);
 
   if (!email || !password) {
     res.status(400).json({ message: "Email and password are required." });
@@ -130,23 +146,26 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const user = await repo.findOne({ where: { email } });
+    const user = await userRepo.findOne({
+      where: { email },
+      relations: ["userSkills", "userSkills.skill"],
+    });
+
     if (!user || !(await comparePassword(password, user.password))) {
       res.status(401).json({ message: "Invalid credentials." });
       return;
     }
 
-  const token = jwt.sign(
-    {
-      userId: user.user_ID,
-      isTutor: user.is_tutor,
-      isLecturer: user.is_lecturer,
-      isAdmin: user.is_admin,
-    },
+    const token = jwt.sign(
+      {
+        userId: user.user_ID,
+        isTutor: user.is_tutor,
+        isLecturer: user.is_lecturer,
+        isAdmin: user.is_admin,
+      },
       process.env.JWT_SECRET as string,
-    { expiresIn: rememberMe ? "7d" : "1h" }
-  );
-
+      { expiresIn: rememberMe ? "7d" : "1h" }
+    );
 
     res.cookie("token", token, {
       ...COOKIE_OPTIONS,
@@ -172,7 +191,11 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   const repo = AppDataSource.getRepository(User);
 
   try {
-    const user = await repo.findOne({ where: { user_ID: userId } });
+    const user = await repo.findOne({
+      where: { user_ID: userId },
+      relations: ["userSkills", "userSkills.skill"],
+    });
+
     if (!user) {
       res.status(404).json({ message: "User not found." });
       return;
@@ -185,7 +208,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       lastname: user.lastname,
       isTutor: user.is_tutor,
       isLecturer: user.is_lecturer,
-      defaultSkills: user.default_skills,
+      defaultSkills: user.userSkills?.map(us => us.skill.name),
       defaultAvailability: user.default_availability,
       created: user.created,
     });

@@ -15,7 +15,11 @@ router.get("/me", authenticate, async (req, res) => {
   const { userId } = (req as any).user;
 
   try {
-    const user = await repo.findOne({ where: { user_ID: userId } });
+    const user = await repo.findOne({
+      where: { user_ID: userId },
+      relations: ["userSkills", "userSkills.skill"],
+    });
+
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
@@ -29,7 +33,7 @@ router.get("/me", authenticate, async (req, res) => {
       isLecturer: user.is_lecturer,
       isTutor: user.is_tutor,
       isAdmin: user.is_admin,
-      defaultSkills: user.default_skills,
+      defaultSkills: user.userSkills?.map(us => us.skill.name),
       defaultAvailability: user.default_availability,
       academicCredentials: user.academic_credentials,
       created: user.created,
@@ -38,6 +42,7 @@ router.get("/me", authenticate, async (req, res) => {
 
     res.json(transformedUser);
   } catch (err) {
+    console.error("Error fetching /me:", err);
     res.status(500).json({ message: "Failed to fetch user" });
   }
 });

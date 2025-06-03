@@ -11,5 +11,6 @@ export interface Course {
   applicants: Applicant[];
   skills: string[];
   roleRequired: "Lab-Assistant" | "Tutor";
+  application?: Applicant;
 }
   

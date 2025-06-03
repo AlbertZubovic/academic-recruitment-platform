@@ -1,21 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  Button,
-  FormControl,
-  FormLabel,
-  Select,
-  Input,
-  useToast,
-  VStack,
-  Tag,
-  Wrap,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter,
+  ModalBody, ModalCloseButton, Button, FormControl, FormLabel,
+  Select, Input, useToast, VStack, Tag, Wrap, HStack
 } from '@chakra-ui/react';
 import { useCourse } from '@/context/CourseContext';
 import { useAuth } from '@/context/AuthContext';
@@ -25,16 +12,31 @@ interface ApplyModalProps {
   isOpen: boolean;
   onClose: () => void;
   course: Course;
+  isEdit?: boolean;
 }
 
-const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, course }) => {
+const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, course, isEdit = false }) => {
+  const { applyToCourse, updateApplicationDetails } = useCourse();
   const { user } = useAuth();
-  const { applyToCourse } = useCourse();
   const toast = useToast();
+
+  const existingApplication = (course as any).application;
+  const defaultAvailability = existingApplication?.appliedAvailability ?? user?.defaultAvailability ?? '';
+  const defaultSkills = existingApplication?.appliedSkills ?? user?.defaultSkills ?? [];
 
   const [availability, setAvailability] = useState<string>('');
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
+
+  useEffect(() => {
+    if (isEdit && existingApplication) {
+      setAvailability(existingApplication.appliedAvailability ?? '');
+      setSkills(existingApplication.appliedSkills ?? []);
+    } else if (user) {
+      setAvailability(user.defaultAvailability ?? '');
+      setSkills(user.defaultSkills ?? []);
+    }
+  }, [isEdit, existingApplication, isOpen, user]);
 
   const handleAddSkill = () => {
     const trimmed = newSkill.trim();
@@ -49,21 +51,30 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, co
   };
 
   const handleSubmit = async () => {
-    if (!availability) {
-      toast({ title: 'Select availability', status: 'warning', isClosable: true });
+    if (!availability || skills.length === 0) {
+      toast({ title: 'Please select availability and add at least one skill.', status: 'warning', isClosable: true });
       return;
     }
 
-    const success = await applyToCourse(course.id, {
-      appliedSkills: skills,
-      appliedAvailability: availability,
-    });
+    const success = isEdit
+      ? await updateApplicationDetails(course.id, { appliedSkills: skills, appliedAvailability: availability })
+      : await applyToCourse(course.id, { appliedSkills: skills, appliedAvailability: availability });
 
     if (success) {
-      toast({ title: 'Application submitted!', status: 'success', duration: 3000, isClosable: true });
+      toast({
+        title: isEdit ? 'Application updated!' : 'Application submitted!',
+        status: 'success',
+        duration: 3000,
+        isClosable: true
+      });
       onClose();
     } else {
-      toast({ title: 'Error submitting application', status: 'error', duration: 3000, isClosable: true });
+      toast({
+        title: 'Error submitting application',
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
     }
   };
 
@@ -71,7 +82,7 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, co
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Apply for {course.name}</ModalHeader>
+        <ModalHeader>{isEdit ? 'Edit Application' : `Apply for ${course.name}`}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4} align="stretch">
@@ -91,10 +102,13 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, co
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
               />
-              <Wrap mt={2}>
+              <Wrap mt={2} spacing={2}>
                 {skills.map((skill, i) => (
-                  <Tag key={i} size="md" colorScheme="blue" borderRadius="full" cursor="pointer" onClick={() => handleRemoveSkill(skill)}>
-                    {skill}
+                  <Tag key={i} size="md" colorScheme="blue" borderRadius="full">
+                    <HStack spacing={1}>
+                      <span>{skill}</span>
+                      <Button size="xs" variant="ghost" colorScheme="red" onClick={() => handleRemoveSkill(skill)}>×</Button>
+                    </HStack>
                   </Tag>
                 ))}
               </Wrap>
@@ -103,7 +117,9 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, co
         </ModalBody>
 
         <ModalFooter>
-          <Button colorScheme="green" mr={3} onClick={handleSubmit}>Submit Application</Button>
+          <Button colorScheme="green" mr={3} onClick={handleSubmit}>
+            {isEdit ? 'Update' : 'Submit Application'}
+          </Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
         </ModalFooter>
       </ModalContent>

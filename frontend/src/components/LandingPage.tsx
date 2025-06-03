@@ -7,7 +7,6 @@ import {
   VStack,
   HStack,
   Avatar,
-  Divider,
   Spinner,
   useDisclosure,
   Modal,
@@ -44,7 +43,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <main className={styles.pageContent}>
-      {/* Hero section */}
+      {/* Hero Section */}
       <Box className={styles.heroContainer}>
         <Image
           src="https://plus.unsplash.com/premium_photo-1671070290640-25f7935a813e?q=80&w=1973&auto=format&fit=crop&ixlib=rb-4.0.3"
@@ -56,7 +55,7 @@ const LandingPage: React.FC = () => {
         </Text>
       </Box>
 
-      {/* Welcome section */}
+      {/* Welcome Section */}
       <VStack className={styles.welcomeSection} align="start" spacing={6}>
         <Box>
           <Heading className={styles.heading}>Welcome to TeachTeam</Heading>
@@ -67,7 +66,7 @@ const LandingPage: React.FC = () => {
 
         {!authLoading && isLoggedIn && user && (
           <>
-            {/* Profile card */}
+            {/* Profile Card */}
             <Box
               className={styles.userInfoBox}
               w="100%"
@@ -85,9 +84,7 @@ const LandingPage: React.FC = () => {
                   <Text fontWeight="bold">
                     {user.firstName} {user.lastName}
                   </Text>
-                  <Text fontSize="sm" color="gray.600">
-                    {user.email}
-                  </Text>
+                  <Text fontSize="sm" color="gray.600">{user.email}</Text>
                   <Text fontSize="sm" color="blue.500" fontWeight="medium">
                     Role: {user.isLecturer ? "Lecturer" : "Tutor"}
                   </Text>
@@ -160,7 +157,7 @@ const LandingPage: React.FC = () => {
                     <VStack align="start" spacing={3}>
                       <Text><strong>Course:</strong> {selectedApp.name} ({selectedApp.courseCode})</Text>
                       <Text><strong>Availability:</strong> {(selectedApp as any).application?.appliedAvailability || "N/A"}</Text>
-                      <Text><strong>Skills:</strong></Text>
+                      <Text><strong>Applied Skills:</strong></Text>
                       {(selectedApp as any).application?.appliedSkills?.length > 0 ? (
                         <Wrap>
                           {(selectedApp as any).application.appliedSkills.map((skill: string, idx: number) => (
@@ -168,7 +165,7 @@ const LandingPage: React.FC = () => {
                           ))}
                         </Wrap>
                       ) : (
-                        <Text color="gray.500">No skills listed</Text>
+                        <Text color="gray.500">No applied skills listed</Text>
                       )}
                       {(selectedApp as any).application?.accepted !== undefined && (
                         <Text>

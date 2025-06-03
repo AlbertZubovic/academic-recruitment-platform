@@ -5,6 +5,7 @@ import { Application } from "./entities/Application";
 import { Skill } from "./entities/Skill";
 import { CourseSkill } from "./entities/CourseSkill";
 import { AppliedSkill } from "./entities/AppliedSkill";
+import { UserSkill } from "./entities/UserSkill";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -14,6 +15,7 @@ export const AppDataSource = new DataSource({
   password: "S4007755",
   database: "S4007755",
   synchronize: false,
+  dropSchema: false,
   logging: true,
   entities: [
     User,
@@ -21,7 +23,8 @@ export const AppDataSource = new DataSource({
     Application,
     Skill,
     CourseSkill,
-    AppliedSkill
+    AppliedSkill,
+    UserSkill,
   ],
   migrations: ["src/migrations/**/*.ts"],
   subscribers: [],

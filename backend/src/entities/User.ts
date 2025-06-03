@@ -2,14 +2,17 @@ import {
   Entity,
   PrimaryColumn,
   Column,
-  CreateDateColumn
+  CreateDateColumn,
+  ManyToMany,
+  JoinTable,
+  OneToMany,
 } from "typeorm";
+import { UserSkill } from "./UserSkill";
 
 // Define and export the enum for UserAvailability BEFORE the User class
 export enum UserAvailability {
   FULL_TIME = "Full-Time",
   PART_TIME = "Part-Time",
-  // Consider adding other relevant statuses like UNAVAILABLE if needed in the future
 }
 
 @Entity()
@@ -23,13 +26,13 @@ export class User {
   @Column({ length: 60 })
   password!: string;
 
-  @Column("json", { nullable: true })
-  default_skills!: string[] | null;
+  @OneToMany(() => UserSkill, userSkill => userSkill.user, { cascade: true, eager: true })
+  userSkills!: UserSkill[];
 
   @Column({
     type: "enum",
-    enum: UserAvailability, // Now UserAvailability is defined
-    nullable: true
+    enum: UserAvailability,
+    nullable: true,
   })
   default_availability!: UserAvailability | null;
 
@@ -57,5 +60,3 @@ export class User {
   @Column({ default: false })
   is_blocked!: boolean;
 }
-
-// UserAvailability enum is now defined above the User class

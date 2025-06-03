@@ -3,6 +3,7 @@ import { AppDataSource } from "./data-source";
 import { User, UserAvailability } from "./entities/User";
 import { Skill } from "./entities/Skill";
 import { Course } from "./entities/Course";
+import { UserSkill } from "./entities/UserSkill";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 
@@ -13,8 +14,10 @@ async function seed() {
   const userRepo = AppDataSource.getRepository(User);
   const skillRepo = AppDataSource.getRepository(Skill);
   const courseRepo = AppDataSource.getRepository(Course);
+  const userSkillRepo = AppDataSource.getRepository(UserSkill);
 
   await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 0;`);
+  await AppDataSource.manager.query(`DELETE FROM user_skill;`);
   await AppDataSource.manager.query(`DELETE FROM course_skill;`);
   await AppDataSource.manager.query(`DELETE FROM course;`);
   await AppDataSource.manager.query(`DELETE FROM skill;`);
@@ -22,31 +25,6 @@ async function seed() {
   await AppDataSource.manager.query(`SET FOREIGN_KEY_CHECKS = 1;`);
 
   const passwordHash = await bcrypt.hash("Password123!", 10);
-
-  // Create users
-  const users = [
-    { id: "u3", email: "sara@example.com", firstname: "Sara", lastname: "Lee" },
-    { id: "u4", email: "mike@example.com", firstname: "Mike", lastname: "Jones" },
-    { id: "u5", email: "emma@example.com", firstname: "Emma", lastname: "White" },
-    { id: "u6", email: "lucas@example.com", firstname: "Lucas", lastname: "Brown" },
-    { id: "u7", email: "ava@example.com", firstname: "Ava", lastname: "Taylor" },
-  ].map(u =>
-    userRepo.create({
-      user_ID: u.id,
-      email: u.email,
-      password: passwordHash,
-      firstname: u.firstname,
-      lastname: u.lastname,
-      is_tutor: true,
-      is_lecturer: false,
-      is_admin: false,
-      is_blocked: false,
-      default_skills: [],
-      default_availability: UserAvailability.PART_TIME,
-    })
-  );
-
-  await userRepo.save(users);
 
   // Create skills
   const skillNames = [
@@ -58,8 +36,44 @@ async function seed() {
   ];
   const skills = skillNames.map(name => skillRepo.create({ skill_ID: uuidv4(), name }));
   await skillRepo.save(skills);
-
   const skillMap = Object.fromEntries(skills.map(skill => [skill.name, skill]));
+
+  // Create users
+  const userData = [
+    { id: "u3", email: "sara@example.com", firstname: "Sara", lastname: "Lee", skills: ["Python", "Problem Solving"] },
+    { id: "u4", email: "mike@example.com", firstname: "Mike", lastname: "Jones", skills: ["Java", "Data Structures"] },
+    { id: "u5", email: "emma@example.com", firstname: "Emma", lastname: "White", skills: ["HTML", "CSS", "JavaScript"] },
+    { id: "u6", email: "lucas@example.com", firstname: "Lucas", lastname: "Brown", skills: ["SQL", "Database Design"] },
+    { id: "u7", email: "ava@example.com", firstname: "Ava", lastname: "Taylor", skills: ["Swift", "UI/UX Principles"] },
+  ];
+
+  const users = userData.map(u =>
+    userRepo.create({
+      user_ID: u.id,
+      email: u.email,
+      password: passwordHash,
+      firstname: u.firstname,
+      lastname: u.lastname,
+      is_tutor: true,
+      is_lecturer: false,
+      is_admin: false,
+      is_blocked: false,
+      default_availability: UserAvailability.PART_TIME,
+    })
+  );
+  await userRepo.save(users);
+  const userMap = Object.fromEntries(users.map(u => [u.email, u]));
+
+  // Create user skills
+  const userSkills = userData.flatMap(user =>
+    user.skills.map(skill =>
+      userSkillRepo.create({
+        user: userMap[user.email],
+        skill: skillMap[skill],
+      })
+    )
+  );
+  await userSkillRepo.save(userSkills);
 
   // Create courses
   const courses = [
