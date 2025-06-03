@@ -8,7 +8,6 @@ interface CourseContextProps {
   courses: Course[];
   refreshCourses: () => Promise<void>;
   applyToCourse: (courseId: string, details: { appliedSkills: string[]; appliedAvailability: string }) => Promise<boolean>;
-  updateApplicationDetails: (courseId: string, details: Partial<Pick<Applicant, "appliedSkills" | "appliedAvailability">>) => Promise<boolean>;
   deleteApplication: (courseId: string) => Promise<boolean>;
 }
 
@@ -56,23 +55,6 @@ export const CourseProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateApplicationDetails = async (courseId: string, details: Partial<Pick<Applicant, "appliedSkills" | "appliedAvailability">>) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(details),
-      });
-      if (!res.ok) throw new Error("Failed to update application");
-      await fetchCourses();
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  };
-
   const deleteApplication = async (courseId: string) => {
     try {
       const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
@@ -89,7 +71,7 @@ export const CourseProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <CourseContext.Provider value={{ courses, refreshCourses: fetchCourses, applyToCourse, updateApplicationDetails, deleteApplication }}>
+    <CourseContext.Provider value={{ courses, refreshCourses: fetchCourses, applyToCourse, deleteApplication }}>
       {children}
     </CourseContext.Provider>
   );

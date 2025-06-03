@@ -29,7 +29,7 @@ interface ApplyModalProps {
 
 const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, course }) => {
   const { user } = useAuth();
-  const { updateApplicationDetails } = useCourse();
+  const { applyToCourse } = useCourse();
   const toast = useToast();
 
   const [availability, setAvailability] = useState<string>('');
@@ -54,11 +54,10 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, co
       return;
     }
 
-  const success = await updateApplicationDetails(course.id, {
-    appliedSkills: skills,
-    appliedAvailability: availability,
-  });
-
+    const success = await applyToCourse(course.id, {
+      appliedSkills: skills,
+      appliedAvailability: availability,
+    });
 
     if (success) {
       toast({ title: 'Application submitted!', status: 'success', duration: 3000, isClosable: true });
