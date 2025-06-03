@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/users";
 import applicationRoutes from "./routes/applicationRoutes";
 import courseRoutes from "./routes/courseRoutes";
+import tutorRoutes from "./routes/tutorRoutes";
 import { AppDataSource } from "./data-source";
 import dotenv from "dotenv";
 
@@ -21,7 +22,6 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS configuration
 app.use(
   cors({
     origin: ["http://localhost:3000", "http://localhost:5875"],
@@ -33,18 +33,16 @@ app.use(
   })
 );
 
-// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/tutors", tutorRoutes);
 
-// Root route
 app.get("/", (_, res) => {
   res.send("API running");
 });
 
-// Start the server
 AppDataSource.initialize()
   .then(() => {
     app.listen(5000, () => {
