@@ -1,146 +1,110 @@
-// Example: src\components\tutors\tutorFormSections\ApplicationDetailsForm.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  Button, FormControl, FormLabel, Input, Select, Stack, Tag, TagLabel, TagCloseButton, Box, Text, useToast
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  FormControl,
+  FormLabel,
+  Select,
+  Input,
+  useToast,
+  VStack,
+  Tag,
+  Wrap,
 } from '@chakra-ui/react';
-import { useAuth } from '@/context/AuthContext';
 import { useCourse } from '@/context/CourseContext';
+import { useAuth } from '@/context/AuthContext';
 import { Course } from '@/types/course';
-import { Applicant } from '@/types/applicant'; // Import the new type
 
 interface ApplyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  course: Course; // The course being applied to
+  course: Course;
 }
 
-const ApplyModal: React.FC<ApplyModalProps> = ({ isOpen, onClose, course }) => {
-  const { user } = useAuth(); 
-  const { courses, updateCourseData } = useCourse();
+const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({ isOpen, onClose, course }) => {
+  const { user } = useAuth();
+  const { updateApplicationDetails } = useCourse();
   const toast = useToast();
 
-  // State to hold the application-specific details, initialized with user defaults
-  const [appliedSkills, setAppliedSkills] = useState<string[]>([]);
-  const [appliedAvailability, setAppliedAvailability] = useState<string>('');
-  const [newSkill, setNewSkill] = useState(''); // For adding new skills
+  const [availability, setAvailability] = useState<string>('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
 
-  // Load default values from user profile when modal opens or user changes
-  useEffect(() => {
-    if (user && isOpen) {
-      setAppliedSkills(user.skills || []);
-      setAppliedAvailability(user.availability || '');
-    }
-    // Reset form if modal closes or user logs out
-    if (!isOpen || !user) {
-        setAppliedSkills([]);
-        setAppliedAvailability('');
-        setNewSkill('');
-    }
-  }, [user, isOpen]);
-
-  const handleSkillAdd = () => {
-    if (newSkill && !appliedSkills.includes(newSkill.trim())) {
-      setAppliedSkills([...appliedSkills, newSkill.trim()]);
+  const handleAddSkill = () => {
+    const trimmed = newSkill.trim();
+    if (trimmed && !skills.includes(trimmed)) {
+      setSkills([...skills, trimmed]);
       setNewSkill('');
     }
   };
 
-  const handleSkillRemove = (skillToRemove: string) => {
-    setAppliedSkills(appliedSkills.filter(skill => skill !== skillToRemove));
+  const handleRemoveSkill = (skill: string) => {
+    setSkills(skills.filter((s) => s !== skill));
   };
 
-  const handleApplySubmit = () => {
-    if (!user || !user.isTutor) {
-      toast({ title: "Error", description: "You must be logged in as a tutor.", status: "error", duration: 3000, isClosable: true });
+  const handleSubmit = async () => {
+    if (!availability) {
+      toast({ title: 'Select availability', status: 'warning', isClosable: true });
       return;
     }
 
-    // --- Check if already applied ---
-    const targetCourse = courses.find(c => c.id === course.id);
-    if (!targetCourse) {
-        toast({ title: "Error", description: "Course not found.", status: "error", duration: 3000, isClosable: true });
-        return; // Should not happen if course prop is valid
+  const success = await updateApplicationDetails(course.id, {
+    appliedSkills: skills,
+    appliedAvailability: availability,
+  });
+
+
+    if (success) {
+      toast({ title: 'Application submitted!', status: 'success', duration: 3000, isClosable: true });
+      onClose();
+    } else {
+      toast({ title: 'Error submitting application', status: 'error', duration: 3000, isClosable: true });
     }
-
-    const existingApplication = targetCourse.applicants.find(app => String(app.userId) === String(user.id));
-    if (existingApplication) {
-        toast({ title: "Already Applied", description: "You have already applied to this course.", status: "info", duration: 3000, isClosable: true });
-        onClose(); // Close the modal
-        return;
-    }
-
-    // --- Create the ApplicantDetails object ---
-    const applicationDetails: Applicant = {
-      userId: String(user.id), // Ensure ID is string if needed
-      appliedSkills: appliedSkills,
-      appliedAvailability: appliedAvailability,
-    };
-
-    // --- Update Course Data ---
-    const updatedCourses = courses.map(c =>
-      c.id === course.id
-        ? { ...c, applicants: [...c.applicants, applicationDetails] } // Add the object
-        : c
-    );
-    updateCourseData(updatedCourses); // This updates CourseContext state and localStorage
-
-
-
-    toast({ title: "Application Submitted", description: `Successfully applied to ${course.name}`, status: "success", duration: 3000, isClosable: true });
-    onClose(); // Close the modal
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Apply for Tutor Position: {course?.name}</ModalHeader>
+        <ModalHeader>Apply for {course.name}</ModalHeader>
         <ModalCloseButton />
-        <ModalBody pb={6}>
-          <Text mb={4}>Review and update your details for this specific application.</Text>
-          <FormControl mb={4}>
-            <FormLabel>Availability for this Course</FormLabel>
-            <Select
-              placeholder="Select availability"
-              value={appliedAvailability}
-              onChange={(e) => setAppliedAvailability(e.target.value)}
-            >
-              <option value="full-time">Full-time</option>
-              <option value="part-time">Part-time</option>
-              {/* Add other options if applicable */}
-            </Select>
-          </FormControl>
+        <ModalBody>
+          <VStack spacing={4} align="stretch">
+            <FormControl isRequired>
+              <FormLabel>Availability</FormLabel>
+              <Select placeholder="Select availability" value={availability} onChange={(e) => setAvailability(e.target.value)}>
+                <option value="Full-Time">Full-Time</option>
+                <option value="Part-Time">Part-Time</option>
+              </Select>
+            </FormControl>
 
-          <FormControl>
-            <FormLabel>Skills for this Course</FormLabel>
-            <Box border="1px" borderColor="gray.200" borderRadius="md" p={2} minH="50px" mb={2}>
-               {appliedSkills.length === 0 && <Text color="gray.500">No skills added yet.</Text>}
-               {appliedSkills.map(skill => (
-                 <Tag size="md" key={skill} borderRadius="full" variant="solid" colorScheme="blue" m="1">
-                   <TagLabel>{skill}</TagLabel>
-                   <TagCloseButton onClick={() => handleSkillRemove(skill)} />
-                 </Tag>
-               ))}
-            </Box>
-            <Stack direction="row">
-                 <Input
-                    placeholder="Add a skill (e.g., Python)"
-                    value={newSkill}
-                    onChange={(e) => setNewSkill(e.target.value)}
-                    onKeyPress={(e) => { if (e.key === 'Enter') { handleSkillAdd(); e.preventDefault(); } }}
-                 />
-                 <Button onClick={handleSkillAdd}>Add</Button>
-            </Stack>
-            <Text fontSize="xs" color="gray.500" mt={1}>Press Enter or click Add.</Text>
-          </FormControl>
+            <FormControl>
+              <FormLabel>Add Skills</FormLabel>
+              <Input
+                placeholder="Add a skill"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
+              />
+              <Wrap mt={2}>
+                {skills.map((skill, i) => (
+                  <Tag key={i} size="md" colorScheme="blue" borderRadius="full" cursor="pointer" onClick={() => handleRemoveSkill(skill)}>
+                    {skill}
+                  </Tag>
+                ))}
+              </Wrap>
+            </FormControl>
+          </VStack>
         </ModalBody>
 
         <ModalFooter>
-          <Button colorScheme="blue" mr={3} onClick={handleApplySubmit}>
-            Submit Application
-          </Button>
+          <Button colorScheme="green" mr={3} onClick={handleSubmit}>Submit Application</Button>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
         </ModalFooter>
       </ModalContent>
@@ -148,4 +112,4 @@ const ApplyModal: React.FC<ApplyModalProps> = ({ isOpen, onClose, course }) => {
   );
 };
 
-export default ApplyModal;
+export default ApplicationDetailsForm;

@@ -1,214 +1,96 @@
-// src/context/CourseContext.tsx
-
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-  useCallback,
-} from "react";
+// CourseContext.tsx
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Course } from "@/types/course";
 import { Applicant } from "@/types/applicant";
-import { useAuth } from "./AuthContext"; // Add this to get auth token
+import { useAuth } from "./AuthContext";
 
-declare global {
-  interface Window {
-    refreshCourses?: () => void;
-  }
-}
-
-
-// Define context
 interface CourseContextProps {
   courses: Course[];
-  updateCourseData: (updatedCourses: Course[]) => void;
-  refreshCourses: () => void;
-  // --- Add New Functions ---
-  updateApplicationDetails: (
-    courseId: string,
-    userId: string,
-    updatedDetails: Partial<Pick<Applicant, 'appliedSkills' | 'appliedAvailability'>> // Allow partial updates
-  ) => Promise<boolean>; // Return success status
-  deleteApplication: (courseId: string, userId: string) => Promise<boolean>; // Return success status
+  refreshCourses: () => Promise<void>;
+  applyToCourse: (courseId: string, details: { appliedSkills: string[]; appliedAvailability: string }) => Promise<boolean>;
+  updateApplicationDetails: (courseId: string, details: Partial<Pick<Applicant, "appliedSkills" | "appliedAvailability">>) => Promise<boolean>;
+  deleteApplication: (courseId: string) => Promise<boolean>;
 }
 
-// Create context
 const CourseContext = createContext<CourseContextProps | undefined>(undefined);
 
-// Custom hook to consume context
 export const useCourse = (): CourseContextProps => {
   const context = useContext(CourseContext);
-  if (!context) {
-    throw new Error("useCourse must be used within a CourseProvider");
-  }
+  if (!context) throw new Error("useCourse must be used within a CourseProvider");
   return context;
 };
 
-interface CourseProviderProps {
-  children: ReactNode;
-}
-
-// Context provider component
-export const CourseProvider: React.FC<CourseProviderProps> = ({ children }) => {
+export const CourseProvider = ({ children }: { children: ReactNode }) => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [, setLoading] = useState(true);
-  const { user } = useAuth(); // Get user for auth token
+  const { isLoggedIn } = useAuth();
 
-  // Load courses on mount
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setCourses([]);
-          return;
-        }
-
-        const response = await fetch("http://localhost:5000/api/courses", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch courses");
-        }
-
-        const data = await response.json();
-        setCourses(data);
-      } catch (err) {
-        console.error("Failed to fetch courses:", err);
-        setCourses([]); // Set empty array instead of mock data
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCourses();
-  }, [user]); // Re-fetch when user changes
-
-  // Update ALL courses manually
-  const updateCourseData = useCallback(async (updatedCourses: Course[]) => {
+  const fetchCourses = useCallback(async () => {
+    if (!isLoggedIn) return;
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      const response = await fetch("http://localhost:5000/api/courses", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedCourses),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update courses");
-      }
-
-      const data = await response.json();
+      const res = await fetch("http://localhost:5000/api/tutors/courses", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch courses");
+      const data = await res.json();
       setCourses(data);
     } catch (err) {
-      console.error("Failed to update courses:", err);
+      console.error("Error fetching courses:", err);
+      setCourses([]);
     }
-  }, []);
+  }, [isLoggedIn]);
 
-  // Refresh courses from API
-  const refreshCourses = useCallback(async () => {
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+  const applyToCourse = async (courseId: string, details: { appliedSkills: string[]; appliedAvailability: string }) => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      const response = await fetch("http://localhost:5000/api/courses", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(details),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to refresh courses");
-      }
-
-      const data = await response.json();
-      setCourses(data);
-    } catch (err) {
-      console.error("Failed to refresh courses:", err);
-    }
-  }, []);
-
-  // Update application details
-  const updateApplicationDetails = useCallback(async (
-    courseId: string,
-    userId: string,
-    updatedDetails: Partial<Pick<Applicant, 'appliedSkills' | 'appliedAvailability'>>
-  ): Promise<boolean> => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return false;
-
-      const response = await fetch(`http://localhost:5000/api/courses/${courseId}/applications/${userId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedDetails),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update application");
-      }
-
-      // Refresh courses to get updated data
-      await refreshCourses();
+      if (!res.ok) throw new Error("Failed to apply");
+      await fetchCourses();
       return true;
     } catch (err) {
-      console.error("Failed to update application:", err);
+      console.error(err);
       return false;
     }
-  }, [refreshCourses]);
-
-  // Delete application
-  const deleteApplication = useCallback(async (courseId: string, userId: string): Promise<boolean> => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return false;
-
-      const response = await fetch(`http://localhost:5000/api/courses/${courseId}/applications/${userId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete application");
-      }
-
-      // Refresh courses to get updated data
-      await refreshCourses();
-      return true;
-    } catch (err) {
-      console.error("Failed to delete application:", err);
-      return false;
-    }
-  }, [refreshCourses]);
-
-  // Make refresh available via window for debug/dev
-  useEffect(() => {
-    window.refreshCourses = refreshCourses;
-    return () => { delete window.refreshCourses; }
-  }, [refreshCourses]);
-
-  const value: CourseContextProps = {
-    courses,
-    updateCourseData,
-    refreshCourses,
-    updateApplicationDetails,
-    deleteApplication,
   };
 
-  return <CourseContext.Provider value={value}>{children}</CourseContext.Provider>;
+  const updateApplicationDetails = async (courseId: string, details: Partial<Pick<Applicant, "appliedSkills" | "appliedAvailability">>) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(details),
+      });
+      if (!res.ok) throw new Error("Failed to update application");
+      await fetchCourses();
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  const deleteApplication = async (courseId: string) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete application");
+      await fetchCourses();
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  return (
+    <CourseContext.Provider value={{ courses, refreshCourses: fetchCourses, applyToCourse, updateApplicationDetails, deleteApplication }}>
+      {children}
+    </CourseContext.Provider>
+  );
 };

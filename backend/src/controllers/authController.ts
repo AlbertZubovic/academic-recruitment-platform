@@ -86,7 +86,16 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 
     await repo.save(user);
 
-    const token = jwt.sign({ userId: user.user_ID }, process.env.JWT_SECRET as string, { expiresIn: "7d" });
+    const token = jwt.sign(
+    {
+      userId: user.user_ID,
+      isTutor: user.is_tutor,
+      isLecturer: user.is_lecturer,
+      isAdmin: user.is_admin,
+    },
+      process.env.JWT_SECRET as string,
+    { expiresIn: "7d" }
+    );
 
     res.cookie("token", token, COOKIE_OPTIONS);
 
@@ -127,9 +136,17 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.user_ID }, process.env.JWT_SECRET as string, {
-      expiresIn: rememberMe ? "7d" : "1h",
-    });
+  const token = jwt.sign(
+    {
+      userId: user.user_ID,
+      isTutor: user.is_tutor,
+      isLecturer: user.is_lecturer,
+      isAdmin: user.is_admin,
+    },
+      process.env.JWT_SECRET as string,
+    { expiresIn: rememberMe ? "7d" : "1h" }
+  );
+
 
     res.cookie("token", token, {
       ...COOKIE_OPTIONS,

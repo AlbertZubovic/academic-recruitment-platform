@@ -1,19 +1,8 @@
-// src/components/tutors/TutorPage.tsx
-
-/**
- * TutorPage
- * Dashboard for tutors to view available courses and initiate the application process.
- * Displays course name, semester, and required skills.
- * Tracks and disables courses already applied for.
- * Opens a modal for submitting application-specific details.
- * Links to editable profile.
- */
-
-import React, { useState } from 'react'; // <-- Import useState
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useCourse } from '@/context/CourseContext';
 import { useAuth } from '@/context/AuthContext';
-import { Course } from '@/types/course'; // <-- Import Course type
+import { Course } from '@/types/course';
 
 import {
   Container,
@@ -37,55 +26,44 @@ import ApplyModal from './tutorFormSections/ApplicationDetailsForm';
 
 const TutorPage: React.FC = () => {
   const router = useRouter();
-  const { courses } = useCourse(); 
+  const { courses } = useCourse();
   const { user } = useAuth();
-
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-
-  // Prevent rendering if user or course data hasn't loaded yet
   if (!user || !courses) return <div>Loading...</div>;
 
-  // Check if the current user has already applied to a given course
-  // This function remains correct as it checks the userId within the Applicant object
-  const checkIfApplied = (courseId: string): boolean => {
-    const targetCourse = courses.find((course) => course.id === courseId);
-    // Ensure applicants array exists and check if user.id is present
-    return targetCourse?.applicants.some(applicant => String(applicant.userId) === String(user.id)) ?? false;
-  };
+const checkIfApplied = (courseId: string): boolean => {
+  const targetCourse = courses.find((course) => course.id === courseId);
+  return (targetCourse?.applicants ?? []).some(applicant => String(applicant.userId) === String(user.id));
+};
 
-  // --- Function to open the modal ---
   const handleOpenApplyModal = (course: Course) => {
     setSelectedCourse(course);
     setIsModalOpen(true);
   };
 
-  // --- Function to close the modal ---
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedCourse(null); // Clear selected course when closing
+    setSelectedCourse(null);
   };
-
 
   return (
     <Container maxW="container.lg" py={8}>
       <VStack spacing={6} align="stretch">
         <Heading as="h1" size="xl" textAlign="center">
-          Tutor Dashboard
+          Candidate Dashboard
         </Heading>
 
         <Text fontSize="lg" textAlign="center" color="gray.600">
           Welcome {user.firstName} {user.lastName}
         </Text>
 
-        {/* Navigate to profile edit page */}
         <Button onClick={() => router.push('/mydetails')}>
           <Icon as={FaPencilAlt} mr={2} /> Edit Details
         </Button>
 
-        {/* List of available courses with application functionality */}
         <Accordion allowToggle>
           {courses.map((course) => {
             const hasApplied = checkIfApplied(course.id);
@@ -119,18 +97,14 @@ const TutorPage: React.FC = () => {
                       ))}
                     </Wrap>
 
-
                     <Button
                       colorScheme={hasApplied ? 'blue' : 'green'}
                       size="sm"
-                      // Open the modal instead of calling handleApply directly
                       onClick={() => handleOpenApplyModal(course)}
                       disabled={hasApplied}
                     >
                       {hasApplied ? 'Applied' : 'Apply'}
                     </Button>
-
-
                   </VStack>
                 </AccordionPanel>
               </AccordionItem>
@@ -143,11 +117,9 @@ const TutorPage: React.FC = () => {
         <ApplyModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          course={selectedCourse} // Pass the selected course object
+          course={selectedCourse}
         />
       )}
-
-
     </Container>
   );
 };
