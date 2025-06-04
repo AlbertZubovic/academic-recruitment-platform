@@ -28,6 +28,8 @@ interface CourseContextValue {
 
 const CourseContext = createContext<CourseContextValue | undefined>(undefined);
 
+const COURSE_API_BASE = "http://localhost:5000/api/candidates";
+
 export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -39,7 +41,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   const fetchCourses = async () => {
     setError(null);
     try {
-      const res = await fetch("/api/candidates/courses", {
+      const res = await fetch(`${COURSE_API_BASE}/courses`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -74,7 +76,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
     payload: { appliedAvailability: string; appliedSkills: string[] }
   ) => {
     try {
-      const res = await fetch(`/api/candidates/courses/${courseId}/apply`, {
+      const res = await fetch(`${COURSE_API_BASE}/courses/${courseId}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -96,7 +98,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     try {
       const res = await fetch(
-        `/api/candidates/courses/${courseId}/applications/me`,
+        `${COURSE_API_BASE}/courses/${courseId}/applications/me`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -117,7 +119,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   const deleteApplication = async (courseId: string) => {
     try {
       const res = await fetch(
-        `/api/candidates/courses/${courseId}/applications/me`,
+        `${COURSE_API_BASE}/courses/${courseId}/applications/me`,
         {
           method: "DELETE",
           credentials: "include",

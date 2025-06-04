@@ -20,10 +20,12 @@ interface AuthContextValue {
   signUp: (creds: SignUpPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  setUser: (u: User | null) => void;  // ← added setter
+  setUser: (u: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+const AUTH_API_BASE = "http://localhost:5000/api/auth";
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -33,11 +35,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
-  // Fetch current user on mount
   useEffect(() => {
     refreshUser()
       .catch(() => {
-        /* ignore */
       })
       .finally(() => setLoading(false));
   }, []);
@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const signIn = async (creds: SignInPayload) => {
     setError(null);
     try {
-      const res = await fetch("/api/auth/signin", {
+      const res = await fetch(`${AUTH_API_BASE}/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const signUp = async (creds: SignUpPayload) => {
     setError(null);
     try {
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch(`${AUTH_API_BASE}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const signOut = async () => {
     setError(null);
     try {
-      const res = await fetch("/api/auth/logout", {
+      const res = await fetch(`${AUTH_API_BASE}/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -102,12 +102,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const refreshUser = async () => {
     try {
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch(`${AUTH_API_BASE}/me`, {
         credentials: "include",
       });
       if (res.ok) {
         const data: MeResponse = await res.json();
-        // Map MeResponse → User (our front-end shape)
         const mapped: User = {
           id: data.id,
           email: data.email,
