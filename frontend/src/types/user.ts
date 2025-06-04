@@ -1,26 +1,41 @@
-/**
- * Represents a user within the system, such as a tutor or lecturer.
- * Includes identification, contact details, qualifications, role history, and availability.
- */
+// src/types/User.ts
 
-// Define the enum to match the backend UserAvailability enum
-export enum UserAvailability {
-  FULL_TIME = "Full-Time",
-  PART_TIME = "Part-Time",
-  // Ensure this matches any other statuses defined in the backend enum
+import { UserAvailability } from "./enums";
+import { PastRole } from "./PastRole";
+
+/**
+ * A minimal user summary (for embedding as lecturer inside Course).
+ */
+export interface UserSummary {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isLecturer: boolean;
+  isCandidate: boolean;
+  isAdmin: boolean;
+  defaultSkills: string[];
+  defaultAvailability: UserAvailability | null;
+  academicCredentials: string | null;
+  created: string;       // ISO timestamp
+  isBlocked: boolean;
 }
 
+/**
+ * A full user object from the backend.
+ */
 export interface User {
-  id: string;                // Unique identifier (UUID)
-  email: string;             // Email address
-  firstName: string;         // Non-nullable
-  lastName: string;          // Non-nullable
-  isLecturer: boolean;       // Lecturer role flag
-  isTutor: boolean;          // Tutor role flag
+  id: string;                    // user_ID (UUID)
+  email: string;
+  firstname: string;
+  lastname: string;
+  isLecturer: boolean;
+  isCandidate: boolean;
   isAdmin: boolean;
-  defaultSkills: string[] | null;
-  defaultAvailability: UserAvailability | null; // Use the enum
+  defaultSkills: string[];
+  defaultAvailability: UserAvailability | null;
   academicCredentials: string | null;
-  created: string; // Dates are serialized as strings
+  pastRoles: PastRole[];
+  created: string;               // ISO timestamp
   isBlocked: boolean;
 }

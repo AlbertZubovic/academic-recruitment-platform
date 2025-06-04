@@ -1,261 +1,213 @@
-/**
- * ApplicationContext.tsx
- *
- * Context for managing application-level state for the course applications dashboard.
- * 
- * Provides:
- * Filtered applicant data per course
- * All non-lecturer users
- * Sorting and search handling
- * Drag and drop ranking support
- * Filter view awareness
- * Accordion open panel tracking
- */
+// src/context/ApplicationContext.tsx
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-} from "react";
-import { useCourse } from "@/context/CourseContext";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  CandidateApplication,
+  LecturerApplication,
+} from "@/types/Application";
+import {
+  MyApplicationsResponse,
+  LecturerApplicationsResponse,
+} from "@/types/apiResponses";
+import {
+  ApplyToCourseRequest,
+  UpdateApplicationRequest,
+  UpdateApplicationStatusRequest,
+} from "@/types/apiRequests";
 import { useAuth } from "./AuthContext";
-import { Course } from "@/types/course";
-import { User } from "@/types/user";
-import type { DragEndEvent } from "@dnd-kit/core";
-import { Applicant } from "@/types/applicant";
 
-// Define the context value
-interface ApplicationContextProps {
-  filteredApplicants: Course[];
-  allUsers: User[];
-  searchTerm: string;
-  availabilityFilter: "all" | "full-time" | "part-time";
-  sortCriteria: string;
-  loading: boolean;
-  setFilteredApplicants: (data: Course[]) => void;
-  setSortCriteria: (criteria: string) => void;
-  setSearchTerm: (term: string) => void;
-  setAvailabilityFilter: (value: "all" | "full-time" | "part-time") => void;
-  handleSearch: (term: string) => void;
-  handleSort: (criteria: string) => void;
-  handleDragEnd: (event: DragEndEvent) => void;
-  isFilteredView: boolean;
-  openPanels: number[];
-  setOpenPanels: React.Dispatch<React.SetStateAction<number[]>>;
+interface ApplicationContextValue {
+  myApplications: CandidateApplication[];
+  lecturerApplications: Record<string, LecturerApplication[]>; // keyed by courseId
+  loadingMyApps: boolean;
+  loadingLecturerApps: boolean;
+  error: string | null;
+  applyToCourse: (courseId: string, payload: ApplyToCourseRequest) => Promise<void>;
+  updateMyApplication: (courseId: string, payload: UpdateApplicationRequest) => Promise<void>;
+  fetchMyApplications: () => Promise<void>;
+  fetchLecturerApplications: (courseId: string) => Promise<void>;
+  updateApplicationStatus: (
+    courseId: string,
+    applicationId: string,
+    payload: UpdateApplicationStatusRequest
+  ) => Promise<void>;
 }
 
-// Create the context
-const ApplicationContext = createContext<ApplicationContextProps | undefined>(undefined);
+const ApplicationContext = createContext<ApplicationContextValue | undefined>(undefined);
 
-// Custom hook to use the context
-export const useApplicationContext = (): ApplicationContextProps => {
-  const context = useContext(ApplicationContext);
-  if (!context) {
-    throw new Error("useApplicationContext must be used within ApplicationProvider");
-  }
-  return context;
-};
-
-// Provider component
-export const ApplicationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { courses } = useCourse();
+export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [filteredApplicants, setFilteredApplicants] = useState<Course[]>(courses);
-  const [sortCriteria, setSortCriteria] = useState("course");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "full-time" | "part-time">("all");
-  const [openPanels, setOpenPanels] = useState<number[]>([]); // which accordions are expanded
+  const [myApplications, setMyApplications] = useState<CandidateApplication[]>([]);
+  const [lecturerApplications, setLecturerApplications] = useState<
+    Record<string, LecturerApplication[]>
+  >({});
+  const [loadingMyApps, setLoadingMyApps] = useState(false);
+  const [loadingLecturerApps, setLoadingLecturerApps] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch all tutor users
-  useEffect(() => {
-    const fetchTutors = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setAllUsers([]);
-          return;
-        }
-
-        const response = await fetch("http://localhost:5000/api/users/tutors", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch tutors");
-        }
-
-        const data = await response.json();
-        setAllUsers(data);
-      } catch (err) {
-        console.error("Failed to fetch tutors:", err);
-        setAllUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTutors();
-  }, [user]);
-
-  // Update filtered applicants when courses change
-  useEffect(() => {
-    setFilteredApplicants(courses);
-  }, [courses]);
-
-  // Determine if the view is filtered, which disables dragging
-  const isFilteredView = sortCriteria === "availability" || searchTerm.trim() !== "";
-
-  // Filters applicants based on search term and availability.
-  const handleSearch = useCallback(
-    (term: string) => {
-      setSearchTerm(term);
-
-      const filteredCourses = courses.map((course: Course) => {
-        // Filter the Applicant detail objects
-        const filteredApplicantDetails = course.applicants.filter((applicantDetail: Applicant) => {
-          // Find the corresponding User profile
-          const applicantUser = allUsers.find((u) => String(u.id) === String(applicantDetail.userId));
-          if (!applicantUser) return false; // Skip if user profile not found
-
-          const matchesSearch =
-            applicantUser.firstName.toLowerCase().includes(term.toLowerCase()) ||
-            applicantUser.lastName.toLowerCase().includes(term.toLowerCase()) ||
-            `${applicantUser.firstName} ${applicantUser.lastName}`.toLowerCase().includes(term.toLowerCase()) ||
-            course.name.toLowerCase().includes(term.toLowerCase()) ||
-    
-            applicantDetail.appliedAvailability?.toLowerCase().includes(term.toLowerCase()) || // Use applied availability
-            applicantDetail.appliedSkills?.some((skill: string) => skill.toLowerCase().includes(term.toLowerCase())); // Use applied skills
-
-          const matchesAvailability =
-            availabilityFilter === "all" ||
-            applicantDetail.appliedAvailability?.toLowerCase() === availabilityFilter;
-
-          return matchesSearch && matchesAvailability;
-        });
-
-        // Return the course with the filtered list of Applicant details
-        return { ...course, applicants: filteredApplicantDetails };
-      });
-
-      setFilteredApplicants(filteredCourses);
-    },
-    [courses, allUsers, availabilityFilter] // Dependencies
-  );
-
-  // Re filter when availability changes
-  useEffect(() => {
-      handleSearch(searchTerm);
-    }, [searchTerm, availabilityFilter, handleSearch]);
-    
-
-  // Sorts courses or applicants based on selected criteria.
-  const handleSort = (criteria: string) => {
-    setSortCriteria(criteria);
-
-    if (criteria === "course") {
-      const sorted = [...filteredApplicants].sort((a, b) => a.name.localeCompare(b.name));
-      setFilteredApplicants(sorted);
-    } else if (criteria === "availability") {
-      const sorted = filteredApplicants.map((course) => {
-        const sortedApplicantDetails = [...course.applicants].sort((aDetail: Applicant, bDetail: Applicant) => {
-          const getWeight = (availability: string) =>
-            availability?.toLowerCase() === "full-time" 
-              ? 0
-              : availability?.toLowerCase() === "part-time"
-              ? 1
-              : 2; // Assign lower weight to full-time
-          return getWeight(aDetail.appliedAvailability) - getWeight(bDetail.appliedAvailability);
-        });
-
-
-        return { ...course, applicants: sortedApplicantDetails };
-      });
-
-      setFilteredApplicants(sorted);
-    } else {
-      setFilteredApplicants([...filteredApplicants]);
-    }
-  };
-
-  // Handles drag and drop ranking of applicants within a course.
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
+  // Fetch candidate’s own applications
+  const fetchMyApplications = async () => {
+    setError(null);
+    setLoadingMyApps(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      const [courseCode] = String(active.id).split("-");
-      const course = filteredApplicants.find((c) => c.courseCode === courseCode);
-      if (!course) return;
-
-      const oldIndex = course.applicants.findIndex(
-        (id) => `${courseCode}-${id}` === String(active.id)
-      );
-      const newIndex = course.applicants.findIndex(
-        (id) => `${courseCode}-${id}` === String(over.id)
-      );
-
-      const reordered = [...course.applicants];
-      const [moved] = reordered.splice(oldIndex, 1);
-      reordered.splice(newIndex, 0, moved);
-
-      // Update ranking in backend
-      const response = await fetch(`http://localhost:5000/api/courses/${course.id}/rankings`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ rankings: reordered }),
+      const res = await fetch("/api/candidates/applications", {
+        credentials: "include",
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update rankings");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to fetch your applications");
       }
-
-      const updatedCourses = filteredApplicants.map((c) =>
-        c.courseCode === courseCode ? { ...c, applicants: reordered } : c
-      );
-
-      setFilteredApplicants(updatedCourses);
-    } catch (err) {
-      console.error("Failed to update rankings:", err);
+      const data: MyApplicationsResponse = await res.json();
+      setMyApplications(data);
+    } catch (err: any) {
+      setError(err.message);
+      setMyApplications([]);
+    } finally {
+      setLoadingMyApps(false);
     }
   };
-  
+
+  // Fetch applications for a given course (lecturer)
+  const fetchLecturerApplications = async (courseId: string) => {
+    setError(null);
+    setLoadingLecturerApps(true);
+    try {
+      const res = await fetch(`/api/lecturer/courses/${courseId}/applications`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to fetch applications for this course");
+      }
+      const data: LecturerApplicationsResponse = await res.json();
+      setLecturerApplications((prev) => ({
+        ...prev,
+        [courseId]: data,
+      }));
+    } catch (err: any) {
+      setError(err.message);
+      setLecturerApplications((prev) => ({
+        ...prev,
+        [courseId]: [],
+      }));
+    } finally {
+      setLoadingLecturerApps(false);
+    }
+  };
+
+  // Candidate: apply to a course
+  const applyToCourse = async (courseId: string, payload: ApplyToCourseRequest) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/candidates/courses/${courseId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to apply");
+      }
+      // Refresh my applications and perhaps courses list
+      await fetchMyApplications();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  // Candidate: update own application
+  const updateMyApplication = async (
+    courseId: string,
+    payload: UpdateApplicationRequest
+  ) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/candidates/courses/${courseId}/applications/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to update application");
+      }
+      // Refresh my applications
+      await fetchMyApplications();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  // Lecturer: update someone’s application status
+  const updateApplicationStatus = async (
+    courseId: string,
+    applicationId: string,
+    payload: UpdateApplicationStatusRequest
+  ) => {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/lecturer/courses/${courseId}/applications/${applicationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to update status");
+      }
+      // Refresh that course’s applicant list
+      await fetchLecturerApplications(courseId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  // On user change: if candidate, load their apps; if lecturer, clear lecturerApps.
+  useEffect(() => {
+    if (user && user.isCandidate) {
+      fetchMyApplications();
+    } else {
+      setMyApplications([]);
+    }
+    // Clear lecturerApplications if user logs out or is not a lecturer
+    if (!user || !user.isLecturer) {
+      setLecturerApplications({});
+    }
+  }, [user]);
 
   return (
     <ApplicationContext.Provider
       value={{
-        filteredApplicants,
-        allUsers,
-        searchTerm,
-        availabilityFilter,
-        sortCriteria,
-        loading,
-        openPanels,
-        isFilteredView,
-        setFilteredApplicants,
-        setSortCriteria,
-        setSearchTerm,
-        setAvailabilityFilter,
-        setOpenPanels,
-        handleSearch,
-        handleSort,
-        handleDragEnd,
+        myApplications,
+        lecturerApplications,
+        loadingMyApps,
+        loadingLecturerApps,
+        error,
+        applyToCourse,
+        updateMyApplication,
+        fetchMyApplications,
+        fetchLecturerApplications,
+        updateApplicationStatus,
       }}
     >
       {children}
     </ApplicationContext.Provider>
   );
+};
+
+export const useApplications = (): ApplicationContextValue => {
+  const ctx = useContext(ApplicationContext);
+  if (!ctx) {
+    throw new Error("useApplications must be used within <ApplicationProvider>");
+  }
+  return ctx;
 };

@@ -1,103 +1,137 @@
+// src/context/AuthContext.tsx
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { AuthCredentials } from "@/types/apiRequests";
+import { MeResponse, SignInResponse, SignUpResponse } from "@/types/apiResponses";
 import { User } from "@/types/user";
 
-interface AuthContextProps {
-  isLoggedIn: boolean;
+interface AuthContextValue {
   user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  login: (email: string, password: string, rememberMe: boolean) => Promise<boolean>;
-  logout: () => Promise<void>;
-  signup: (data: SignUpData) => Promise<boolean>;
   loading: boolean;
-  isSignupComplete: boolean;
+  error: string | null;
+  signIn: (creds: AuthCredentials) => Promise<void>;
+  signUp: (creds: AuthCredentials) => Promise<void>;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
-interface SignUpData {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  firstname: string;
-  lastname: string;
-  isTutor: boolean;
-  isLecturer: boolean;
-  availability: "Full-Time" | "Part-Time";
-  skills: string[];
-}
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-
-export const useAuth = (): AuthContextProps => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSignupComplete, setIsSignupComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchUser = async () => {
+  // Fetch current user on mount
+  useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
+  }, []);
+
+  const signIn = async (creds: AuthCredentials) => {
+    setError(null);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/me", { credentials: "include" });
-      if (!res.ok) throw new Error("No session");
-      const data = await res.json();
-      setUser(data);
-      setIsLoggedIn(true);
-    } catch {
-      setUser(null);
-      setIsLoggedIn(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchUser(); }, []);
-
-  const login = async (email: string, password: string, rememberMe: boolean) => {
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/signin", {
+      const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify(creds),
       });
-      if (!res.ok) throw new Error("Invalid credentials");
-      await fetchUser();
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Sign‐in failed");
+      }
+      // no JSON except message, so just re‐fetch /me
+      await refreshUser();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
   };
 
-const signup = async (data: SignUpData) => {
-  try {
-    if (data.password !== data.confirmPassword) throw new Error("Passwords do not match");
-    const res = await fetch("http://localhost:5000/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Signup failed");
-    await fetchUser();
-    setIsSignupComplete(true);
-    return true;
-  } catch (err) {
-    console.error(err);
-    setIsSignupComplete(false);
-    return false;
-  }
-};
-
-
-  const logout = async () => {
-    await fetch("http://localhost:5000/api/auth/logout", { method: "POST", credentials: "include" });
-    setUser(null);
-    setIsLoggedIn(false);
+  const signUp = async (creds: AuthCredentials) => {
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(creds),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Sign‐up failed");
+      }
+      // The response includes user info, but we’ll just call /me to populate state
+      await refreshUser();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
   };
 
-  return <AuthContext.Provider value={{ isLoggedIn, user, setUser,login, logout, signup, loading, isSignupComplete }}>{children}</AuthContext.Provider>;
+  const signOut = async () => {
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Sign‐out failed");
+      }
+      setUser(null);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data: MeResponse = await res.json();
+        // Map MeResponse → our User type
+        const mapped: User = {
+          id: data.id,
+          email: data.email,
+          firstname: data.firstname,
+          lastname: data.lastname,
+          isLecturer: data.isLecturer,
+          isCandidate: data.isCandidate,
+          isAdmin: data.isAdmin,
+          defaultSkills: data.defaultSkills,
+          defaultAvailability: data.defaultAvailability,
+          academicCredentials: data.academicCredentials,
+          pastRoles: data.pastRoles,
+          created: data.created,
+          isBlocked: data.isBlocked,
+        };
+        setUser(mapped);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, error, signIn, signUp, signOut, refreshUser }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = (): AuthContextValue => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within <AuthProvider>");
+  }
+  return ctx;
 };

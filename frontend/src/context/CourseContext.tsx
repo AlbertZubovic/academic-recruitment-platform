@@ -1,95 +1,71 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+// src/context/CourseContext.tsx
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Course } from "@/types/course";
-import { Applicant } from "@/types/applicant";
+import { LecturerApplication } from "@/types/Application";
+import { CourseListResponse } from "@/types/apiResponses";
 import { useAuth } from "./AuthContext";
 
-interface CourseContextProps {
+interface CourseContextValue {
   courses: Course[];
-  refreshCourses: () => Promise<void>;
-  applyToCourse: (courseId: string, details: { appliedSkills: string[]; appliedAvailability: string }) => Promise<boolean>;
-  updateApplicationDetails: (courseId: string, details: Partial<{ appliedSkills: string[]; appliedAvailability: string }>) => Promise<boolean>;
-  deleteApplication: (courseId: string) => Promise<boolean>;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
-const CourseContext = createContext<CourseContextProps | undefined>(undefined);
+const CourseContext = createContext<CourseContextValue | undefined>(undefined);
 
-export const useCourse = (): CourseContextProps => {
-  const context = useContext(CourseContext);
-  if (!context) throw new Error("useCourse must be used within a CourseProvider");
-  return context;
-};
-
-export const CourseProvider = ({ children }: { children: ReactNode }) => {
+export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const { isLoggedIn } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchCourses = useCallback(async () => {
-    if (!isLoggedIn) return;
+  const fetchCourses = async () => {
+    setError(null);
     try {
-      const res = await fetch("http://localhost:5000/api/tutors/courses", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch courses");
-      const data = await res.json();
+      const res = await fetch("/api/courses", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to fetch courses");
+      }
+      const data: CourseListResponse = await res.json();
       setCourses(data);
-    } catch (err) {
-      console.error("Error fetching courses:", err);
+    } catch (err: any) {
+      setError(err.message);
       setCourses([]);
     }
-  }, [isLoggedIn]);
-
-  useEffect(() => { fetchCourses(); }, [fetchCourses]);
-
-  const applyToCourse = async (courseId: string, details: { appliedSkills: string[]; appliedAvailability: string }) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(details),
-      });
-      if (!res.ok) throw new Error("Failed to apply");
-      await fetchCourses();
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
   };
 
-  const updateApplicationDetails = async (courseId: string, details: Partial<Pick<Applicant, "appliedSkills" | "appliedAvailability">>) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(details),
-      });
-      if (!res.ok) throw new Error("Failed to update application");
-      await fetchCourses();
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
+  useEffect(() => {
+    // Only fetch if user is logged in
+    if (user) {
+      fetchCourses().finally(() => setLoading(false));
+    } else {
+      setCourses([]);
+      setLoading(false);
     }
-  };
+  }, [user]);
 
-  const deleteApplication = async (courseId: string) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/tutors/courses/${courseId}/applications/me`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete application");
-      await fetchCourses();
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
+  const refetch = async () => {
+    setLoading(true);
+    await fetchCourses();
+    setLoading(false);
   };
 
   return (
-    <CourseContext.Provider value={{ courses, refreshCourses: fetchCourses, applyToCourse, updateApplicationDetails, deleteApplication }}>
+    <CourseContext.Provider value={{ courses, loading, error, refetch }}>
       {children}
     </CourseContext.Provider>
   );
+};
+
+export const useCourses = (): CourseContextValue => {
+  const ctx = useContext(CourseContext);
+  if (!ctx) {
+    throw new Error("useCourses must be used within <CourseProvider>");
+  }
+  return ctx;
 };

@@ -4,7 +4,7 @@ import {
   WrapItem, Tag, Box, VStack, useToast
 } from '@chakra-ui/react';
 import { Tutor } from '@/types/tutor';
-import { PastRole } from '@/types/pastRoles';
+import { PastRole } from '@/types/PastRole';
 
 interface RoleFormProps {
   tutorDetails: Partial<Tutor>;
