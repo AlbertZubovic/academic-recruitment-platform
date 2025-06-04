@@ -17,7 +17,7 @@ interface CourseContextValue {
   refetch: () => Promise<void>;
   applyToCourse: (
     courseId: string,
-    payload: { appliedAvailability: string; appliedSkills: string[] }
+    payload: { role: string; appliedAvailability: string; appliedSkills: string[] }
   ) => Promise<boolean>;
   updateApplicationDetails: (
     courseId: string,
@@ -28,6 +28,7 @@ interface CourseContextValue {
 
 const CourseContext = createContext<CourseContextValue | undefined>(undefined);
 
+// Adjust this base URL if your API root differs
 const COURSE_API_BASE = "http://localhost:5000/api/candidates";
 
 export const CourseProvider: React.FC<{ children: ReactNode }> = ({
@@ -73,7 +74,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
 
   const applyToCourse = async (
     courseId: string,
-    payload: { appliedAvailability: string; appliedSkills: string[] }
+    payload: { role: string; appliedAvailability: string; appliedSkills: string[] }
   ) => {
     try {
       const res = await fetch(`${COURSE_API_BASE}/courses/${courseId}/apply`, {

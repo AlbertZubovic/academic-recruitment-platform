@@ -19,10 +19,12 @@ import {
   Tag,
   Wrap,
   HStack,
+  Box,
 } from "@chakra-ui/react";
 import { useCourses } from "@/context/CourseContext";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course";
+import { ApplicationRole } from "@/types/enums";
 
 interface ApplyModalProps {
   isOpen: boolean;
@@ -41,23 +43,34 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   const { user } = useAuth();
   const toast = useToast();
 
+  // If editing, grab their existing application. Otherwise, default to user’s defaults.
   const existingApplication = (course as any).application;
   const defaultAvailability =
     existingApplication?.appliedAvailability ?? user?.defaultAvailability ?? "";
-  const defaultSkills =
-    existingApplication?.appliedSkills ?? user?.defaultSkills ?? [];
+  const defaultSkills = existingApplication?.appliedSkills ?? user?.defaultSkills ?? "";
 
-  const [availability, setAvailability] = useState<string>("");
-  const [skills, setSkills] = useState<string[]>([]);
+  // ─── Add state for “role” ───────────────────────────────────────────────────
+  // If editing, use the existing application’s role; otherwise default to the first allowed role.
+  const defaultRole = isEdit
+    ? existingApplication?.role ?? ""
+    : course.rolesAvailable && course.rolesAvailable.length > 0
+    ? course.rolesAvailable[0]
+    : "Tutor";
+
+  const [role, setRole] = useState<string>(defaultRole);
+  const [availability, setAvailability] = useState<string>(defaultAvailability);
+  const [skills, setSkills] = useState<string[]>(defaultSkills);
   const [newSkill, setNewSkill] = useState("");
 
   useEffect(() => {
     if (isEdit && existingApplication) {
       setAvailability(existingApplication.appliedAvailability ?? "");
       setSkills(existingApplication.appliedSkills ?? []);
+      setRole(existingApplication.role); // assume existingApplication.role is a string
     } else if (user) {
       setAvailability(user.defaultAvailability ?? "");
       setSkills(user.defaultSkills ?? []);
+      setRole(defaultRole);
     }
   }, [isEdit, existingApplication, isOpen, user]);
 
@@ -74,9 +87,10 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!availability || skills.length === 0) {
+    // Must choose a role, availability, and at least one skill
+    if (!role || !availability || skills.length === 0) {
       toast({
-        title: "Please select availability and add at least one skill.",
+        title: "Please select a role, availability, and add at least one skill.",
         status: "warning",
         isClosable: true,
       });
@@ -91,6 +105,7 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
       });
     } else {
       success = await applyToCourse(course.id, {
+        role,
         appliedAvailability: availability,
         appliedSkills: skills,
       });
@@ -118,12 +133,25 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>
-          {isEdit ? "Edit Application" : `Apply for ${course.name}`}
-        </ModalHeader>
+        <ModalHeader>{isEdit ? "Edit Application" : `Apply for ${course.name}`}</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4} align="stretch">
+            <FormControl isRequired>
+              <FormLabel>Role</FormLabel>
+              <Select
+                placeholder="Select role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                {course.rolesAvailable.map((r) => (
+                  <option key={r} value={r}>
+                    {r === ApplicationRole.LAB_ASSISTANT ? "Lab Assistant" : r}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
             <FormControl isRequired>
               <FormLabel>Availability</FormLabel>
               <Select
@@ -142,16 +170,13 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
                 placeholder="Add a skill"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  (e.preventDefault(), handleAddSkill())
-                }
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddSkill())}
               />
               <Wrap mt={2} spacing={2}>
                 {skills.map((skill, i) => (
                   <Tag key={i} size="md" colorScheme="blue" borderRadius="full">
                     <HStack spacing={1}>
-                      <span>{skill}</span>
+                      <Box as="span">{skill}</Box>
                       <Button
                         size="xs"
                         variant="ghost"
