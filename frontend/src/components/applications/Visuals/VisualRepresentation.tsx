@@ -1,18 +1,5 @@
 // src/components/applications/Visuals/VisualRepresentation.tsx
 
-/**
- * VisualRepresentation.tsx
- *
- * Displays visual analytics related to selected applicants using interactive charts.
- * Charts include:
- *  Applicant selection frequency
- *  Skills distribution
- *  Availability breakdown
- *
- * Selections are pulled from localStorage and selection context.
- * Charts are broken into reusable subcomponents for maintainability.
- */
-
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -27,151 +14,155 @@ import {
 } from "@chakra-ui/react";
 
 import { useSelectedApplicants } from "@/context/SelectedApplicantsContext";
+import { useCourses } from "@/context/CourseContext";
+
 import ApplicantSelectionChart from "./Charts/ApplicantSelectionChart";
 import TopSkillsChart from "./Charts/TopSkillsChart";
 import AvailabilityChart from "./Charts/AvailabilityChart";
+
 import { User } from "@/types/user";
 import { Course } from "@/types/course";
-import { Applicant } from "@/types/applicant";
-import { useCourse } from "@/context/CourseContext";
+import { LecturerApplication } from "@/types/Application";
 
+interface SelectionData {
+  name: string;
+  id: string;
+  count: number;
+}
 
+interface SkillData {
+  skill: string;
+  count: number;
+}
 
-
-
-// Utility to fetch all tutors from localStorage
-const getAllApplicants = (): User[] => { // Return User[] as we fetch full user details
-  const coursesRaw = localStorage.getItem("Courses"); 
-  const usersRaw = localStorage.getItem("Users");
-
-  if (!coursesRaw || !usersRaw) {
-    console.warn("Missing Courses or Users data in localStorage for VisualRepresentation.");
-    return [];
-  }
-
-  const allApplicantUserIds = new Set<string>();
-
-  try {
-    // 1. Get all unique applicant IDs from courses
-    const courses: Course[] = JSON.parse(coursesRaw);
-    if (Array.isArray(courses)) {
-      courses.forEach(course => {
-        if (Array.isArray(course.applicants)) {
-          // The element here is the Applicant details object
-          course.applicants.forEach((applicantDetail: Applicant) => {
-            // Use the userId property from the object
-            allApplicantUserIds.add(String(applicantDetail.userId));
-          });
-        }
-      });
-    } else {
-      console.warn("Parsed courses data is not an array.");
-      return [];
-    }
-
-    // 2. Get all users once
-    const allUsers: User[] = JSON.parse(usersRaw);
-     if (!Array.isArray(allUsers)) {
-        console.warn("Parsed users data is not an array.");
-        return [];
-     }
-
-    // 3. Filter users: Must be a tutor AND their ID must be in the set of applied IDs
-    const applicantUsers = allUsers.filter(user =>
-        user.isTutor &&
-        !user.isLecturer &&
-        allApplicantUserIds.has(String(user.id))
-    );
-
-    // Return the User objects of tutors who have applied
-    return applicantUsers;
-
-  } catch (e) {
-    console.error("Failed to parse data in getAllApplicants:", e);
-    return [];
-  }
-};
-
+interface AvailabilityData {
+  type: string;
+  count: number;
+}
 
 const VisualRepresentation: React.FC = () => {
   const { selectedApplicants } = useSelectedApplicants();
-  const { courses } = useCourse();
+  const { courses } = useCourses();
 
-  // State types remain the same
-  const [chartData, setChartData] = useState<{ name: string; id: string; count: number }[]>([]);
-  const [skillData, setSkillData] = useState<{ skill: string; count: number }[]>([]);
-  const [availabilityData, setAvailabilityData] = useState<{ type: string; count: number }[]>([]);
+  // State holds the data for each chart
+  const [chartData, setChartData] = useState<SelectionData[]>([]);
+  const [skillData, setSkillData] = useState<SkillData[]>([]);
+  const [availabilityData, setAvailabilityData] = useState<AvailabilityData[]>([]);
 
   useEffect(() => {
-
-    const applicantsWhoApplied: User[] = getAllApplicants();
-    const selectedIds = new Set(Object.values(selectedApplicants).flat().map(String)); // Set for faster lookup
-
-    // Count selections by applicant ID
-    const counts: Record<string, number> = {};
-    Object.values(selectedApplicants).flat().forEach((id) => {
-        const idStr = String(id);
-        // Only count if the selected ID corresponds to a user who actually applied
-        if (applicantsWhoApplied.some(appUser => String(appUser.id) === idStr)) {
-            counts[idStr] = (counts[idStr] || 0) + 1;
-        }
+    //
+    // 1) Gather every application record from all courses:
+    //
+    //    each `lectApp` is of type LecturerApplication, which looks something like:
+    //      {
+    //        applicationId: string;
+    //        user: { id, firstName, lastName, credentials, … };
+    //        appliedSkills: string[];
+    //        appliedAvailability: "Full-Time" | "Part-Time";
+    //        …other fields…
+    //      }
+    //
+    //    We want a deduplicated list of all applicants (unique by user.id).
+    //
+    const allApps: LecturerApplication[] = [];
+    courses.forEach((course: Course) => {
+      if (Array.isArray(course.applicants)) {
+        course.applicants.forEach((lectApp) => {
+          allApps.push(lectApp);
+        });
+      }
     });
 
-    // Build selection chart data (based only on tutors who have applied)
-    const data = applicantsWhoApplied.map((applicantUser) => ({
-      id: String(applicantUser.id),
-      name: `${applicantUser.firstName} ${applicantUser.lastName}`,
-      count: counts[String(applicantUser.id)] || 0,
-    }));
+    // Build a map from userId → User (only the first occurrence)
+    const userMap: Record<string, User> = {};
+    allApps.forEach((lectApp) => {
+      const uid = String(lectApp.user.id);
+      if (!userMap[uid]) {
+        userMap[uid] = lectApp.user;
+      }
+    });
 
-    // --- Logic Correction for Skills/Availability ---
-    // We need to get the *applied* skills/availability for *selected* applicants,
-    // not their default profile skills/availability.
+    // 2) Build a “selections per applicant” count:
+    //    We look at selectedApplicants: a map { [courseId]: string[] } where each array is userIds
+    //
+    const counts: Record<string, number> = {};
+    Object.entries(selectedApplicants).forEach(([courseId, userIds]) => {
+      userIds.forEach((uid) => {
+        const key = String(uid);
+        if (!counts[key]) counts[key] = 0;
+        counts[key]++;
+      });
+    });
 
+    // Now turn `userMap` into an array of { id, name, count }
+    const selectionArray: SelectionData[] = Object.values(userMap).map((user) => {
+      const uid = String(user.id);
+      return {
+        id: uid,
+        name: `${user.firstname} ${user.lastname}`,
+        count: counts[uid] || 0,
+      };
+    });
+
+    // 3) Build “Top Skills (from selected applications)” and “Availability (from selected applications)”
+    //
     const skillMap: Record<string, number> = {};
     const availabilityMap: Record<string, number> = {};
 
-    // Iterate through the actual course data to find the specific application details
+    // For each course, for each application on that course,
+    // check if that (courseId, userId) appears in selectedApplicants. If yes, include its appliedSkills / appliedAvailability.
     courses.forEach((course: Course) => {
-        if (!Array.isArray(course.applicants)) return;
+      const courseId = course.id;
+      const selectedForThisCourse = new Set(
+        (selectedApplicants[courseId] || []).map((id) => String(id))
+      );
 
-        course.applicants.forEach((application: Applicant) => {
-            const userIdStr = String(application.userId);
-            // Check if this applicant (userId) was selected for *any* course
-            if (selectedIds.has(userIdStr)) {
-                // Count their *applied* skills for this application
-                if (Array.isArray(application.appliedSkills)) {
-                    application.appliedSkills.forEach(skill => {
-                        skillMap[skill] = (skillMap[skill] || 0) + 1;
-                    });
-                }
-                // Count their *applied* availability
-                if (application.appliedAvailability) {
-                    const label = (application.appliedAvailability)
-                        .split("-")
-                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(" ");
-                    availabilityMap[label] = (availabilityMap[label] || 0) + 1;
-                }
-            }
-        });
+      if (!Array.isArray(course.applicants)) return;
+
+      course.applicants.forEach((lectApp: LecturerApplication) => {
+        const uid = String(lectApp.user.id);
+        if (selectedForThisCourse.has(uid)) {
+          // Count each applied skill
+          lectApp.appliedSkills.forEach((skill) => {
+            skillMap[skill] = (skillMap[skill] || 0) + 1;
+          });
+
+          // Count applied availability
+          const avail = lectApp.appliedAvailability; // e.g. "Full-Time" or "Part-Time"
+          // Normalize into “Full Time” / “Part Time”
+          const label = avail
+            .split("-")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+
+          availabilityMap[label] = (availabilityMap[label] || 0) + 1;
+        }
+      });
     });
-    // --- End Logic Correction ---
 
+    const skillArray: SkillData[] = Object.entries(skillMap).map(([skill, count]) => ({
+      skill,
+      count,
+    }));
 
-    const skills = Object.entries(skillMap).map(([skill, count]) => ({ skill, count }));
-    const availability = Object.entries(availabilityMap).map(([type, count]) => ({ type, count }));
+    const availabilityArray: AvailabilityData[] = Object.entries(availabilityMap).map(
+      ([type, count]) => ({ type, count })
+    );
 
-    setChartData(data);
-    setSkillData(skills);
-    setAvailabilityData(availability);
+    // Finally, push into state
+    setChartData(selectionArray);
+    setSkillData(skillArray);
+    setAvailabilityData(availabilityArray);
+  }, [selectedApplicants, courses]);
 
-  }, [selectedApplicants, courses]); // Add courses as dependency
-
-  // Overview stats calculation remains similar, using chartData
-  const selectedOnly = chartData.filter(a => a.count > 0);
-  const mostChosen = selectedOnly.length ? selectedOnly.reduce((max, curr) => curr.count > max.count ? curr : max) : null;
-  const leastChosen = selectedOnly.length ? selectedOnly.reduce((min, curr) => curr.count < min.count ? curr : min) : null;
+  // 4) Compute summary stats “most” / “least” / “not selected”
+  const selectedOnly = chartData.filter((a) => a.count > 0);
+  const mostChosen = selectedOnly.length
+    ? selectedOnly.reduce((max, curr) => (curr.count > max.count ? curr : max))
+    : null;
+  const leastChosen = selectedOnly.length
+    ? selectedOnly.reduce((min, curr) => (curr.count < min.count ? curr : min))
+    : null;
   const notSelected = chartData.filter((a) => a.count === 0);
 
   return (
@@ -179,11 +170,11 @@ const VisualRepresentation: React.FC = () => {
       <Heading as="h3" size="lg" mb={4} textAlign="center">
         Selection Overview
       </Heading>
-       <Text fontSize="sm" color="gray.500" textAlign="center" mb={4}>
-        (Showing data only for tutors who have applied to at least one course)
+      <Text fontSize="sm" color="gray.500" textAlign="center" mb={4}>
+        (Showing data only for candidates who have applied to at least one course)
       </Text>
 
-      {/* Tabs remain the same */}
+      {/* Tabbed charts */}
       <Tabs isLazy>
         <TabList mb={4} overflowX="auto">
           <Tab>Selections per Applicant</Tab>
@@ -204,7 +195,7 @@ const VisualRepresentation: React.FC = () => {
         </TabPanels>
       </Tabs>
 
-      {/* Stats interpretation might change slightly */}
+      {/* Some summary stats at bottom */}
       <VStack align="start" mt={6} spacing={2}>
         <Text>
           <strong>Most Chosen (among applicants):</strong>{" "}
