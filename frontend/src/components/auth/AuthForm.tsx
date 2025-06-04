@@ -1,12 +1,30 @@
+// src/components/auth/AuthForm.tsx
+
 import React, { useState, useEffect } from "react";
 import {
-  Box, Button, FormControl, FormLabel, FormErrorMessage,
-  Heading, Input, useToast, VStack, Text, Select,
-  Checkbox, Stack, Link
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  Heading,
+  Input,
+  useToast,
+  VStack,
+  Text,
+  Select,
+  Checkbox,
+  Stack,
+  Link,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import NextLink from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import {
+  ApplicationAvailability,
+  ApplicationRole,
+} from "@/types/enums";
+import { SignInPayload, SignUpPayload } from "@/types/apiRequests";
 
 interface AuthFormProps {
   type: "signin" | "signup";
@@ -19,15 +37,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [isTutor, setIsTutor] = useState(false);
+  const [isCandidate, setIsCandidate] = useState(false);
   const [isLecturer, setIsLecturer] = useState(false);
-  const [availability, setAvailability] = useState<"Full-Time" | "Part-Time">("Full-Time");
+  const [availability, setAvailability] = useState<
+    ApplicationAvailability
+  >(ApplicationAvailability.FULL_TIME);
   const [skills, setSkills] = useState<string[]>([]);
   const [currentSkill, setCurrentSkill] = useState("");
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const toast = useToast();
-  const { login, signup, loading } = useAuth();
+  const { signIn, signUp, loading } = useAuth();
   const router = useRouter();
 
   const isStrongPassword = (pwd: string) =>
@@ -54,11 +74,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       if (!firstname) errs.firstname = "First name is required.";
       if (!lastname) errs.lastname = "Last name is required.";
       if (!confirmPassword) errs.confirmPassword = "Confirm your password.";
-      if (password !== confirmPassword) errs.confirmPassword = "Passwords do not match.";
-      if (!isStrongPassword(password)) errs.password = "Password must have at least 8 characters, 1 uppercase letter, and 1 number.";
-      if (!isTutor && !isLecturer) errs.role = "Select Tutor or Lecturer.";
-      if (!availability) errs.availability = "Select availability.";
-      if (isTutor && skills.length === 0) errs.skills = "Add at least one skill for Tutor role.";
+      if (password !== confirmPassword)
+        errs.confirmPassword = "Passwords do not match.";
+      if (!isStrongPassword(password))
+        errs.password =
+          "Password must have at least 8 characters, 1 uppercase letter, and 1 number.";
+      if (!isCandidate && !isLecturer)
+        errs.role = "Select Candidate or Lecturer.";
+      if (!availability)
+        errs.availability = "Select availability.";
+      if (isCandidate && skills.length === 0)
+        errs.skills = "Add at least one skill for Candidate role.";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -78,24 +104,52 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     let success = false;
 
     if (type === "signin") {
-      success = await login(email, password, rememberMe);
-      if (rememberMe) {
-        localStorage.setItem("rememberedEmail", email);
-        localStorage.setItem("rememberedPassword", password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedEmail");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.removeItem("rememberMe");
+      try {
+        const payload: SignInPayload = { email, password, rememberMe };
+        await signIn(payload);
+        success = true;
+        if (rememberMe) {
+          localStorage.setItem("rememberedEmail", email);
+          localStorage.setItem("rememberedPassword", password);
+          localStorage.setItem("rememberMe", "true");
+        } else {
+          localStorage.removeItem("rememberedEmail");
+          localStorage.removeItem("rememberedPassword");
+          localStorage.removeItem("rememberMe");
+        }
+      } catch {
+        success = false;
       }
     } else {
-      success = await signup({ email, password, confirmPassword, firstname, lastname, isTutor, isLecturer, availability, skills });
+      try {
+        const payload: SignUpPayload = {
+          email,
+          password,
+          confirmPassword,
+          firstname,
+          lastname,
+          isCandidate,
+          isLecturer,
+          availability,
+          skills,
+        };
+        await signUp(payload);
+        success = true;
+      } catch {
+        success = false;
+      }
     }
 
     if (success) {
       toast({
-        title: type === "signin" ? "Signed in successfully!" : "Account created successfully!",
-        description: type === "signin" ? `Welcome back, ${email}` : "You can now sign in.",
+        title:
+          type === "signin"
+            ? "Signed in successfully!"
+            : "Account created successfully!",
+        description:
+          type === "signin"
+            ? `Welcome back, ${email}`
+            : "You can now sign in.",
         status: "success",
         duration: 4000,
         isClosable: true,
@@ -105,7 +159,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     } else {
       toast({
         title: "Authentication Error",
-        description: type === "signin" ? "Incorrect email or password." : "Signup failed. Email already in use.",
+        description:
+          type === "signin"
+            ? "Incorrect email or password."
+            : "Signup failed. Email already in use.",
         status: "error",
         duration: 4000,
         isClosable: true,
@@ -115,14 +172,30 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   };
 
   return (
-    <Box minH="90vh" bgGradient="linear(to-r, blue.50, blue.100)" display="flex" alignItems="center" justifyContent="center" px={4}>
-      <Box maxW="md" w="100%" p={8} bg="white" boxShadow="lg" borderRadius="xl">
+    <Box
+      minH="90vh"
+      bgGradient="linear(to-r, blue.50, blue.100)"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      px={4}
+    >
+      <Box
+        maxW="md"
+        w="100%"
+        p={8}
+        bg="white"
+        boxShadow="lg"
+        borderRadius="xl"
+      >
         <Box textAlign="center" mb={4}>
           <Heading size="lg" color="blue.600">
             {type === "signin" ? "Welcome Back" : "Create Your Account"}
           </Heading>
           <Text fontSize="sm" color="gray.500">
-            {type === "signin" ? "Enter your credentials to continue" : "Sign up to get started"}
+            {type === "signin"
+              ? "Enter your credentials to continue"
+              : "Sign up to get started"}
           </Text>
         </Box>
 
@@ -132,23 +205,45 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               <>
                 <FormControl isInvalid={!!errors.firstname} isRequired>
                   <FormLabel>First Name</FormLabel>
-                  <Input value={firstname} onChange={(e) => setFirstname(e.target.value)} placeholder="First name" />
+                  <Input
+                    value={firstname}
+                    onChange={(e) => setFirstname(e.target.value)}
+                    placeholder="First name"
+                    autoComplete="off"
+                  />
                   <FormErrorMessage>{errors.firstname}</FormErrorMessage>
                 </FormControl>
 
                 <FormControl isInvalid={!!errors.lastname} isRequired>
                   <FormLabel>Last Name</FormLabel>
-                  <Input value={lastname} onChange={(e) => setLastname(e.target.value)} placeholder="Last name" />
+                  <Input
+                    value={lastname}
+                    onChange={(e) => setLastname(e.target.value)}
+                    placeholder="Last name"
+                    autoComplete="off"
+                  />
                   <FormErrorMessage>{errors.lastname}</FormErrorMessage>
                 </FormControl>
 
                 <FormControl isInvalid={!!errors.role}>
                   <FormLabel>Role</FormLabel>
                   <Stack spacing={2}>
-                    <Checkbox isChecked={isTutor} onChange={(e) => { setIsTutor(e.target.checked); if (e.target.checked) setIsLecturer(false); }}>
-                      Tutor
+                    <Checkbox
+                      isChecked={isCandidate}
+                      onChange={(e) => {
+                        setIsCandidate(e.target.checked);
+                        if (e.target.checked) setIsLecturer(false);
+                      }}
+                    >
+                      Candidate
                     </Checkbox>
-                    <Checkbox isChecked={isLecturer} onChange={(e) => { setIsLecturer(e.target.checked); if (e.target.checked) setIsTutor(false); }}>
+                    <Checkbox
+                      isChecked={isLecturer}
+                      onChange={(e) => {
+                        setIsLecturer(e.target.checked);
+                        if (e.target.checked) setIsCandidate(false);
+                      }}
+                    >
                       Lecturer
                     </Checkbox>
                   </Stack>
@@ -157,24 +252,63 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
                 <FormControl isInvalid={!!errors.availability} isRequired>
                   <FormLabel>Availability</FormLabel>
-                  <Select value={availability} onChange={(e) => setAvailability(e.target.value as "Full-Time" | "Part-Time")}>
+                  <Select
+                    value={availability}
+                    onChange={(e) =>
+                      setAvailability(
+                        e.target.value as ApplicationAvailability
+                      )
+                    }
+                  >
                     <option value="Full-Time">Full-Time</option>
                     <option value="Part-Time">Part-Time</option>
                   </Select>
                   <FormErrorMessage>{errors.availability}</FormErrorMessage>
                 </FormControl>
 
-                {isTutor && (
+                {isCandidate && (
                   <FormControl isInvalid={!!errors.skills}>
                     <FormLabel>Skills</FormLabel>
                     <Stack spacing={2}>
-                      <Input value={currentSkill} onChange={(e) => setCurrentSkill(e.target.value)} placeholder="Add a skill" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }} />
-                      <Button size="sm" onClick={handleAddSkill} isDisabled={!currentSkill.trim()}>Add Skill</Button>
+                      <Input
+                        value={currentSkill}
+                        onChange={(e) => setCurrentSkill(e.target.value)}
+                        placeholder="Add a skill"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddSkill();
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleAddSkill}
+                        isDisabled={!currentSkill.trim()}
+                      >
+                        Add Skill
+                      </Button>
                       <FormErrorMessage>{errors.skills}</FormErrorMessage>
-                      {skills.map((skill, index) => (
-                        <Box key={index} p={2} bg="gray.100" borderRadius="md" display="flex" justifyContent="space-between" alignItems="center">
+                      {skills.map((skill, idx) => (
+                        <Box
+                          key={idx}
+                          p={2}
+                          bg="gray.100"
+                          borderRadius="md"
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
                           <Text>{skill}</Text>
-                          <Button size="sm" colorScheme="red" onClick={() => setSkills(skills.filter(s => s !== skill))}>Remove</Button>
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            onClick={() =>
+                              setSkills(skills.filter((s) => s !== skill))
+                            }
+                          >
+                            Remove
+                          </Button>
                         </Box>
                       ))}
                     </Stack>
@@ -185,31 +319,59 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
             <FormControl isInvalid={!!errors.email} isRequired>
               <FormLabel>Email</FormLabel>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoComplete="off" />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                autoComplete="off"
+              />
               <FormErrorMessage>{errors.email}</FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.password} isRequired>
               <FormLabel>Password</FormLabel>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" autoComplete="off" />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                autoComplete="off"
+              />
               <FormErrorMessage>{errors.password}</FormErrorMessage>
             </FormControl>
 
             {type === "signup" && (
               <FormControl isInvalid={!!errors.confirmPassword} isRequired>
                 <FormLabel>Confirm Password</FormLabel>
-                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" autoComplete="off" />
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  autoComplete="off"
+                />
                 <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
               </FormControl>
             )}
 
             {type === "signin" && (
-              <Checkbox isChecked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}>
+              <Checkbox
+                isChecked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              >
                 Remember me
               </Checkbox>
             )}
 
-            <Button type="submit" isLoading={loading} colorScheme="blue" width="100%" borderRadius="md" fontWeight="bold">
+            <Button
+              type="submit"
+              isLoading={loading}
+              colorScheme="blue"
+              width="100%"
+              borderRadius="md"
+              fontWeight="bold"
+            >
               {type === "signin" ? "Sign In" : "Sign Up"}
             </Button>
 
@@ -217,7 +379,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               <Text fontSize="sm">
                 Need an account?{" "}
                 <NextLink href="/signup" passHref legacyBehavior>
-                  <Link color="blue.500" fontWeight="semibold">Sign up</Link>
+                  <Link color="blue.500" fontWeight="semibold">
+                    Sign up
+                  </Link>
                 </NextLink>
               </Text>
             )}

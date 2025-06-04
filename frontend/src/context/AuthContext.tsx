@@ -1,33 +1,48 @@
 // src/context/AuthContext.tsx
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { AuthCredentials } from "@/types/apiRequests";
-import { MeResponse, SignInResponse, SignUpResponse } from "@/types/apiResponses";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { SignInPayload, SignUpPayload } from "@/types/apiRequests";
+import { MeResponse } from "@/types/apiResponses";
 import { User } from "@/types/user";
+import { useToast } from "@chakra-ui/react";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signIn: (creds: AuthCredentials) => Promise<void>;
-  signUp: (creds: AuthCredentials) => Promise<void>;
+  signIn: (creds: SignInPayload) => Promise<void>;
+  signUp: (creds: SignUpPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setUser: (u: User | null) => void;  // ← added setter
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   // Fetch current user on mount
   useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
+    refreshUser()
+      .catch(() => {
+        /* ignore */
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const signIn = async (creds: AuthCredentials) => {
+  const signIn = async (creds: SignInPayload) => {
     setError(null);
     try {
       const res = await fetch("/api/auth/signin", {
@@ -40,7 +55,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const data = await res.json();
         throw new Error(data.message || "Sign‐in failed");
       }
-      // no JSON except message, so just re‐fetch /me
       await refreshUser();
     } catch (err: any) {
       setError(err.message);
@@ -48,7 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (creds: AuthCredentials) => {
+  const signUp = async (creds: SignUpPayload) => {
     setError(null);
     try {
       const res = await fetch("/api/auth/signup", {
@@ -61,7 +75,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const data = await res.json();
         throw new Error(data.message || "Sign‐up failed");
       }
-      // The response includes user info, but we’ll just call /me to populate state
       await refreshUser();
     } catch (err: any) {
       setError(err.message);
@@ -94,7 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       if (res.ok) {
         const data: MeResponse = await res.json();
-        // Map MeResponse → our User type
+        // Map MeResponse → User (our front-end shape)
         const mapped: User = {
           id: data.id,
           email: data.email,
@@ -121,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, signIn, signUp, signOut, refreshUser }}
+      value={{ user, loading, error, signIn, signUp, signOut, refreshUser, setUser }}
     >
       {children}
     </AuthContext.Provider>

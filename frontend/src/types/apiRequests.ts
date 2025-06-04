@@ -1,31 +1,42 @@
 // src/types/apiRequests.ts
 
-import {
-  ApplicationAvailability,
-  ApplicationRole,
-} from "./enums";
+import { ApplicationAvailability } from "./enums";
 
 /**
- * Payload for sign‐in or sign‐up endpoints.
+ * Payload for sign‐in endpoint.
  */
-export interface AuthCredentials {
+export interface SignInPayload {
   email: string;
   password: string;
-  confirmPassword?: string;    // only for signup
-  rememberMe?: boolean;         // only for signin
+  rememberMe?: boolean;
 }
 
 /**
- * Payload when a candidate applies to a course (POST /api/candidates/courses/:id/apply).
+ * Payload for sign‐up endpoint.
+ */
+export interface SignUpPayload {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstname: string;
+  lastname: string;
+  isCandidate: boolean;
+  isLecturer: boolean;
+  availability: ApplicationAvailability;
+  skills: string[];
+}
+
+/**
+ * Payload when a candidate applies to a course.
  */
 export interface ApplyToCourseRequest {
   appliedAvailability: ApplicationAvailability;
   appliedSkills: string[];
-  role: ApplicationRole;
+  role: string;
 }
 
 /**
- * Payload when a candidate updates their application (PATCH /api/candidates/courses/:id/applications/me).
+ * Payload when a candidate updates their application.
  */
 export interface UpdateApplicationRequest {
   appliedAvailability?: ApplicationAvailability;
@@ -33,7 +44,7 @@ export interface UpdateApplicationRequest {
 }
 
 /**
- * Payload when a lecturer updates an application’s status (PATCH /api/lecturer/courses/:courseId/applications/:applicationId).
+ * Payload when a lecturer updates an application’s status.
  */
 export interface UpdateApplicationStatusRequest {
   accepted: boolean;

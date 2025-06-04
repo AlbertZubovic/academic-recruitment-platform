@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { useRouter } from 'next/router';
-import { useCourse } from '@/context/CourseContext';
-import { useAuth } from '@/context/AuthContext';
-import { Course } from '@/types/course';
+// src/components/candidates/CandidatePage.tsx
+
+import React, { useState } from "react";
+import { useRouter } from "next/router";
+import { useCourses } from "@/context/CourseContext";
+import { useAuth } from "@/context/AuthContext";
+import { Course } from "@/types/course";
 
 import {
   Container,
@@ -28,13 +30,13 @@ import {
   ModalCloseButton,
   useDisclosure,
   HStack,
-} from '@chakra-ui/react';
-import { FaPencilAlt, FaTrashAlt } from 'react-icons/fa';
-import ApplyModal from './tutorFormSections/ApplicationDetailsForm';
+} from "@chakra-ui/react";
+import { FaPencilAlt, FaTrashAlt } from "react-icons/fa";
+import ApplyModal from "./candidateFormSections/ApplicationDetailsForm";
 
-const TutorPage: React.FC = () => {
+const CandidatePage: React.FC = () => {
   const router = useRouter();
-  const { courses, deleteApplication } = useCourse();
+  const { courses, deleteApplication } = useCourses();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -73,10 +75,10 @@ const TutorPage: React.FC = () => {
         </Heading>
 
         <Text fontSize="lg" textAlign="center" color="gray.600">
-          Welcome {user?.firstName} {user?.lastName}
+          Welcome {user?.firstname} {user?.lastname}
         </Text>
 
-        <Button onClick={() => router.push('/mydetails')}>
+        <Button onClick={() => router.push("/mydetails")}>
           <Icon as={FaPencilAlt} mr={2} /> Edit Details
         </Button>
 
@@ -114,12 +116,12 @@ const TutorPage: React.FC = () => {
                     </Wrap>
 
                     <Button
-                      colorScheme={hasApplied ? 'gray' : 'green'}
+                      colorScheme={hasApplied ? "gray" : "green"}
                       size="sm"
                       onClick={() => handleOpenApplyModal(course)}
                       disabled={hasApplied}
                     >
-                      {hasApplied ? 'Already Applied' : 'Apply'}
+                      {hasApplied ? "Already Applied" : "Apply"}
                     </Button>
                   </VStack>
                 </AccordionPanel>
@@ -128,7 +130,9 @@ const TutorPage: React.FC = () => {
           })}
         </Accordion>
 
-        <Heading size="md" mt={10}>My Applications</Heading>
+        <Heading size="md" mt={10}>
+          My Applications
+        </Heading>
         {myApplications.length === 0 ? (
           <Text>No applications yet.</Text>
         ) : (
@@ -143,16 +147,36 @@ const TutorPage: React.FC = () => {
                 </AccordionButton>
                 <AccordionPanel>
                   <VStack align="start">
-                    <Text><strong>Availability:</strong> {(course as any).application?.appliedAvailability}</Text>
-                    <Text><strong>Skills:</strong></Text>
+                    <Text>
+                      <strong>Availability:</strong>{" "}
+                      {(course as any).application?.appliedAvailability}
+                    </Text>
+                    <Text>
+                      <strong>Skills:</strong>
+                    </Text>
                     <Wrap>
-                      {(course as any).application?.appliedSkills?.map((s: string, idx: number) => (
-                        <Tag key={idx} colorScheme="blue">{s}</Tag>
-                      ))}
+                      {(course as any).application?.appliedSkills?.map(
+                        (s: string, idx: number) => (
+                          <Tag key={idx} colorScheme="blue">
+                            {s}
+                          </Tag>
+                        )
+                      )}
                     </Wrap>
                     <HStack>
-                      <Button size="sm" colorScheme="blue" onClick={() => handleOpenApplyModal(course, true)}>Edit</Button>
-                      <Button size="sm" colorScheme="red" leftIcon={<FaTrashAlt />} onClick={() => deleteApplication(course.id)}>
+                      <Button
+                        size="sm"
+                        colorScheme="blue"
+                        onClick={() => handleOpenApplyModal(course, true)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        colorScheme="red"
+                        leftIcon={<FaTrashAlt />}
+                        onClick={() => deleteApplication(course.id)}
+                      >
                         Delete
                       </Button>
                     </HStack>
@@ -176,4 +200,4 @@ const TutorPage: React.FC = () => {
   );
 };
 
-export default TutorPage;
+export default CandidatePage;

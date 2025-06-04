@@ -1,7 +1,9 @@
+// src/components/layout/Layout.tsx
+
 import React from "react";
 import Header from "./Header";
 import Footer from "./Footer";
-import NavBar from './NavBar';
+import NavBar from "./NavBar";
 import { useAuth } from "@/context/AuthContext";
 
 interface LayoutProps {
@@ -10,7 +12,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ Component, pageProps }) => {
-  const { isLoggedIn } = useAuth();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
 
   return (
     <div

@@ -22,8 +22,8 @@ import AuthForm from "@/components/auth/AuthForm";
 import { CourseProvider } from "@/context/CourseContext";
 import { SelectedApplicantsProvider } from "@/context/SelectedApplicantsContext";
 import { Tutor } from "@/types/tutor";
-import TutorDetails from "@/components/tutors/TutorDetailsCard";
-import TutorDetailsPage from "@/components/tutors/TutorDetailsCard";
+import TutorDetails from "@/components/candidates/CandidateDetailsCard";
+import TutorDetailsPage from "@/components/candidates/CandidateDetailsCard";
 import ApplicationPage from "@/components/applications/ApplicationContainer";
 import { ApplicationProvider } from "@/context/ApplicationContext";
 

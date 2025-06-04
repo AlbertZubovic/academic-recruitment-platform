@@ -1,16 +1,16 @@
-// src/components/tutors/TutorDetailsCard.tsx
+// src/components/candidates/CandidateDetailsCard.tsx
 
 /**
- * TutorDetailsCard
- * A presentational component that displays tutor information:
+ * CandidateDetailsCard
+ * A presentational component that displays candidate information:
  * Full name
  * Email address
  * Skills list
  * Academic credentials
- * Previous teaching roles
+ * Previous academic roles
  */
 
-import React from 'react';
+import React from "react";
 import {
   Box,
   Heading,
@@ -20,20 +20,20 @@ import {
   Tag,
   Wrap,
   WrapItem,
-} from '@chakra-ui/react';
-import { Tutor } from '@/types/tutor';
+} from "@chakra-ui/react";
+import { Candidate } from "@/types/candidate";
 
-interface TutorDetailsCardProps {
-  user: Tutor;
+interface CandidateDetailsCardProps {
+  user: Candidate;
 }
-// If user is null display fallback message
-const TutorDetailsCard: React.FC<TutorDetailsCardProps> = ({ user }) => {
-  console.log('user =', user);
-  // Fallback UI if no user is provided
+
+const CandidateDetailsCard: React.FC<CandidateDetailsCardProps> = ({
+  user,
+}) => {
   if (!user) {
     return (
       <Box borderWidth={1} borderRadius="md" p={4} boxShadow="sm">
-        <Text color="red.500">No tutor data available.</Text>
+        <Text color="red.500">No candidate data available.</Text>
       </Box>
     );
   }
@@ -42,14 +42,14 @@ const TutorDetailsCard: React.FC<TutorDetailsCardProps> = ({ user }) => {
     <Box borderWidth={1} borderRadius="md" p={4} boxShadow="sm">
       {/* Name Heading */}
       <Heading size="md" mb={2}>
-        {user.firstName || 'N/A'} {user.lastName || ''}
+        {user.firstName || "N/A"} {user.lastName || ""}
       </Heading>
 
       <Stack spacing={4}>
         {/* Email Section */}
         <Box>
           <Text fontWeight="medium">Email</Text>
-          <Text>{user.email || 'No email provided'}</Text>
+          <Text>{user.email || "No email provided"}</Text>
         </Box>
 
         <Divider />
@@ -75,7 +75,7 @@ const TutorDetailsCard: React.FC<TutorDetailsCardProps> = ({ user }) => {
         {/* Credentials Section */}
         <Box>
           <Text fontWeight="medium">Credentials</Text>
-          <Text>{user.credentials || 'No credentials provided'}</Text>
+          <Text>{user.credentials || "No credentials provided"}</Text>
         </Box>
 
         <Divider />
@@ -88,7 +88,8 @@ const TutorDetailsCard: React.FC<TutorDetailsCardProps> = ({ user }) => {
               {user.pastRoles.map((role, index) => (
                 <Box key={index}>
                   <Text>
-                    <strong>{role.role}</strong> – {role.courseName} ({role.courseCode})
+                    <strong>{role.role}</strong> – {role.courseName} (
+                    {role.courseCode})
                     {role.semester && ` – ${role.semester}`}
                   </Text>
                 </Box>
@@ -103,4 +104,4 @@ const TutorDetailsCard: React.FC<TutorDetailsCardProps> = ({ user }) => {
   );
 };
 
-export default TutorDetailsCard;
+export default CandidateDetailsCard;

@@ -1,3 +1,5 @@
+// src/pages/LandingPage.tsx
+
 import React, { useState } from "react";
 import {
   Box,
@@ -23,11 +25,12 @@ import {
 } from "@chakra-ui/react";
 import styles from "@/styles/modules/pageContent.module.css";
 import { useAuth } from "@/context/AuthContext";
-import { useCourse } from "@/context/CourseContext";
+import { useCourses } from "@/context/CourseContext";
 
 const LandingPage: React.FC = () => {
-  const { user, isLoggedIn, loading: authLoading } = useAuth();
-  const { courses } = useCourse();
+  const { user, loading: authLoading } = useAuth();
+  const { courses } = useCourses();
+  const isLoggedIn = !!user;
 
   const {
     isOpen: isProfileOpen,
@@ -51,7 +54,8 @@ const LandingPage: React.FC = () => {
           className={styles.landingImage}
         />
         <Text className={styles.description}>
-          TeachTeam helps lecturers hire skilled tutors and lab assistants through a streamlined application and review system.
+          TeachTeam helps lecturers hire skilled tutors and lab assistants
+          through a streamlined application and review system.
         </Text>
       </Box>
 
@@ -59,7 +63,9 @@ const LandingPage: React.FC = () => {
       <VStack className={styles.welcomeSection} align="start" spacing={6}>
         <Box>
           <Heading className={styles.heading}>Welcome to TeachTeam</Heading>
-          <Text className={styles.subheading}>A place by teachers, for teachers.</Text>
+          <Text className={styles.subheading}>
+            A place by teachers, for teachers.
+          </Text>
         </Box>
 
         {authLoading && <Spinner size="lg" />}
@@ -79,14 +85,18 @@ const LandingPage: React.FC = () => {
               onClick={onProfileOpen}
             >
               <HStack spacing={4}>
-                <Avatar name={`${user.firstName} ${user.lastName}`} />
+                <Avatar
+                  name={`${user.firstname} ${user.lastname}`}
+                />
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="bold">
-                    {user.firstName} {user.lastName}
+                    {user.firstname} {user.lastname}
                   </Text>
-                  <Text fontSize="sm" color="gray.600">{user.email}</Text>
+                  <Text fontSize="sm" color="gray.600">
+                    {user.email}
+                  </Text>
                   <Text fontSize="sm" color="blue.500" fontWeight="medium">
-                    Role: {user.isLecturer ? "Lecturer" : "Tutor"}
+                    Role: {user.isLecturer ? "Lecturer" : "Candidate"}
                   </Text>
                 </VStack>
               </HStack>
@@ -94,22 +104,28 @@ const LandingPage: React.FC = () => {
 
             {/* Applications List */}
             <Box mt={4}>
-              <Heading size="sm" mb={2}>My Applications</Heading>
+              <Heading size="sm" mb={2}>
+                My Applications
+              </Heading>
               {courses.filter((c) => (c as any).application).length === 0 ? (
-                <Text color="gray.500" fontSize="sm">No applications yet.</Text>
+                <Text color="gray.500" fontSize="sm">
+                  No applications yet.
+                </Text>
               ) : (
                 <VStack align="start" spacing={2}>
-                  {courses.filter((c) => (c as any).application).map((course) => (
-                    <Button
-                      key={course.id}
-                      size="sm"
-                      variant="outline"
-                      colorScheme="blue"
-                      onClick={() => handleApplicationClick(course)}
-                    >
-                      {course.name} ({course.courseCode})
-                    </Button>
-                  ))}
+                  {courses
+                    .filter((c) => (c as any).application)
+                    .map((course) => (
+                      <Button
+                        key={course.id}
+                        size="sm"
+                        variant="outline"
+                        colorScheme="blue"
+                        onClick={() => handleApplicationClick(course)}
+                      >
+                        {course.name} ({course.courseCode})
+                      </Button>
+                    ))}
                 </VStack>
               )}
             </Box>
@@ -122,13 +138,25 @@ const LandingPage: React.FC = () => {
                 <ModalCloseButton />
                 <ModalBody>
                   <VStack align="start" spacing={3}>
-                    <Text><strong>Name:</strong> {user.firstName} {user.lastName}</Text>
-                    <Text><strong>Email:</strong> {user.email}</Text>
-                    <Text><strong>Role:</strong> {user.isLecturer ? "Lecturer" : "Tutor"}</Text>
-                    {user.isTutor && (
+                    <Text>
+                      <strong>Name:</strong> {user.firstname} {user.lastname}
+                    </Text>
+                    <Text>
+                      <strong>Email:</strong> {user.email}
+                    </Text>
+                    <Text>
+                      <strong>Role:</strong>{" "}
+                      {user.isLecturer ? "Lecturer" : "Candidate"}
+                    </Text>
+                    {user.isCandidate && (
                       <>
-                        <Text><strong>Availability:</strong> {user.defaultAvailability || "Not set"}</Text>
-                        <Text><strong>Skills:</strong></Text>
+                        <Text>
+                          <strong>Availability:</strong>{" "}
+                          {user.defaultAvailability || "Not set"}
+                        </Text>
+                        <Text>
+                          <strong>Skills:</strong>
+                        </Text>
                         {user.defaultSkills && user.defaultSkills.length > 0 ? (
                           <List pl={4}>
                             {user.defaultSkills.map((skill, idx) => (
@@ -136,18 +164,26 @@ const LandingPage: React.FC = () => {
                             ))}
                           </List>
                         ) : (
-                          <Text ml={4} color="gray.500">No skills listed</Text>
+                          <Text ml={4} color="gray.500">
+                            No skills listed
+                          </Text>
                         )}
                       </>
                     )}
-                    <Text fontSize="sm" color="gray.500">Joined: {new Date(user.created).toLocaleDateString()}</Text>
+                    <Text fontSize="sm" color="gray.500">
+                      Joined: {new Date(user.created).toLocaleDateString()}
+                    </Text>
                   </VStack>
                 </ModalBody>
               </ModalContent>
             </Modal>
 
             {/* Application Details Modal */}
-            <Modal isOpen={!!selectedApp} onClose={() => setSelectedApp(null)} size="md">
+            <Modal
+              isOpen={!!selectedApp}
+              onClose={() => setSelectedApp(null)}
+              size="md"
+            >
               <ModalOverlay />
               <ModalContent>
                 <ModalHeader>Application Details</ModalHeader>
@@ -155,31 +191,48 @@ const LandingPage: React.FC = () => {
                 <ModalBody>
                   {selectedApp ? (
                     <VStack align="start" spacing={3}>
-                      <Text><strong>Course:</strong> {selectedApp.name} ({selectedApp.courseCode})</Text>
-                      <Text><strong>Availability:</strong> {(selectedApp as any).application?.appliedAvailability || "N/A"}</Text>
-                      <Text><strong>Applied Skills:</strong></Text>
-                      {(selectedApp as any).application?.appliedSkills?.length > 0 ? (
+                      <Text>
+                        <strong>Course:</strong> {selectedApp.name} (
+                        {selectedApp.courseCode})
+                      </Text>
+                      <Text>
+                        <strong>Availability:</strong>{" "}
+                        {(selectedApp as any).application
+                          ?.appliedAvailability || "N/A"}
+                      </Text>
+                      <Text>
+                        <strong>Applied Skills:</strong>
+                      </Text>
+                      {(selectedApp as any).application?.appliedSkills
+                        ?.length > 0 ? (
                         <Wrap>
-                          {(selectedApp as any).application.appliedSkills.map((skill: string, idx: number) => (
-                            <Tag key={idx} colorScheme="blue">{skill}</Tag>
-                          ))}
+                          {(selectedApp as any).application.appliedSkills.map(
+                            (skill: string, idx: number) => (
+                              <Tag key={idx} colorScheme="blue">
+                                {skill}
+                              </Tag>
+                            )
+                          )}
                         </Wrap>
                       ) : (
                         <Text color="gray.500">No applied skills listed</Text>
                       )}
-                      {(selectedApp as any).application?.accepted !== undefined && (
+                      {(selectedApp as any).application?.status && (
                         <Text>
-                          <strong>Status:</strong> {(selectedApp as any).application.accepted ? "Accepted" : "Pending"}
+                          <strong>Status:</strong>{" "}
+                          {(selectedApp as any).application.status}
                         </Text>
                       )}
                       {(selectedApp as any).application?.ranking !== undefined && (
                         <Text>
-                          <strong>Ranking:</strong> {(selectedApp as any).application.ranking ?? "N/A"}
+                          <strong>Ranking:</strong>{" "}
+                          {(selectedApp as any).application.ranking ?? "N/A"}
                         </Text>
                       )}
                       {(selectedApp as any).application?.lecturerComment && (
                         <Text>
-                          <strong>Lecturer Comment:</strong> {(selectedApp as any).application.lecturerComment}
+                          <strong>Lecturer Comment:</strong>{" "}
+                          {(selectedApp as any).application.lecturerComment}
                         </Text>
                       )}
                     </VStack>
@@ -193,7 +246,9 @@ const LandingPage: React.FC = () => {
         )}
 
         {!authLoading && !isLoggedIn && (
-          <Text color="gray.600">Log in to view your dashboard and manage applications.</Text>
+          <Text color="gray.600">
+            Log in to view your dashboard and manage applications.
+          </Text>
         )}
       </VStack>
     </main>

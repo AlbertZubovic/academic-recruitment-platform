@@ -1,15 +1,15 @@
-// pages/tutor.tsx
+// pages/candidate-details.tsx
 
 /**
- * Tutor Page
- * Displays the tutor application form and details component.
- * This page is rendered for users with the Tutor role.
+ * Candidate Details Page
+ * Displays the candidate’s profile form and details component.
+ * This page is intended for users with the Candidate role.
  */
 
 import React from "react";
-import TutorDetailsPage from "@/components/tutors/TutorDetailsPage";
+import CandidateDetailsPage from "@/components/candidates/CandidateDetailsPage";
 
-export default function Tutor() {
+export default function CandidateDetails() {
   return (
     <div
       style={{
@@ -20,7 +20,7 @@ export default function Tutor() {
       }}
     >
       <div className="pageBackground" style={{ flex: 1 }}>
-        <TutorDetailsPage />
+        <CandidateDetailsPage />
       </div>
     </div>
   );

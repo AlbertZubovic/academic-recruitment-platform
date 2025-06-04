@@ -2,26 +2,32 @@
 
 import React from "react";
 import { useRouter } from "next/router";
-import { Button, ButtonGroup, useToast, Spinner } from "@chakra-ui/react";
+import { Button, ButtonGroup, useToast } from "@chakra-ui/react";
 import { FaUnlock } from "react-icons/fa";
 import { useAuth } from "@/context/AuthContext";
 
 const AuthButton: React.FC = () => {
   const router = useRouter();
   const toast = useToast();
-  const { isLoggedIn, logout, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
+
+  const isLoggedIn = !!user;
 
   const handleLogout = async () => {
-    logout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-      status: "info",
-      duration: 2000,
-      isClosable: true,
-      position: "bottom",
-    });
-    router.push("/");
+    try {
+      await signOut();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+        status: "info",
+        duration: 2000,
+        isClosable: true,
+        position: "bottom",
+      });
+      router.push("/");
+    } catch (err) {
+      // handle error (optional)
+    }
   };
 
   const handleSignIn = () => {

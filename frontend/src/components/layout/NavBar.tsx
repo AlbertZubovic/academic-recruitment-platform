@@ -1,5 +1,13 @@
+// src/components/layout/NavBar.tsx
+
 import React from "react";
-import { Box, Wrap, WrapItem, Button, Link as ChakraLink } from "@chakra-ui/react";
+import {
+  Box,
+  Wrap,
+  WrapItem,
+  Button,
+  Link as ChakraLink,
+} from "@chakra-ui/react";
 import { useAuth } from "@/context/AuthContext";
 import styles from "@/styles/modules/navBar.module.css";
 
@@ -9,7 +17,6 @@ const NavBar: React.FC = () => {
   return (
     <Box className={styles.navBar} bg="blue.500" color="white" p={1}>
       <Wrap spacing={2} justify="left" align="center" h="100%">
-
         {/* Home link - always visible */}
         <WrapItem>
           <ChakraLink href="/" _hover={{ textDecoration: "none" }}>
@@ -19,10 +26,10 @@ const NavBar: React.FC = () => {
           </ChakraLink>
         </WrapItem>
 
-        {/* Tutor-specific link */}
-        {user?.isTutor && (
+        {/* Candidate-specific link (was “Tutor”) */}
+        {user?.isCandidate && (
           <WrapItem>
-            <ChakraLink href="/tutors" _hover={{ textDecoration: "none" }}>
+            <ChakraLink href="/candidates" _hover={{ textDecoration: "none" }}>
               <Button colorScheme="blue" size="sm" borderRadius={8}>
                 Opportunities
               </Button>
@@ -33,7 +40,7 @@ const NavBar: React.FC = () => {
         {/* Lecturer-specific link */}
         {user?.isLecturer && (
           <WrapItem>
-            <ChakraLink href="/applications" _hover={{ textDecoration: "none" }}>
+            <ChakraLink href="/lecturer/applications" _hover={{ textDecoration: "none" }}>
               <Button colorScheme="blue" size="sm" borderRadius={8}>
                 Applications
               </Button>

@@ -1,9 +1,13 @@
 // src/context/CourseContext.tsx
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { Course } from "@/types/course";
-import { LecturerApplication } from "@/types/Application";
-import { CourseListResponse } from "@/types/apiResponses";
 import { useAuth } from "./AuthContext";
 
 interface CourseContextValue {
@@ -11,27 +15,38 @@ interface CourseContextValue {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  applyToCourse: (
+    courseId: string,
+    payload: { appliedAvailability: string; appliedSkills: string[] }
+  ) => Promise<boolean>;
+  updateApplicationDetails: (
+    courseId: string,
+    payload: { appliedAvailability?: string; appliedSkills?: string[] }
+  ) => Promise<boolean>;
+  deleteApplication: (courseId: string) => Promise<void>;
 }
 
 const CourseContext = createContext<CourseContextValue | undefined>(undefined);
 
-export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const CourseProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCourses = async () => {
     setError(null);
     try {
-      const res = await fetch("/api/courses", {
+      const res = await fetch("/api/candidates/courses", {
         credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Failed to fetch courses");
       }
-      const data: CourseListResponse = await res.json();
+      const data: Course[] = await res.json();
       setCourses(data);
     } catch (err: any) {
       setError(err.message);
@@ -40,7 +55,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   useEffect(() => {
-    // Only fetch if user is logged in
     if (user) {
       fetchCourses().finally(() => setLoading(false));
     } else {
@@ -55,8 +69,81 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setLoading(false);
   };
 
+  const applyToCourse = async (
+    courseId: string,
+    payload: { appliedAvailability: string; appliedSkills: string[] }
+  ) => {
+    try {
+      const res = await fetch(`/api/candidates/courses/${courseId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        return false;
+      }
+      await fetchCourses();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const updateApplicationDetails = async (
+    courseId: string,
+    payload: { appliedAvailability?: string; appliedSkills?: string[] }
+  ) => {
+    try {
+      const res = await fetch(
+        `/api/candidates/courses/${courseId}/applications/me`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!res.ok) {
+        return false;
+      }
+      await fetchCourses();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteApplication = async (courseId: string) => {
+    try {
+      const res = await fetch(
+        `/api/candidates/courses/${courseId}/applications/me`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+      if (!res.ok) {
+        console.error("Failed to delete application");
+      }
+      await fetchCourses();
+    } catch (e) {
+      console.error("Error deleting application:", e);
+    }
+  };
+
   return (
-    <CourseContext.Provider value={{ courses, loading, error, refetch }}>
+    <CourseContext.Provider
+      value={{
+        courses,
+        loading,
+        error,
+        refetch,
+        applyToCourse,
+        updateApplicationDetails,
+        deleteApplication,
+      }}
+    >
       {children}
     </CourseContext.Provider>
   );
