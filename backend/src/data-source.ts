@@ -1,11 +1,12 @@
 import { DataSource } from "typeorm";
+
 import { User } from "./entities/User";
+import { Skill } from "./entities/Skill";
+import { UserSkill } from "./entities/UserSkill";
+import { PastRole } from "./entities/PastRole";
 import { Course } from "./entities/Course";
 import { Application } from "./entities/Application";
-import { Skill } from "./entities/Skill";
-import { CourseSkill } from "./entities/CourseSkill";
 import { AppliedSkill } from "./entities/AppliedSkill";
-import { UserSkill } from "./entities/UserSkill";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -19,12 +20,12 @@ export const AppDataSource = new DataSource({
   logging: true,
   entities: [
     User,
+    Skill,
+    UserSkill,
+    PastRole,
     Course,
     Application,
-    Skill,
-    CourseSkill,
     AppliedSkill,
-    UserSkill,
   ],
   migrations: ["src/migrations/**/*.ts"],
   subscribers: [],

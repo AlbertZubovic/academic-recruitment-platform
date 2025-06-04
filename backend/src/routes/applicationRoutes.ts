@@ -1,91 +1,41 @@
-// backend/src/routes/applicationRoutes.ts
-
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 import { AppDataSource } from "../data-source";
-import { Application } from "../entities/Application";
+import { User } from "../entities/User";
 import { authenticate } from "../middleware/authMiddleware";
 
 const router = Router();
 
-router.get("/selected", authenticate, async (req: Request, res: Response): Promise<void> => {
-  const repo = AppDataSource.getRepository(Application);
-  
+// GET /api/users/candidates – list all users flagged as candidates
+router.get("/candidates", authenticate, async (req, res) => {
+  const repo = AppDataSource.getRepository(User);
   try {
-    const applications = await repo.find({
-      where: { accepted: true },
-      relations: ["user", "course"]
+    const candidates = await repo.find({
+      where: { is_candidate: true, is_lecturer: false },
+      relations: ["userSkills", "userSkills.skill"],
+      order: { lastname: "ASC", firstname: "ASC" },
     });
-    
-    // Transform to match frontend format
-    const selectedApplicants = applications.map(app => ({
-      courseId: app.course.course_code,
-      userId: app.user.user_ID
+
+    const transformed = candidates.map((user) => ({
+      id: user.user_ID,
+      email: user.email,
+      firstName: user.firstname,
+      lastName: user.lastname,
+      isLecturer: user.is_lecturer,
+      isCandidate: user.is_candidate,
+      isAdmin: user.is_admin,
+      defaultSkills: user.userSkills?.map((us) => us.skill.name),
+      defaultAvailability: user.default_availability,
+      academicCredentials: user.academic_credentials,
+      created: user.created,
+      isBlocked: user.is_blocked,
     }));
-    
-    res.json(selectedApplicants);
-  } catch (err) {
-    console.error("Error fetching selected applicants:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
-// Select (accept) an applicant for a course
-router.post("/:courseId/select/:userId", authenticate, async (req: Request, res: Response): Promise<void> => {
-  const repo = AppDataSource.getRepository(Application);
-  
-  try {
-    const { courseId, userId } = req.params;
-    
-    const application = await repo.findOne({
-      where: {
-        course: { course_code: courseId },
-        user: { user_ID: userId }
-      },
-      relations: ["course", "user"]
-    });
-    
-    if (!application) {
-      res.status(404).json({ message: "Application not found" });
-      return;
-    }
-    
-    application.accepted = true;
-    await repo.save(application);
-    
-    res.json({ message: "Applicant selected successfully" });
+    res.json(transformed);
+    return;
   } catch (err) {
-    console.error("Error selecting applicant:", err);
+    console.error("Error fetching candidates:", err);
     res.status(500).json({ message: "Server error" });
-  }
-});
-
-// Remove selection (unaccept)
-router.delete("/:courseId/select/:userId", authenticate, async (req: Request, res: Response): Promise<void> => {
-  const repo = AppDataSource.getRepository(Application);
-  
-  try {
-    const { courseId, userId } = req.params;
-    
-    const application = await repo.findOne({
-      where: {
-        course: { course_code: courseId },
-        user: { user_ID: userId }
-      },
-      relations: ["course", "user"]
-    });
-    
-    if (!application) {
-      res.status(404).json({ message: "Application not found" });
-      return;
-    }
-    
-    application.accepted = false;
-    await repo.save(application);
-    
-    res.json({ message: "Applicant deselected successfully" });
-  } catch (err) {
-    console.error("Error deselecting applicant:", err);
-    res.status(500).json({ message: "Server error" });
+    return;
   }
 });
 

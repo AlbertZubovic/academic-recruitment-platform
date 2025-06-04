@@ -3,13 +3,18 @@ import {
   PrimaryColumn,
   Column,
   CreateDateColumn,
-  ManyToMany,
-  JoinTable,
   OneToMany,
 } from "typeorm";
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 import { UserSkill } from "./UserSkill";
+import { PastRole } from "./PastRole";
 
-// Define and export the enum for UserAvailability BEFORE the User class
 export enum UserAvailability {
   FULL_TIME = "Full-Time",
   PART_TIME = "Part-Time",
@@ -18,15 +23,23 @@ export enum UserAvailability {
 @Entity()
 export class User {
   @PrimaryColumn("char", { length: 36 })
+  @IsString()
   user_ID!: string;
 
   @Column({ length: 255, unique: true })
+  @IsEmail(undefined, { message: "Invalid email format" })
+  @MaxLength(255, { message: "Email must be at most 255 characters" })
   email!: string;
 
   @Column({ length: 60 })
+  @IsString()
+  @MaxLength(60, { message: "Password hash must be at most 60 characters" })
   password!: string;
 
-  @OneToMany(() => UserSkill, userSkill => userSkill.user, { cascade: true, eager: true })
+  @OneToMany(() => UserSkill, (userSkill) => userSkill.user, {
+    cascade: true,
+    eager: true,
+  })
   userSkills!: UserSkill[];
 
   @Column({
@@ -34,29 +47,47 @@ export class User {
     enum: UserAvailability,
     nullable: true,
   })
+  @IsOptional()
+  @IsString()
   default_availability!: UserAvailability | null;
 
   @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
   academic_credentials!: string | null;
 
   @Column({ length: 100 })
+  @IsString()
+  @MaxLength(100, { message: "First name must be at most 100 characters" })
   firstname!: string;
 
   @Column({ length: 100 })
+  @IsString()
+  @MaxLength(100, { message: "Last name must be at most 100 characters" })
   lastname!: string;
 
   @Column()
+  @IsBoolean()
   is_lecturer!: boolean;
 
   @Column()
-  is_tutor!: boolean;
+  @IsBoolean()
+  is_candidate!: boolean;
 
   @Column()
+  @IsBoolean()
   is_admin!: boolean;
 
   @CreateDateColumn()
   created!: Date;
 
   @Column({ default: false })
+  @IsBoolean()
   is_blocked!: boolean;
+
+  @OneToMany(() => PastRole, (pr) => pr.user, {
+    cascade: true,
+    eager: true,
+  })
+  pastRoles!: PastRole[];
 }
