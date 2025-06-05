@@ -80,8 +80,8 @@ const ApplicantDetailsModal: React.FC<Props> = ({
             {/* 3) Availability */}
             <Text>
               <strong>Applied Availability:</strong>{" "}
-              {applicationDetails.availability
-                ? applicationDetails.availability
+              {applicationDetails.appliedAvailability
+                ? applicationDetails.appliedAvailability
                     .split("-")
                     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
                     .join(" ")
@@ -93,8 +93,8 @@ const ApplicantDetailsModal: React.FC<Props> = ({
               <strong>Applied Skills:</strong>
             </Text>
             <Wrap>
-              {applicationDetails.skills && applicationDetails.skills.length > 0 ? (
-                applicationDetails.skills.map((skillName, i) => (
+              {applicationDetails.appliedSkills && applicationDetails.appliedSkills.length > 0 ? (
+                applicationDetails.appliedSkills.map((skillName, i) => (
                   <WrapItem key={i}>
                     <Badge colorScheme="green">{skillName}</Badge>
                   </WrapItem>

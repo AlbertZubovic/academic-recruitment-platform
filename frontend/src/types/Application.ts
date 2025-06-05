@@ -30,8 +30,8 @@ export interface LecturerApplication {
   userId: string;                 // candidate’s user_ID
   name: string;                   // e.g. "Firstname Lastname"
   role: ApplicationRole;
-  availability: ApplicationAvailability;
-  skills: string[];
+  appliedAvailability: ApplicationAvailability;
+  appliedSkills: string[];
   status: ApplicationStatus;
   lecturerComment?: string | null;
   ranking?: number | null;

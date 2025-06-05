@@ -32,40 +32,24 @@ import { User } from "@/types/user";
 // — Type Definitions for Context Value —
 ///////////////////////////////////////////////////////////////////////////////
 
-/**
- * The backend’s GET /api/courses endpoint returns each Course record plus
- * an `applicants: LecturerApplication[]` array. We type‐alias that here.
- */
 type CourseWithApplicants = CourseType & {
   applicants: LecturerApplication[];
 };
 
 interface ApplicationContextValue {
-  //
-  // 1) Candidate‐side state & methods
-  //
+  // 1) Candidate‐side
   myApplications: CandidateApplication[];
   loadingMyApps: boolean;
   errorMy: string | null;
-
-  applyToCourse: (
-    courseId: string,
-    payload: ApplyToCourseRequest
-  ) => Promise<void>;
-  updateMyApplication: (
-    courseId: string,
-    payload: UpdateApplicationRequest
-  ) => Promise<void>;
+  applyToCourse: (courseId: string, payload: ApplyToCourseRequest) => Promise<void>;
+  updateMyApplication: (courseId: string, payload: UpdateApplicationRequest) => Promise<void>;
   deleteMyApplication: (courseId: string) => Promise<void>;
   fetchMyApplications: () => Promise<void>;
 
-  //
-  // 2) Lecturer‐side state & methods
-  //
+  // 2) Lecturer‐side
   lecturerApplications: Record<string, LecturerApplication[]>;
   loadingLectApps: boolean;
   errorLect: string | null;
-
   fetchLecturerApplications: (courseId: string) => Promise<void>;
   updateApplicationStatus: (
     courseId: string,
@@ -73,13 +57,11 @@ interface ApplicationContextValue {
     payload: UpdateApplicationStatusRequest
   ) => Promise<void>;
 
-  //
-  // 3) “Search / filter / sort / drag” logic for *all* courses + applicants
-  //
+  // 3) Search/filter/sort/drag
   courses: CourseWithApplicants[];
   allUsers: User[];
 
-  filteredApplicants: CourseWithApplicants[]; // after applying search + availability + sort
+  filteredApplicants: CourseWithApplicants[]; // courses + *filtered* applicants per course
 
   searchTerm: string;
   setSearchTerm: (t: string) => void;
@@ -87,22 +69,18 @@ interface ApplicationContextValue {
   availabilityFilter: "all" | "full-time" | "part-time";
   setAvailabilityFilter: (f: "all" | "full-time" | "part-time") => void;
 
-  sortCriteria: string; // e.g. "course", "availability", or "grouped"
+  sortCriteria: string; // "course" | "availability" | "grouped"
   handleSort: (c: string) => void;
 
-  isFilteredView: boolean; // true whenever search/filter/sort ≠ defaults
-  openPanels: number[]; // legacy components expected a number[] here
+  isFilteredView: boolean;
+  openPanels: number[];
 
-  handleDragEnd: (event: any) => void; // dnd‐kit’s onDragEnd
+  handleDragEnd: (event: any) => void;
 }
 
-const ApplicationContext = createContext<ApplicationContextValue | undefined>(
-  undefined
-);
+const ApplicationContext = createContext<ApplicationContextValue | undefined>(undefined);
 
-export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const toast = useToast();
   const BASE_URL = "http://localhost:5000/api";
@@ -111,8 +89,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({
   // 1) Candidate‐side State + Methods
   ////////////////////////////////////////////////////////////////////////////
 
-  const [myApplications, setMyApplications] =
-    useState<CandidateApplication[]>([]);
+  const [myApplications, setMyApplications] = useState<CandidateApplication[]>([]);
   const [loadingMyApps, setLoadingMyApps] = useState(false);
   const [errorMy, setErrorMy] = useState<string | null>(null);
 
@@ -213,9 +190,8 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({
   // 2) Lecturer‐side State + Methods
   ////////////////////////////////////////////////////////////////////////////
 
-  const [lecturerApplications, setLecturerApplications] = useState<
-    Record<string, LecturerApplication[]>
-  >({});
+  const [lecturerApplications, setLecturerApplications] =
+    useState<Record<string, LecturerApplication[]>>({});
   const [loadingLectApps, setLoadingLectApps] = useState(false);
   const [errorLect, setErrorLect] = useState<string | null>(null);
 
@@ -353,40 +329,63 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({
 
   // 3f) Build “filteredApplicants” by applying searchTerm, availabilityFilter, and sortCriteria to `courses`
   const filteredApplicants = courses
+    .map((course) => {
+      // ── 1) FILTER THE course.applicants array itself ──
+      let filteredApps = (course.applicants || []).filter((app) => {
+        // a) If there’s a searchTerm, keep only applicants whose name or skills match
+        if (searchTerm) {
+          const lower = searchTerm.toLowerCase();
+          // Lookup full user name from allUsers
+          const userObj = allUsers.find((u) => u.id === app.userId);
+          const userName = userObj
+            ? `${userObj.firstName} ${userObj.lastName}`.toLowerCase()
+            : "";
+
+          const nameMatches = userName.includes(lower);
+          const skillMatches = (app.appliedSkills || []).some((skill) =>
+            skill.toLowerCase().includes(lower)
+          );
+          if (!(nameMatches || skillMatches)) {
+            return false;
+          }
+        }
+
+        // b) If availabilityFilter ≠ “all”, only keep those whose appliedAvailability matches
+        if (availabilityFilter !== "all") {
+          const filterValue =
+            availabilityFilter === "full-time" ? "Full-Time" : "Part-Time";
+          if (app.appliedAvailability !== filterValue) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // ── 2) RETURN a new course object, but with applicants = filteredApps ──
+      return { ...course, applicants: filteredApps };
+    })
+    // ── 3) THEN remove any courses that (a) have no filteredApps AND (b) whose name/code also don’t match the searchTerm ──
     .filter((course) => {
-      // — Filter by searchTerm matching course name/code OR any applicant’s name/skills
+      if (course.applicants.length > 0) {
+        return true;
+      }
+      // No matching applicants remained – check if the course name/code itself matches
       if (searchTerm) {
         const lower = searchTerm.toLowerCase();
-        const courseMatch =
+        return (
           course.name.toLowerCase().includes(lower) ||
-          course.courseCode.toLowerCase().includes(lower);
-        const applicantMatch = course.applicants.some((app) => {
-          return (
-            app.name.toLowerCase().includes(lower) ||
-            app.skills.some((skill) => skill.toLowerCase().includes(lower))
-          );
-        });
-        if (!courseMatch && !applicantMatch) return false;
+          course.courseCode.toLowerCase().includes(lower)
+        );
       }
-
-      // — Filter by availability (if ≠ “all”)
-      if (availabilityFilter !== "all") {
-        const filterValue =
-          availabilityFilter === "full-time" ? "Full-Time" : "Part-Time";
-        const has =
-          course.applicants.findIndex(
-            (app) => app.availability === filterValue
-          ) !== -1;
-        if (!has) return false;
-      }
-
-      return true;
+      // If no searchTerm and no applicants, hide it because availabilityFilter must have filtered them out
+      return false;
     })
     .map((course) => {
-      // — If sortCriteria === “availability”, reorder that course’s applicants accordingly
+      // ── 4) If sortCriteria === “availability”, reorder that course’s (already‐filtered) applicants accordingly ──
       if (sortCriteria === "availability") {
         const sortedApps = [...course.applicants].sort((a, b) =>
-          a.availability === "Full-Time" && b.availability === "Part-Time"
+          a.appliedAvailability === "Full-Time" && b.appliedAvailability === "Part-Time"
             ? -1
             : 1
         );

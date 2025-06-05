@@ -33,22 +33,22 @@ const ApplicantCardHeader: React.FC<Props> = ({
     {/* 4) Applied availability + skill badges */}
     <HStack spacing={2} wrap="wrap">
       <Badge colorScheme="purple">
-        {applicationDetails.availability
-          ? applicationDetails.availability
+        {applicationDetails.appliedAvailability
+          ? applicationDetails.appliedAvailability
               .split("-")
               .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
               .join(" ")
           : "N/A"}
       </Badge>
 
-      {applicationDetails.skills?.map((skillName, i) => (
+      {applicationDetails.appliedSkills?.map((skillName, i) => (
         <Badge key={i} colorScheme="blue">
           {skillName}
         </Badge>
       ))}
 
-      {(!applicationDetails.skills ||
-        applicationDetails.skills.length === 0) && (
+      {(!applicationDetails.appliedAvailability ||
+        applicationDetails.appliedSkills.length === 0) && (
         <Text fontSize="xs" color="gray.500">
           No specific skills
         </Text>

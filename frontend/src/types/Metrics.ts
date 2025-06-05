@@ -5,7 +5,7 @@
  */
 export interface AvailabilityMetric {
   availability: string; // "Full-Time" or "Part-Time"
-  count: number;
+  count:       number;
 }
 export type AvailabilityMetricResponse = AvailabilityMetric[];
 
@@ -13,9 +13,9 @@ export type AvailabilityMetricResponse = AvailabilityMetric[];
  * Response item from GET /api/metrics/selection-counts
  */
 export interface SelectionCount {
-  userId: string;
-  firstName: string;
-  lastName: string;
+  userId:        string;
+  firstName:     string;
+  lastName:      string;
   selectedCount: number;
 }
 export type SelectionCountResponse = SelectionCount[];
@@ -25,6 +25,6 @@ export type SelectionCountResponse = SelectionCount[];
  */
 export interface CommonSkill {
   skillName: string;
-  count: number;
+  count:     number;
 }
 export type CommonSkillResponse = CommonSkill[];
