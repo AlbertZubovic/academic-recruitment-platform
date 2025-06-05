@@ -1,32 +1,54 @@
+/* src/styles/modules/footer.module.css */
 /* ---------------------------------------------
- * footer.css
+ * footer.module.css
  * Styles for the footer section
  * --------------------------------------------- */
 
- .footer {
-  padding: var(--spacing-md);
+.footer {
+  padding: var(--spacing-md) var(--spacing-lg);
   background-color: var(--color-primary);
   color: var(--color-white);
-  height: 15%;
   width: 100%;
   margin-top: auto;
 
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 1rem;
 
-  font-weight: var(--font-weight-bold);
-  font-size: clamp(0.7rem, 1vw, 1rem);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+
+  font-weight: var(--font-weight-medium);
+  font-size: clamp(0.75rem, 1vw, 1rem);
+
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.footer p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.linkContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon {
+  font-size: 1.25rem;
+  vertical-align: middle;
+  transition: color 0.2s ease-in-out;
+}
+
+.footer a {
+  color: var(--color-white);
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.footer a:hover,
+.icon:hover {
+  color: var(--color-accent);
 }
