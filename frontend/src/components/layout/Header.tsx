@@ -1,20 +1,10 @@
-// src/components/layout/header.tsx
-
-/**
- * Header Component
- * Displays the top heading bar across the site.
- * Includes:
- * App logo (links to homepage)
- * Auth buttons (Sign In / Sign Up or Logout)
- *
- * Uses Chakra UI for consistent styling and FontAwesome for the icon.
- * Visibility depends on AuthContext loading state.
- */
+// src/components/layout/Header.tsx
 
 import React from "react";
 import Link from "next/link";
 import { Text } from "@chakra-ui/react";
 import { FaGraduationCap } from "react-icons/fa";
+import { useRouter } from "next/router";
 
 import AuthButton from "../auth/AuthButton";
 import { useAuth } from "@/context/AuthContext";
@@ -22,21 +12,28 @@ import styles from "@/styles/modules/header.module.css";
 
 const Header: React.FC = () => {
   const { loading } = useAuth();
+  const router = useRouter();
 
-  // Avoid rendering header while auth is still loading
   if (loading) return null;
+
+  const goToLanding = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push("/");
+  };
 
   return (
     <header className={styles.header}>
       {/* Logo and Title */}
-      <Link href="/" passHref legacyBehavior>
-        <a className={styles.logoTitle}>
-          <div className={styles.logo}>
-            <FaGraduationCap />
-          </div>
-          <Text className={styles.title}>TeachTeam</Text>
-        </a>
-      </Link>
+      <a
+        href="/landing"
+        className={styles.logoTitle}
+        onClick={goToLanding}
+      >
+        <div className={styles.logo}>
+          <FaGraduationCap />
+        </div>
+        <Text className={styles.title}>TeachTeam</Text>
+      </a>
 
       {/* Auth buttons */}
       <div className={styles.authButton}>
