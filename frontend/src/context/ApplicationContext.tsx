@@ -1,6 +1,12 @@
 // src/context/ApplicationContext.tsx
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import {
   CandidateApplication,
   LecturerApplication,
@@ -18,13 +24,24 @@ import { useAuth } from "./AuthContext";
 
 interface ApplicationContextValue {
   myApplications: CandidateApplication[];
-  lecturerApplications: Record<string, LecturerApplication[]>; // keyed by courseId
+  lecturerApplications: Record<string, LecturerApplication[]>;
   loadingMyApps: boolean;
   loadingLecturerApps: boolean;
   error: string | null;
-  applyToCourse: (courseId: string, payload: ApplyToCourseRequest) => Promise<void>;
-  updateMyApplication: (courseId: string, payload: UpdateApplicationRequest) => Promise<void>;
+
+  // Candidate methods
+  applyToCourse: (
+    courseId: string,
+    payload: ApplyToCourseRequest
+  ) => Promise<void>;
+  updateMyApplication: (
+    courseId: string,
+    payload: UpdateApplicationRequest
+  ) => Promise<void>;
+  deleteMyApplication: (courseId: string) => Promise<void>;
   fetchMyApplications: () => Promise<void>;
+
+  // Lecturer methods
   fetchLecturerApplications: (courseId: string) => Promise<void>;
   updateApplicationStatus: (
     courseId: string,
@@ -33,11 +50,17 @@ interface ApplicationContextValue {
   ) => Promise<void>;
 }
 
-const ApplicationContext = createContext<ApplicationContextValue | undefined>(undefined);
+const ApplicationContext = createContext<ApplicationContextValue | undefined>(
+  undefined
+);
 
-export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { user } = useAuth();
-  const [myApplications, setMyApplications] = useState<CandidateApplication[]>([]);
+  const [myApplications, setMyApplications] = useState<CandidateApplication[]>(
+    []
+  );
   const [lecturerApplications, setLecturerApplications] = useState<
     Record<string, LecturerApplication[]>
   >({});
@@ -45,12 +68,13 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loadingLecturerApps, setLoadingLecturerApps] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch candidate’s own applications
+  const BASE_URL = "http://localhost:5000/api";
+
   const fetchMyApplications = async () => {
     setError(null);
     setLoadingMyApps(true);
     try {
-      const res = await fetch("/api/candidates/applications", {
+      const res = await fetch(`${BASE_URL}/candidates/applications`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -67,17 +91,21 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Fetch applications for a given course (lecturer)
   const fetchLecturerApplications = async (courseId: string) => {
     setError(null);
     setLoadingLecturerApps(true);
     try {
-      const res = await fetch(`/api/lecturer/courses/${courseId}/applications`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${BASE_URL}/lecturer/courses/${courseId}/applications`,
+        {
+          credentials: "include",
+        }
+      );
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Failed to fetch applications for this course");
+        throw new Error(
+          data.message || "Failed to fetch applications for this course"
+        );
       }
       const data: LecturerApplicationsResponse = await res.json();
       setLecturerApplications((prev) => ({
@@ -95,11 +123,13 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Candidate: apply to a course
-  const applyToCourse = async (courseId: string, payload: ApplyToCourseRequest) => {
+  const applyToCourse = async (
+    courseId: string,
+    payload: ApplyToCourseRequest
+  ) => {
     setError(null);
     try {
-      const res = await fetch(`/api/candidates/courses/${courseId}/apply`, {
+      const res = await fetch(`${BASE_URL}/candidates/courses/${courseId}/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -109,7 +139,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         const data = await res.json();
         throw new Error(data.message || "Failed to apply");
       }
-      // Refresh my applications and perhaps courses list
       await fetchMyApplications();
     } catch (err: any) {
       setError(err.message);
@@ -117,24 +146,25 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Candidate: update own application
   const updateMyApplication = async (
     courseId: string,
     payload: UpdateApplicationRequest
   ) => {
     setError(null);
     try {
-      const res = await fetch(`/api/candidates/courses/${courseId}/applications/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `${BASE_URL}/candidates/courses/${courseId}/applications/me`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Failed to update application");
       }
-      // Refresh my applications
       await fetchMyApplications();
     } catch (err: any) {
       setError(err.message);
@@ -142,7 +172,26 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Lecturer: update someone’s application status
+  const deleteMyApplication = async (courseId: string) => {
+    setError(null);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/candidates/courses/${courseId}/applications/me`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("Failed to delete application:", data.message);
+      }
+      await fetchMyApplications();
+    } catch (err) {
+      console.error("Error deleting application:", err);
+    }
+  };
+
   const updateApplicationStatus = async (
     courseId: string,
     applicationId: string,
@@ -151,7 +200,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     setError(null);
     try {
       const res = await fetch(
-        `/api/lecturer/courses/${courseId}/applications/${applicationId}`,
+        `${BASE_URL}/lecturer/courses/${courseId}/applications/${applicationId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -163,7 +212,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         const data = await res.json();
         throw new Error(data.message || "Failed to update status");
       }
-      // Refresh that course’s applicant list
       await fetchLecturerApplications(courseId);
     } catch (err: any) {
       setError(err.message);
@@ -171,17 +219,17 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // On user change: if candidate, load their apps; if lecturer, clear lecturerApps.
+
   useEffect(() => {
     if (user && user.isCandidate) {
       fetchMyApplications();
     } else {
       setMyApplications([]);
     }
-    // Clear lecturerApplications if user logs out or is not a lecturer
     if (!user || !user.isLecturer) {
       setLecturerApplications({});
     }
+
   }, [user]);
 
   return (
@@ -194,6 +242,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         error,
         applyToCourse,
         updateMyApplication,
+        deleteMyApplication,
         fetchMyApplications,
         fetchLecturerApplications,
         updateApplicationStatus,
@@ -207,7 +256,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useApplications = (): ApplicationContextValue => {
   const ctx = useContext(ApplicationContext);
   if (!ctx) {
-    throw new Error("useApplications must be used within <ApplicationProvider>");
+    throw new Error(
+      "useApplications must be used within an <ApplicationProvider>"
+    );
   }
   return ctx;
 };

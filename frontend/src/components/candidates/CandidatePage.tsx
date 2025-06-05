@@ -103,6 +103,12 @@ const CandidatePage: React.FC = () => {
                       <strong>Semester:</strong> {course.semester}
                     </Text>
 
+                    {/* ← NEW: Roles Available */}
+                    <Text>
+                      <strong>Roles Available:</strong>{" "}
+                      {course.rolesAvailable.join(", ")}
+                    </Text>
+
                     <Text>
                       <strong>Skills Required:</strong>
                     </Text>

@@ -9,8 +9,8 @@ import { PastRole } from "./PastRole";
 export interface UserSummary {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstname: string;
+  lastname: string;
   isLecturer: boolean;
   isCandidate: boolean;
   isAdmin: boolean;
