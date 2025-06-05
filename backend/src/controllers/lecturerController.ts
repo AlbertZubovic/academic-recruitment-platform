@@ -36,7 +36,9 @@ export const getApplicationsForCourse = async (
       return;
     }
     if (course.lecturer.user_ID !== lecturerId) {
-      res.status(403).json({ message: "Not authorized to view these applications." });
+      res
+        .status(403)
+        .json({ message: "Not authorized to view these applications." });
       return;
     }
 
@@ -71,9 +73,10 @@ export const getApplicationsForCourse = async (
         res.status(400).json({ message: "Invalid availability filter." });
         return;
       }
-      qb = qb.andWhere("application.applied_availability = :availability", {
-        availability,
-      });
+      qb = qb.andWhere(
+        "application.applied_availability = :availability",
+        { availability }
+      );
     }
 
     // 6) Filter by skills if provided
@@ -104,6 +107,7 @@ export const getApplicationsForCourse = async (
           ? "Approved"
           : "Rejected",
       lecturerComment: app.lecturer_comment,
+      ranking: app.ranking,
     }));
 
     res.json(response);
@@ -117,7 +121,10 @@ export const getApplicationsForCourse = async (
 
 /**
  * PATCH /api/lecturer/courses/:courseId/applications/:applicationId
- * Body: { accepted: boolean, lecturerComment?: string }
+ * Body may include:
+ *   - accepted?: boolean | null
+ *   - lecturerComment?: string
+ *   - ranking?: number
  */
 export const updateApplicationStatus = async (
   req: Request,
@@ -126,7 +133,7 @@ export const updateApplicationStatus = async (
   try {
     const lecturerId = (req as any).user.userId;
     const { courseId, applicationId } = req.params;
-    const { accepted, lecturerComment } = req.body;
+    const { accepted, lecturerComment, ranking } = req.body;
 
     const appRepo = AppDataSource.getRepository(Application);
 
@@ -140,17 +147,28 @@ export const updateApplicationStatus = async (
       return;
     }
     if (application.course.course_ID !== courseId) {
-      res.status(400).json({ message: "Application does not belong to that course." });
+      res
+        .status(400)
+        .json({ message: "Application does not belong to that course." });
       return;
     }
     if (application.course.lecturer.user_ID !== lecturerId) {
-      res.status(403).json({ message: "Not authorized to update this application." });
+      res
+        .status(403)
+        .json({ message: "Not authorized to update this application." });
       return;
     }
 
-    // 2) Validate accepted is boolean
-    if (accepted !== true && accepted !== false && accepted !== null) {
-      res.status(400).json({ message: "Accepted must be true or false, or null." });
+    // 2) Validate accepted if provided (allow true, false, or null)
+    if (
+      accepted !== undefined &&
+      accepted !== true &&
+      accepted !== false &&
+      accepted !== null
+    ) {
+      res
+        .status(400)
+        .json({ message: "Accepted must be true, false, or null." });
       return;
     }
 
@@ -165,23 +183,38 @@ export const updateApplicationStatus = async (
       return;
     }
 
-    // 4) Update fields
-    application.accepted = accepted;
+    // 4) Validate ranking if provided
+    if (ranking !== undefined) {
+      const numRank = Number(ranking);
+      if (!Number.isInteger(numRank) || numRank < 1) {
+        res
+          .status(400)
+          .json({ message: "ranking must be a positive integer." });
+        return;
+      }
+      application.ranking = numRank;
+    }
+
+    // 5) Apply accepted / lecturerComment if provided
+    if (accepted !== undefined) {
+      application.accepted = accepted;
+    }
     if (typeof lecturerComment === "string") {
       application.lecturer_comment = lecturerComment;
     }
 
-    // 5) Validate updated application
+    // 6) Validate updated application via class-validator
     await validateOrReject(application);
 
-    // 6) Save
+    // 7) Save
     await appRepo.save(application);
 
-    res.json({ message: "Application status updated." });
+    res.json({ message: "Application updated." });
     return;
   } catch (err) {
     console.error("[LECTURER] updateApplicationStatus error:", err);
     if (Array.isArray(err)) {
+      // class-validator errors
       const messages = err
         .map((e) => Object.values(e.constraints || {}).join(", "))
         .join("; ");

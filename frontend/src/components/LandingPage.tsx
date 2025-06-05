@@ -1,5 +1,3 @@
-// src/pages/LandingPage.tsx
-
 import React, { useState } from "react";
 import {
   Box,
@@ -26,10 +24,14 @@ import {
 import styles from "@/styles/modules/pageContent.module.css";
 import { useAuth } from "@/context/AuthContext";
 import { useCourses } from "@/context/CourseContext";
+import { useApplications } from "@/context/ApplicationContext";
+import ProfileModal from "@/components/modals/ProfileModal";
+import ApplicationDetailsModal from "@/components/modals/ApplicationDetailsModal";
 
 const LandingPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const { courses } = useCourses();
+  const { courses: candidateCourses } = useCourses();
+  const { courses: lecturerCourses } = useApplications();
   const isLoggedIn = !!user;
 
   const {
@@ -38,11 +40,46 @@ const LandingPage: React.FC = () => {
     onClose: onProfileClose,
   } = useDisclosure();
 
-  const [selectedApp, setSelectedApp] = useState<any | null>(null);
+  const {
+    isOpen: isAppDetailsOpen,
+    onOpen: onAppDetailsOpen,
+    onClose: onAppDetailsClose,
+  } = useDisclosure();
+
+  const [selectedApp, setSelectedApp] = useState<{
+    course: any;
+    appDetail: any;
+  } | null>(null);
 
   const handleApplicationClick = (course: any, appDetail: any) => {
-    setSelectedApp({ course, appDetail });
+    const detailForModal = {
+      ...appDetail,
+      appliedAvailability: appDetail.appliedAvailability ?? appDetail.availability,
+      appliedSkills: appDetail.appliedSkills ?? appDetail.skills ?? [],
+    };
+    setSelectedApp({ course, appDetail: detailForModal });
+    onAppDetailsOpen();
   };
+
+  // For lecturers: which courses they teach
+  const myTaughtCourses = React.useMemo(() => {
+    if (!user || !user.isLecturer) return [];
+    return lecturerCourses.filter((c) => c.lecturer?.id === user.id);
+  }, [lecturerCourses, user]);
+
+  // For lecturers: all pending applications across their courses
+  const pendingApplications = React.useMemo(() => {
+    if (!user || !user.isLecturer) return [];
+    const pendings: Array<{ course: any; appDetail: any }> = [];
+    myTaughtCourses.forEach((course) => {
+      course.applicants
+        .filter((app: any) => app.status === "Pending")
+        .forEach((app: any) => {
+          pendings.push({ course, appDetail: app });
+        });
+    });
+    return pendings;
+  }, [myTaughtCourses]);
 
   return (
     <main className={styles.pageContent}>
@@ -85,9 +122,7 @@ const LandingPage: React.FC = () => {
               onClick={onProfileOpen}
             >
               <HStack spacing={4}>
-                <Avatar
-                  name={`${user.firstName} ${user.lastName}`}
-                />
+                <Avatar name={`${user.firstName} ${user.lastName}`} />
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="bold">
                     {user.firstName} {user.lastName}
@@ -102,163 +137,153 @@ const LandingPage: React.FC = () => {
               </HStack>
             </Box>
 
-            {/* Applications List */}
-            <Box mt={4}>
-              <Heading size="sm" mb={2}>
-                My Applications
-              </Heading>
+            {/* Candidate View */}
+            {user.isCandidate && (
+              <Box mt={4}>
+                <Heading size="sm" mb={2}>
+                  My Applications
+                </Heading>
 
-              {/* Filter courses where the candidate has applied to at least one role */}
-              {courses.filter((c) => c.appliedRoles.length > 0).length === 0 ? (
-                <Text color="gray.500" fontSize="sm">
-                  No applications yet.
-                </Text>
-              ) : (
-                <VStack align="start" spacing={2} w="100%">
-                  {/*
-                    For each course with at least one application, render a full‐width HStack:
-                    1) A Button that flexes to fill all leftover space (so all rows match width)
-                    2) A small Tag indicating status, pinned to the right
-                  */}
-                  {courses
-                    .filter((c) => c.appliedRoles.length > 0)
-                    .map((course) =>
-                      course.applicationDetails?.map((appDetail, idx) => {
-                        // determine tag color for status
-                        const statusColor =
-                          appDetail.status === "Approved"
-                            ? "green"
-                            : appDetail.status === "Pending"
-                            ? "yellow"
-                            : "red";
+                {candidateCourses.filter((c) => c.appliedRoles.length > 0)
+                  .length === 0 ? (
+                  <Text color="gray.500" fontSize="sm">
+                    No applications yet.
+                  </Text>
+                ) : (
+                  <VStack align="start" spacing={2} w="100%">
+                    {candidateCourses
+                      .filter((c) => c.appliedRoles.length > 0)
+                      .map((course) =>
+                        course.applicationDetails?.map((appDetail, idx) => {
+                          const statusColor =
+                            appDetail.status === "Approved"
+                              ? "green"
+                              : appDetail.status === "Pending"
+                              ? "yellow"
+                              : "red";
 
-                        return (
-                          <HStack key={`${course.id}-${appDetail.role}-${idx}`} w="100%">
-                            <Button
-                              flex="1"
-                              justifyContent="flex-start"
-                              size="sm"
-                              variant="outline"
-                              colorScheme="blue"
-                              onClick={() => handleApplicationClick(course, appDetail)}
+                          return (
+                            <HStack
+                              key={`${course.id}-${appDetail.role}-${idx}`}
+                              w="100%"
                             >
-                              {course.name} ({course.courseCode}) – {appDetail.role}
-                            </Button>
-                            <Tag size="sm" colorScheme={statusColor}>
-                              {appDetail.status}
-                            </Tag>
-                          </HStack>
-                        );
-                      })
-                    )}
-                </VStack>
-              )}
-            </Box>
+                              <Button
+                                flex="1"
+                                justifyContent="flex-start"
+                                size="sm"
+                                variant="outline"
+                                colorScheme="blue"
+                                onClick={() =>
+                                  handleApplicationClick(course, appDetail)
+                                }
+                              >
+                                {course.name} ({course.courseCode}) –{" "}
+                                {appDetail.role}
+                              </Button>
+                              <Tag size="sm" colorScheme={statusColor}>
+                                {appDetail.status}
+                              </Tag>
+                            </HStack>
+                          );
+                        })
+                      )}
+                  </VStack>
+                )}
+              </Box>
+            )}
+
+            {/* Lecturer View */}
+            {user.isLecturer && (
+              <>
+                {/* Pending Applications Section */}
+                <Box mt={4}>
+                  <Heading size="sm" mb={2}>
+                    Pending Applications
+                  </Heading>
+
+                  {pendingApplications.length === 0 ? (
+                    <Text color="gray.500" fontSize="sm">
+                      No pending applications.
+                    </Text>
+                  ) : (
+                    <VStack align="start" spacing={2} w="100%">
+                      {pendingApplications.map(({ course, appDetail }, idx) => (
+                        <HStack
+                          key={`${course.id}-pending-${appDetail.applicationId}-${idx}`}
+                          w="100%"
+                        >
+                          <Button
+                            flex="1"
+                            justifyContent="flex-start"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="teal"
+                            onClick={() =>
+                              handleApplicationClick(course, appDetail)
+                            }
+                          >
+                            {appDetail.name} – {appDetail.role} on{" "}
+                            {course.courseCode}
+                          </Button>
+                          <Tag size="sm" colorScheme="yellow">
+                            Pending
+                          </Tag>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </Box>
+
+                {/* My Courses Section */}
+                <Box mt={6}>
+                  <Heading size="sm" mb={2}>
+                    My Courses
+                  </Heading>
+
+                  {myTaughtCourses.length === 0 ? (
+                    <Text color="gray.500" fontSize="sm">
+                      You are not assigned to any courses.
+                    </Text>
+                  ) : (
+                    <VStack align="start" spacing={2} w="100%">
+                      {myTaughtCourses.map((course) => (
+                        <HStack key={course.id} w="100%">
+                          <Button
+                            flex="1"
+                            justifyContent="flex-start"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="purple"
+                          >
+                            {course.name} ({course.courseCode})
+                          </Button>
+                          <Tag size="sm" colorScheme="gray">
+                            {course.semester}
+                          </Tag>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </Box>
+              </>
+            )}
 
             {/* Profile Modal */}
-            <Modal isOpen={isProfileOpen} onClose={onProfileClose} size="md">
-              <ModalOverlay />
-              <ModalContent>
-                <ModalHeader>Profile Details</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                  <VStack align="start" spacing={3}>
-                    <Text>
-                      <strong>Name:</strong> {user.firstName} {user.lastName}
-                    </Text>
-                    <Text>
-                      <strong>Email:</strong> {user.email}
-                    </Text>
-                    <Text>
-                      <strong>Role:</strong>{" "}
-                      {user.isLecturer ? "Lecturer" : "Candidate"}
-                    </Text>
-                    {user.isCandidate && (
-                      <>
-                        <Text>
-                          <strong>Availability:</strong>{" "}
-                          {user.defaultAvailability || "Not set"}
-                        </Text>
-                        <Text>
-                          <strong>Skills:</strong>
-                        </Text>
-                        {user.defaultSkills && user.defaultSkills.length > 0 ? (
-                          <List pl={4}>
-                            {user.defaultSkills.map((skill, idx) => (
-                              <ListItem key={idx}>• {skill}</ListItem>
-                            ))}
-                          </List>
-                        ) : (
-                          <Text ml={4} color="gray.500">
-                            No skills listed
-                          </Text>
-                        )}
-                      </>
-                    )}
-                    <Text fontSize="sm" color="gray.500">
-                      Joined: {new Date(user.created).toLocaleDateString()}
-                    </Text>
-                  </VStack>
-                </ModalBody>
-              </ModalContent>
-            </Modal>
+            <ProfileModal
+              isOpen={isProfileOpen}
+              onClose={onProfileClose}
+              user={user}
+            />
 
             {/* Application Details Modal */}
-            <Modal
-              isOpen={!!selectedApp}
-              onClose={() => setSelectedApp(null)}
-              size="md"
-            >
-              <ModalOverlay />
-              <ModalContent>
-                <ModalHeader>Application Details</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                  {selectedApp ? (
-                    <VStack align="start" spacing={3}>
-                      <Text>
-                        <strong>Course:</strong> {selectedApp.course.name} (
-                        {selectedApp.course.courseCode})
-                      </Text>
-                      <Text>
-                        <strong>Role:</strong> {selectedApp.appDetail.role}
-                      </Text>
-                      <Text>
-                        <strong>Availability:</strong>{" "}
-                        {selectedApp.appDetail.appliedAvailability}
-                      </Text>
-                      <Text>
-                        <strong>Applied Skills:</strong>
-                      </Text>
-                      {selectedApp.appDetail.appliedSkills.length > 0 ? (
-                        <Wrap>
-                          {selectedApp.appDetail.appliedSkills.map(
-                            (skill: string, idx: number) => (
-                              <Tag key={idx} colorScheme="blue">
-                                {skill}
-                              </Tag>
-                            )
-                          )}
-                        </Wrap>
-                      ) : (
-                        <Text color="gray.500">No applied skills listed</Text>
-                      )}
-                      <Text>
-                        <strong>Status:</strong> {selectedApp.appDetail.status}
-                      </Text>
-                      {selectedApp.appDetail.lecturerComment && (
-                        <Text>
-                          <strong>Lecturer Comment:</strong>{" "}
-                          {selectedApp.appDetail.lecturerComment}
-                        </Text>
-                      )}
-                    </VStack>
-                  ) : (
-                    <Text>No application data available.</Text>
-                  )}
-                </ModalBody>
-              </ModalContent>
-            </Modal>
+            {selectedApp && (
+              <ApplicationDetailsModal
+                isOpen={isAppDetailsOpen}
+                onClose={() => setSelectedApp(null)}
+                course={selectedApp.course}
+                appDetail={selectedApp.appDetail}
+              />
+            )}
           </>
         )}
 

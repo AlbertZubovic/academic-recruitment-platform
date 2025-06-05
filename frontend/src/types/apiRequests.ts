@@ -47,6 +47,7 @@ export interface UpdateApplicationRequest {
  * Payload when a lecturer updates an application’s status.
  */
 export interface UpdateApplicationStatusRequest {
-  accepted: boolean;
+  accepted?: boolean | null;
   lecturerComment?: string;
+  ranking?: number;
 }

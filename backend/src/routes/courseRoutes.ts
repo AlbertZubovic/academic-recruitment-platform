@@ -16,30 +16,35 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user.userId;
 
-    // 1) Fetch all courses (along with each course’s lecturer + lecturer’s skills)
+    // 1) Fetch all courses (including lecturer & lecturer’s skills)
     const courses = await courseRepo.find({
       relations: ["lecturer", "lecturer.userSkills", "lecturer.userSkills.skill"],
     });
 
-    // 2) Fetch all applications (with user, course, and their appliedSkills)
-    const applications = await applicationRepo.find({
-      relations: ["user", "course", "appliedSkills", "appliedSkills.skill"],
-    });
+    // 2) Fetch all applications, but ORDER BY ranking
+    const applications = await applicationRepo
+      .createQueryBuilder("application")
+      .leftJoinAndSelect("application.user", "user")
+      .leftJoinAndSelect("application.course", "course")
+      .leftJoinAndSelect("application.appliedSkills", "appliedSkill")
+      .leftJoinAndSelect("appliedSkill.skill", "skill")
+      .orderBy("application.ranking", "ASC")
+      .getMany();
 
-    // 3) Build the transformed array
+    // 3) Transform for frontend
     const transformedCourses = courses.map((course) => {
-      // 3a) “userApp” is the current candidate’s own application to this course (if any)
+      // 3a) Current user’s own application (if any)
       const userApp = applications.find(
         (app) =>
           app.course.course_ID === course.course_ID &&
           app.user.user_ID === currentUserId
       );
 
-      // 3b) “allCourseApplicants” collects every application (not just the current user’s)
+      // 3b) All applications for this course
       const allCourseApplicants = applications
         .filter((app) => app.course.course_ID === course.course_ID)
         .map((app) => ({
-          applicationId: app.application_ID,                     // ← new: application_ID
+          applicationId: app.application_ID,
           userId: app.user.user_ID,
           name: `${app.user.firstname} ${app.user.lastname}`,
           role: app.role,
@@ -56,10 +61,10 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
           ranking: app.ranking,
         }));
 
-      // 3c) Build the “current user’s application” object (under field `application`)
+      // 3c) Structure for current user’s application
       const currentUserApplication = userApp
         ? {
-            applicationId: userApp.application_ID,             // ← also include here if you want
+            applicationId: userApp.application_ID,
             appliedAvailability: userApp.applied_availability,
             appliedSkills:
               userApp.appliedSkills
@@ -100,8 +105,8 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
               isBlocked: course.lecturer.is_blocked,
             }
           : null,
-        applicants: allCourseApplicants,          // now includes applicationId
-        application: currentUserApplication,      // optionally includes applicationId
+        applicants: allCourseApplicants,
+        application: currentUserApplication,
       };
     });
 
