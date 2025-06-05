@@ -18,16 +18,17 @@ import {
   Wrap,
   WrapItem,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { LecturerApplication } from "@/types/Application";
 import { User } from "@/types/user";
-import { useApplications } from "@/context/ApplicationContext"; // ← import context
+import { useApplications } from "@/context/ApplicationContext";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   courseId: string;
-  userProfile: User;                    // Must include `pastRoles: PastRole[]`
+  userProfile: User;
   applicationDetails: LecturerApplication;
 }
 
@@ -72,11 +73,21 @@ const ApplicantDetailsModal: React.FC<Props> = ({
     }
   };
 
+  // Color tokens for light/dark
+  const contentBg = useColorModeValue("white", "gray.700");
+  const headingColor = useColorModeValue("gray.800", "whiteAlpha.900");
+  const labelColor = useColorModeValue("gray.600", "gray.400");
+  const badgeBg = useColorModeValue("green.100", "green.800");
+  const badgeText = useColorModeValue("green.800", "green.200");
+  const pastRoleBg = useColorModeValue("gray.100", "gray.600");
+  const pastRoleText = useColorModeValue("gray.800", "whiteAlpha.900");
+  const inputBg = useColorModeValue("white", "gray.600");
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>
+      <ModalContent bg={contentBg}>
+        <ModalHeader color={headingColor}>
           {userProfile.firstName} {userProfile.lastName}
         </ModalHeader>
         <ModalCloseButton />
@@ -84,30 +95,32 @@ const ApplicantDetailsModal: React.FC<Props> = ({
         <ModalBody pb={6}>
           <VStack align="start" spacing={4}>
             {/* 1) Basic user info */}
-            <Text>
+            <Text color={labelColor}>
               <strong>Email:</strong> {userProfile.email}
             </Text>
-            <Text>
+            <Text color={labelColor}>
               <strong>Credentials:</strong>{" "}
               {userProfile.academicCredentials || "N/A"}
             </Text>
 
             <Divider />
-            <Text fontWeight="medium">Application Details for this Course:</Text>
+            <Text fontWeight="medium" color={headingColor}>
+              Application Details for this Course:
+            </Text>
 
             {/* 2) Role they applied for */}
-            <Text>
+            <Text color={labelColor}>
               <strong>Role Applied:</strong> {applicationDetails.role}
             </Text>
 
             {/* 3) Availability */}
-            <Text>
+            <Text color={labelColor}>
               <strong>Applied Availability:</strong>{" "}
               {applicationDetails.appliedAvailability}
             </Text>
 
             {/* 4) Skills */}
-            <Text>
+            <Text color={labelColor}>
               <strong>Applied Skills:</strong>
             </Text>
             <Wrap>
@@ -115,11 +128,13 @@ const ApplicantDetailsModal: React.FC<Props> = ({
               applicationDetails.appliedSkills.length > 0 ? (
                 applicationDetails.appliedSkills.map((skillName, i) => (
                   <WrapItem key={i}>
-                    <Badge colorScheme="green">{skillName}</Badge>
+                    <Badge bg={badgeBg} color={badgeText}>
+                      {skillName}
+                    </Badge>
                   </WrapItem>
                 ))
               ) : (
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="sm" color={useColorModeValue("gray.500", "gray.400")}>
                   No specific skills listed.
                 </Text>
               )}
@@ -129,20 +144,22 @@ const ApplicantDetailsModal: React.FC<Props> = ({
             {userProfile.pastRoles && userProfile.pastRoles.length > 0 && (
               <>
                 <Divider />
-                <Text fontWeight="medium">Past Roles:</Text>
+                <Text fontWeight="medium" color={headingColor}>
+                  Past Roles:
+                </Text>
                 {userProfile.pastRoles.map((pr, i) => (
                   <Box
                     key={i}
                     p={2}
-                    bg="gray.100"
+                    bg={pastRoleBg}
                     borderRadius="md"
                     w="100%"
                   >
-                    <Text>
+                    <Text color={pastRoleText}>
                       <strong>{pr.role}</strong> – {pr.courseName} (
                       {pr.courseCode})
                     </Text>
-                    <Text fontSize="sm" color="gray.600">
+                    <Text fontSize="sm" color={pastRoleText}>
                       {pr.semester || "N/A"}
                     </Text>
                   </Box>
@@ -152,11 +169,14 @@ const ApplicantDetailsModal: React.FC<Props> = ({
 
             {/* 6) Comment section (from DB) */}
             <Divider />
-            <Text fontWeight="medium">Lecturer Comment:</Text>
+            <Text fontWeight="medium" color={headingColor}>
+              Lecturer Comment:
+            </Text>
             <Input
               placeholder="Add a comment..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
+              bg={inputBg}
             />
             <Button colorScheme="teal" onClick={saveComment}>
               Save Comment

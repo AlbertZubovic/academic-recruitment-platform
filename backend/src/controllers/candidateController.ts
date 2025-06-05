@@ -283,7 +283,6 @@ export const updateApplicationDetails = async (
     const appRepo = AppDataSource.getRepository(Application);
     const skillRepo = AppDataSource.getRepository(Skill);
 
-    // Find the exact row
     const application = await appRepo.findOne({
       where: {
         user: { user_ID: candidateId },
@@ -311,7 +310,6 @@ export const updateApplicationDetails = async (
       return;
     }
 
-    // Update availability if provided
     if (appliedAvailability !== undefined) {
       if (
         !Object.values(ApplicationAvailability).includes(
@@ -334,7 +332,6 @@ export const updateApplicationDetails = async (
       );
     }
 
-    // Update skills if provided
     if (Array.isArray(appliedSkills)) {
       if (
         appliedSkills.some(
@@ -370,7 +367,6 @@ export const updateApplicationDetails = async (
       }
       const allSkillEntities = [...existingSkills, ...newSkillEntities];
 
-      // Delete old AppliedSkill rows via query builder
       console.log(
         "[CANDIDATE] updateApplicationDetails: deleting old AppliedSkill rows"
       );
@@ -380,7 +376,6 @@ export const updateApplicationDetails = async (
         .where("application_ID = :appId", { appId: application.application_ID })
         .execute();
 
-      // Insert new AppliedSkill rows
       const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
       const newAppliedSkills = allSkillEntities.map((skill) =>
         appliedSkillRepo.create({
@@ -397,7 +392,6 @@ export const updateApplicationDetails = async (
       await appliedSkillRepo.save(newAppliedSkills);
     }
 
-    // Validate and save
     await validateOrReject(application);
     console.log("[CANDIDATE] updateApplicationDetails: saving application");
     await appRepo.save(application);
@@ -431,7 +425,6 @@ export const withdrawApplication = async (
     const { id: courseId } = req.params;
     console.log("[CANDIDATE] withdrawApplication: candidateId, courseId =", candidateId, courseId);
 
-    // Delete via query builder
     const deleteResult = await AppDataSource.createQueryBuilder()
       .delete()
       .from(Application)

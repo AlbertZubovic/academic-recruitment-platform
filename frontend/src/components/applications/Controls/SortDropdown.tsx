@@ -24,7 +24,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ onSort }) => {
       {/* Dropdown select with options mapped to sort criteria */}
       <Select
         onChange={(e) => onSort(e.target.value)}
-        defaultValue="course" // Initial sort option
+        defaultValue="course"
       >
         <option value="course">Course Name (A–Z)</option>
         <option value="availability">

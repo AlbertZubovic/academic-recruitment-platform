@@ -4,7 +4,7 @@ import { UserAvailability } from "./enums";
 import { PastRole } from "./PastRole";
 
 /**
- * A minimal user summary (for embedding as lecturer inside Course).
+ * A minimal user summary.
  */
 export interface UserSummary {
   id: string;
@@ -17,7 +17,7 @@ export interface UserSummary {
   defaultSkills: string[];
   defaultAvailability: UserAvailability | null;
   academicCredentials: string | null;
-  created: string;       // ISO timestamp
+  created: string;
   isBlocked: boolean;
 }
 

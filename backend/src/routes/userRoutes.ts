@@ -17,7 +17,7 @@ router.get("/candidates", authenticate, async (req, res) => {
       relations: [
         "userSkills",
         "userSkills.skill",
-        "pastRoles", // ← load pastRoles as well
+        "pastRoles",
       ],
       order: { lastname: "ASC", firstname: "ASC" },
     });

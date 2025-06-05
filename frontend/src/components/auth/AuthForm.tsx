@@ -17,6 +17,7 @@ import {
   Stack,
   HStack,
   Link,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import NextLink from "next/link";
@@ -107,7 +108,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
     if (type === "signin") {
       try {
-        // INCLUDE stayLoggedIn in payload
         const payload: SignInPayload = {
           email,
           password,
@@ -180,10 +180,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     }
   };
 
+  // ─────────────── Color values for light/dark ───────────────
+  const outerBg = useColorModeValue(
+    "linear(to-r, blue.50, blue.100)",
+    "linear(to-r, gray.800, gray.900)"
+  );
+  const formBg = useColorModeValue("white", "gray.700");
+  const headingColor = useColorModeValue("blue.600", "blue.300");
+  const subTextColor = useColorModeValue("gray.500", "gray.400");
+  const skillBoxBg = useColorModeValue("gray.100", "gray.600");
+  const linkColor = useColorModeValue("blue.500", "blue.200");
+
   return (
     <Box
       minH="90vh"
-      bgGradient="linear(to-r, blue.50, blue.100)"
+      bgGradient={outerBg}
       display="flex"
       alignItems="center"
       justifyContent="center"
@@ -193,15 +204,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         maxW="md"
         w="100%"
         p={8}
-        bg="white"
+        bg={formBg}
         boxShadow="lg"
         borderRadius="xl"
       >
         <Box textAlign="center" mb={4}>
-          <Heading size="lg" color="blue.600">
+          <Heading size="lg" color={headingColor}>
             {type === "signin" ? "Welcome Back" : "Create Your Account"}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="sm" color={subTextColor}>
             {type === "signin"
               ? "Enter your credentials to continue"
               : "Sign up to get started"}
@@ -219,6 +230,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                     onChange={(e) => setFirstname(e.target.value)}
                     placeholder="First name"
                     autoComplete="off"
+                    bg={useColorModeValue("white", "gray.800")}
                   />
                   <FormErrorMessage>{errors.firstname}</FormErrorMessage>
                 </FormControl>
@@ -230,6 +242,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                     onChange={(e) => setLastname(e.target.value)}
                     placeholder="Last name"
                     autoComplete="off"
+                    bg={useColorModeValue("white", "gray.800")}
                   />
                   <FormErrorMessage>{errors.lastname}</FormErrorMessage>
                 </FormControl>
@@ -243,6 +256,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         setIsCandidate(e.target.checked);
                         if (e.target.checked) setIsLecturer(false);
                       }}
+                      colorScheme={useColorModeValue("blue", "teal")}
                     >
                       Candidate
                     </Checkbox>
@@ -252,6 +266,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         setIsLecturer(e.target.checked);
                         if (e.target.checked) setIsCandidate(false);
                       }}
+                      colorScheme={useColorModeValue("blue", "teal")}
                     >
                       Lecturer
                     </Checkbox>
@@ -268,6 +283,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         e.target.value as ApplicationAvailability
                       )
                     }
+                    bg={useColorModeValue("white", "gray.800")}
                   >
                     <option value="Full-Time">Full-Time</option>
                     <option value="Part-Time">Part-Time</option>
@@ -289,11 +305,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                             handleAddSkill();
                           }
                         }}
+                        bg={useColorModeValue("white", "gray.800")}
                       />
                       <Button
                         size="sm"
                         onClick={handleAddSkill}
                         isDisabled={!currentSkill.trim()}
+                        colorScheme={useColorModeValue("blue", "teal")}
                       >
                         Add Skill
                       </Button>
@@ -302,13 +320,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         <Box
                           key={idx}
                           p={2}
-                          bg="gray.100"
+                          bg={skillBoxBg}
                           borderRadius="md"
                           display="flex"
                           justifyContent="space-between"
                           alignItems="center"
                         >
-                          <Text>{skill}</Text>
+                          <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+                            {skill}
+                          </Text>
                           <Button
                             size="sm"
                             colorScheme="red"
@@ -334,6 +354,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 autoComplete="off"
+                bg={useColorModeValue("white", "gray.800")}
               />
               <FormErrorMessage>{errors.email}</FormErrorMessage>
             </FormControl>
@@ -346,15 +367,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 autoComplete="off"
+                bg={useColorModeValue("white", "gray.800")}
               />
               <FormErrorMessage>{errors.password}</FormErrorMessage>
             </FormControl>
 
             {type === "signup" && (
-              <FormControl
-                isInvalid={!!errors.confirmPassword}
-                isRequired
-              >
+              <FormControl isInvalid={!!errors.confirmPassword} isRequired>
                 <FormLabel>Confirm Password</FormLabel>
                 <Input
                   type="password"
@@ -362,10 +381,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
                   autoComplete="off"
+                  bg={useColorModeValue("white", "gray.800")}
                 />
-                <FormErrorMessage>
-                  {errors.confirmPassword}
-                </FormErrorMessage>
+                <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
               </FormControl>
             )}
 
@@ -374,12 +392,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 <Checkbox
                   isChecked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
+                  colorScheme={useColorModeValue("blue", "teal")}
                 >
                   Remember me
                 </Checkbox>
                 <Checkbox
                   isChecked={stayLoggedIn}
                   onChange={(e) => setStayLoggedIn(e.target.checked)}
+                  colorScheme={useColorModeValue("blue", "teal")}
                 >
                   Stay logged in
                 </Checkbox>
@@ -389,7 +409,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             <Button
               type="submit"
               isLoading={loading}
-              colorScheme="blue"
+              colorScheme={useColorModeValue("blue", "teal")}
               width="100%"
               borderRadius="md"
               fontWeight="bold"
@@ -398,10 +418,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             </Button>
 
             {type === "signin" && (
-              <Text fontSize="sm">
+              <Text fontSize="sm" color={subTextColor}>
                 Need an account?{" "}
                 <NextLink href="/signup" passHref legacyBehavior>
-                  <Link color="blue.500" fontWeight="semibold">
+                  <Link color={linkColor} fontWeight="semibold">
                     Sign up
                   </Link>
                 </NextLink>

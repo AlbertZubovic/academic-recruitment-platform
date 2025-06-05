@@ -23,7 +23,7 @@ export const getAvailabilityDistribution = async (
       .groupBy("application.applied_availability")
       .getRawMany<{
         availability: string;
-        count:       string; // comes back as a string
+        count:       string;
       }>();
 
     // Step 2: Convert `count` from string → number
@@ -32,7 +32,7 @@ export const getAvailabilityDistribution = async (
       count:        parseInt(row.count, 10),
     }));
 
-    // Step 3: Send the new array (with numeric `count`) back
+    // Step 3: Send the new array back
     res.json(result);
     return;
   } catch (err) {
@@ -70,7 +70,7 @@ export const getSelectionCounts = async (
         userId:        string;
         firstName:     string;
         lastName:      string;
-        selectedCount: string; // comes back as a string
+        selectedCount: string;
       }>();
 
     // Step 2: Convert `selectedCount` from string → number
@@ -81,7 +81,7 @@ export const getSelectionCounts = async (
       selectedCount: parseInt(row.selectedCount, 10),
     }));
 
-    // Step 3: Send the new array (with numeric `selectedCount`) back
+    // Step 3: Send the new array back
     res.json(result);
     return;
   } catch (err) {
@@ -117,16 +117,16 @@ export const getCommonSkillsAmongSelected = async (
       .orderBy("count", "DESC")
       .getRawMany<{
         skillName: string;
-        count:     string; // comes back as a string
+        count:     string;
       }>();
 
-    // Step 2: Convert `count` from string → number
+    // Step 2: Convert count from string → number
     const result = raw.map((row) => ({
       skillName: row.skillName,
       count:     parseInt(row.count, 10),
     }));
 
-    // Step 3: Send the new array (with numeric `count`) back
+    // Step 3: Send the new array back
     res.json(result);
     return;
   } catch (err) {

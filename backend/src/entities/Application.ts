@@ -11,7 +11,7 @@ import {
 import {
   IsEnum,
   IsOptional,
-  IsBoolean,     // ← use IsBoolean instead of IsIn for `accepted`
+  IsBoolean,
   IsInt,
   IsString,
   MaxLength,
@@ -53,13 +53,10 @@ export class Application {
   })
   applied_availability!: ApplicationAvailability;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Make `accepted` nullable in DB AND allow null in validation:
   @Column({ type: "boolean", nullable: true, default: null })
   @IsOptional()
   @IsBoolean({ message: "accepted must be boolean or null" })
   accepted!: boolean | null;
-  // ──────────────────────────────────────────────────────────────────────────
 
   @Column({ type: "int", nullable: true })
   @IsOptional()

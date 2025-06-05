@@ -35,9 +35,6 @@ interface CourseContextValue {
     }
   ) => Promise<boolean>;
 
-  /**
-   * Now takes `currentStatus` as a second argument (but we ignore it internally).
-   */
   deleteApplication: (
     courseId: string,
     currentStatus: "Pending" | "Approved" | "Rejected"
@@ -56,7 +53,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1) Fetch all courses (including appliedRoles & applicationDetails)
+  // 1) Fetch all courses
   const fetchCourses = async () => {
     setError(null);
     console.log("[CourseContext] GET /candidates/courses");
@@ -201,7 +198,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   // 4) DELETE (withdraw) all applications for this user+course
-  //    Now takes a second argument (`currentStatus`), which we ignore for now.
   const deleteApplication = async (
     courseId: string,
     currentStatus: "Pending" | "Approved" | "Rejected"

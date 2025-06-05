@@ -24,17 +24,12 @@ import { useCourses } from "@/context/CourseContext";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course";
 
-// Import both enums (ApplicationRole, ApplicationAvailability, and UserAvailability)
 import {
   ApplicationRole,
   ApplicationAvailability,
   UserAvailability,
 } from "@/types/enums";
 
-/**
- * Helper: convert a UserAvailability into ApplicationAvailability.
- * If `ua` is null/undefined or not recognized, default to FULL_TIME.
- */
 function mapUserToApplicationAvailability(
   ua: UserAvailability | null | undefined
 ): ApplicationAvailability {
@@ -77,7 +72,7 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
       ? defaultRole
       : firstAllowedRole;
 
-  // 3. Choose default availability (either the existing app’s availability, or the user’s defaultAvailability)
+  // 3. Choose default availability
   const initialAvailability: ApplicationAvailability = existingAppForRole
     ? existingAppForRole.appliedAvailability
     : mapUserToApplicationAvailability(user?.defaultAvailability);
@@ -131,7 +126,6 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Require at least one skill, a role, and availability
     if (!role || !availability || skills.length === 0) {
       toast({
         title:
@@ -142,7 +136,6 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
       return;
     }
 
-    // Determine if we are editing an existing application (PATCH) or creating a new one (POST)
     const isEditing = Boolean(
       existingAppForRole && existingAppForRole.role === role
     );

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+// src/components/applications/ApplicationPage.tsx
+
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Container,
@@ -9,6 +11,7 @@ import {
   IconButton,
   ButtonGroup,
   Button,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { FaSortAmountDownAlt } from "react-icons/fa";
 
@@ -64,7 +67,7 @@ const ApplicationPage: React.FC = () => {
   // Only lecturers can access this page
   if (!user || !user.isLecturer) {
     return (
-      <Text textAlign="center">
+      <Text textAlign="center" color={useColorModeValue("gray.800", "whiteAlpha.900")}>
         You are not authorized to view this page.
       </Text>
     );
@@ -77,21 +80,30 @@ const ApplicationPage: React.FC = () => {
     setAllExpanded(false);
   };
 
+  // ─────────────── Color values for light/dark ───────────────
+  const containerBg = useColorModeValue("gray.50", "gray.800");
+  const headingColor = useColorModeValue("blue.600", "blue.300");
+  const textColor = useColorModeValue("gray.600", "gray.400");
+  const inputBg = useColorModeValue("white", "gray.700");
+  const warningBg = useColorModeValue("yellow.100", "yellow.900");
+  const warningBorder = useColorModeValue("yellow.300", "yellow.700");
+  const warningText = useColorModeValue("yellow.800", "yellow.200");
+
   return (
     <Container
       maxW="container.lg"
       py={8}
-      bg="gray.50"
+      bg={containerBg}
       borderRadius="lg"
       shadow="lg"
     >
       {/* Page heading */}
-      <Heading as="h2" size="xl" mb={6} textAlign="center" color="blue.600">
+      <Heading as="h2" size="xl" mb={6} textAlign="center" color={headingColor}>
         Applications
       </Heading>
 
       {/* Instructional text */}
-      <Text textAlign="center" mb={4} color="gray.600" fontSize="md">
+      <Text textAlign="center" mb={4} color={textColor} fontSize="md">
         Drag applicants to rank them by <strong>preference</strong> for each
         course.
       </Text>
@@ -103,6 +115,8 @@ const ApplicationPage: React.FC = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           width="60%"
+          bg={inputBg}
+          _placeholder={{ color: useColorModeValue("gray.500", "gray.400") }}
         />
         <SortDropdown onSort={handleSort} />
         <IconButton
@@ -115,7 +129,7 @@ const ApplicationPage: React.FC = () => {
       </Flex>
 
       {/* Availability toggle buttons + Expand/Collapse All */}
-      <Flex justify="center" mb={6}>
+      <Flex justify="center" mb={6} wrap="wrap" gap={2}>
         <ButtonGroup isAttached variant="outline">
           {["all", "full-time", "part-time"].map((option) => (
             <Button
@@ -149,7 +163,7 @@ const ApplicationPage: React.FC = () => {
       </Flex>
 
       {/* Total approved applications */}
-      <Text textAlign="center" mb={4} color="gray.600">
+      <Text textAlign="center" mb={4} color={textColor}>
         Total Approved: <strong>{totalApproved}</strong>
       </Text>
 
@@ -228,12 +242,12 @@ const ApplicationPage: React.FC = () => {
         <Box
           mb={6}
           p={3}
-          bg="yellow.100"
+          bg={warningBg}
           border="1px solid"
-          borderColor="yellow.300"
+          borderColor={warningBorder}
           borderRadius="md"
         >
-          <Text textAlign="center" color="yellow.800" fontWeight="medium">
+          <Text textAlign="center" color={warningText} fontWeight="medium">
             You are in a filtered view. Drag-and-drop ranking is temporarily
             disabled.
           </Text>

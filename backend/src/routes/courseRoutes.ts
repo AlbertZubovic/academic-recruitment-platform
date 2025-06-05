@@ -16,7 +16,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user.userId;
 
-    // 1) Fetch all courses (including lecturer & lecturer’s skills)
+    // 1) Fetch all courses
     const courses = await courseRepo.find({
       relations: ["lecturer", "lecturer.userSkills", "lecturer.userSkills.skill"],
     });
@@ -33,7 +33,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 
     // 3) Transform for frontend
     const transformedCourses = courses.map((course) => {
-      // 3a) Current user’s own application (if any)
+      // 3a) Current user’s own application
       const userApp = applications.find(
         (app) =>
           app.course.course_ID === course.course_ID &&

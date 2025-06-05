@@ -15,6 +15,7 @@ import {
   Center,
   Alert,
   AlertIcon,
+  useColorModeValue,
 } from "@chakra-ui/react";
 
 import { useApplications } from "@/context/ApplicationContext";
@@ -26,31 +27,20 @@ import AvailabilityChart from "./Charts/AvailabilityChart";
 import { LecturerApplication } from "@/types/Application";
 import { Course as CourseType } from "@/types/course";
 
-/**
- *  1) ApplicantSelectionChart expects:
- *     { id: string; name: string; count: number }[]
- */
+
 interface SelectionData {
   id:    string;
   name:  string;
   count: number;
 }
 
-/**
- *  2) TopSkillsChart expects:
- *     { skill: string; count: number }[]
- */
 interface SkillData {
   skillName: string;
   count:     number;
 }
 
-/**
- *  3) AvailabilityChart expects:
- *     { type: string; count: number }[]
- */
 interface AvailabilityData {
-  availability: string; // intermediate shape
+  availability: string;
   count:        number;
 }
 
@@ -72,10 +62,6 @@ const VisualRepresentation: React.FC = () => {
     setError(null);
 
     try {
-      // ────────────────────────────────────────────────────────────────
-      // 1) Gather **all** LecturerApplication objects across this lecturer’s courses
-      //    and also separately collect only approved ones.
-      // ────────────────────────────────────────────────────────────────
       const allApps: LecturerApplication[] = [];
       const approvedApps: LecturerApplication[] = [];
 
@@ -88,9 +74,6 @@ const VisualRepresentation: React.FC = () => {
         });
       });
 
-      // ────────────────────────────────────────────────────────────────
-      // 2) Build a map of userId → userName from approvedApps (for Selections chart)
-      // ────────────────────────────────────────────────────────────────
       const userMap: Record<string, string> = {};
       approvedApps.forEach((app) => {
         const uid = String(app.userId);
@@ -99,18 +82,12 @@ const VisualRepresentation: React.FC = () => {
         }
       });
 
-      // ────────────────────────────────────────────────────────────────
-      // 3) Count how many approvals per userId
-      // ────────────────────────────────────────────────────────────────
       const counts: Record<string, number> = {};
       approvedApps.forEach((app) => {
         const uid = String(app.userId);
         counts[uid] = (counts[uid] || 0) + 1;
       });
 
-      // ────────────────────────────────────────────────────────────────
-      // 4) Build selectionData = [ { id, name, count }, … ]
-      // ────────────────────────────────────────────────────────────────
       const selArray: SelectionData[] = Object.entries(userMap).map(
         ([uid, name]) => ({
           id:    uid,
@@ -119,9 +96,6 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ────────────────────────────────────────────────────────────────
-      // 5) Tally skills and availability among **all** applicants (not only approved)
-      // ────────────────────────────────────────────────────────────────
       const skillMap: Record<string, number> = {};
       const availabilityMap: Record<string, number> = {};
 
@@ -131,13 +105,10 @@ const VisualRepresentation: React.FC = () => {
           skillMap[skill] = (skillMap[skill] || 0) + 1;
         });
         // b) Count appliedAvailability
-        const avail = app.appliedAvailability; // "Full-Time" or "Part-Time"
+        const avail = app.appliedAvailability;
         availabilityMap[avail] = (availabilityMap[avail] || 0) + 1;
       });
 
-      // ────────────────────────────────────────────────────────────────
-      // 6) Convert skillMap → [ { skillName, count }, … ]
-      // ────────────────────────────────────────────────────────────────
       const skillArray: SkillData[] = Object.entries(skillMap).map(
         ([skillName, cnt]) => ({
           skillName,
@@ -145,9 +116,6 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ────────────────────────────────────────────────────────────────
-      // 7) Convert availabilityMap → [ { availability, count }, … ]
-      // ────────────────────────────────────────────────────────────────
       const availArray: AvailabilityData[] = Object.entries(availabilityMap).map(
         ([availability, cnt]) => ({
           availability,
@@ -155,9 +123,6 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ────────────────────────────────────────────────────────────────
-      // 8) Store in local state
-      // ────────────────────────────────────────────────────────────────
       setSelectionData(selArray);
       setSkillData(skillArray);
       setAvailabilityData(availArray);
@@ -166,7 +131,13 @@ const VisualRepresentation: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [courses]); // Re‐run whenever `courses` changes
+  }, [courses]);
+
+  // ─────────────── Color values for light/dark ───────────────
+  const panelBg = useColorModeValue("white", "gray.700");
+  const headingColor = useColorModeValue("gray.800", "whiteAlpha.900");
+  const subTextColor = useColorModeValue("gray.500", "gray.400");
+  const errorTextColor = useColorModeValue("red.600", "red.300");
 
   if (loading) {
     return (
@@ -178,20 +149,16 @@ const VisualRepresentation: React.FC = () => {
 
   if (error) {
     return (
-      <Box mt={8}>
-        <Alert status="error">
+      <Box mt={8} bg={panelBg} borderRadius="md" boxShadow="md" p={4}>
+        <Alert status="error" bg={useColorModeValue("red.50", "red.900")}>
           <AlertIcon />
-          {error}
+          <Text color={errorTextColor}>{error}</Text>
         </Alert>
       </Box>
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Calculate summary stats:
-  //   • most/least chosen among APPROVED
-  //   • “Not Approved” = (# of distinct all-applicants) − (# of distinct approved-applicants)
-  // ────────────────────────────────────────────────────────────────
+
   // a) most/least chosen among approved
   const selectedOnly = selectionData.filter((a) => a.count > 0);
   const mostChosen = selectedOnly.length
@@ -201,7 +168,7 @@ const VisualRepresentation: React.FC = () => {
     ? selectedOnly.reduce((min, curr) => (curr.count < min.count ? curr : min))
     : null;
 
-  // b) “Not Approved” = applicants who appear anywhere (allApps) but never got an approval
+  // b) “Not Approved” = applicants who appear anywhere but never got an approval
   const uniqueAllIds = new Set<string>();
   const uniqueApprovedIds = new Set<string>();
   courses.forEach((course) => {
@@ -215,18 +182,23 @@ const VisualRepresentation: React.FC = () => {
   const notApprovedCount = uniqueAllIds.size - uniqueApprovedIds.size;
 
   return (
-    <Box bg="white" p={6} borderRadius="md" boxShadow="md" mt={8}>
-      <Heading as="h3" size="lg" mb={4} textAlign="center">
+    <Box bg={panelBg} p={6} borderRadius="md" boxShadow="md" mt={8}>
+      <Heading as="h3" size="lg" mb={4} textAlign="center" color={headingColor}>
         Selection Overview
       </Heading>
-      <Text fontSize="sm" color="gray.500" textAlign="center" mb={4}>
+      <Text fontSize="sm" color={subTextColor} textAlign="center" mb={4}>
         (Top Skills & Availability include all applicants;  
         “Selections per Applicant” counts only approved applications.)
       </Text>
 
       {/* ─── TABBED CHARTS ─── */}
-      <Tabs isLazy>
-        <TabList mb={4} overflowX="auto">
+      <Tabs isLazy variant="enclosed">
+        <TabList
+          mb={4}
+          flexWrap="wrap"
+          bg={useColorModeValue("gray.100", "gray.600")}
+          borderRadius="md"
+        >
           <Tab>Selections per Applicant</Tab>
           <Tab>Top Skills (All Applicants)</Tab>
           <Tab>Availability (All Applicants)</Tab>
@@ -234,9 +206,9 @@ const VisualRepresentation: React.FC = () => {
 
         <TabPanels>
           {/* 1) Selections per Applicant */}
-          <TabPanel>
+          <TabPanel bg={panelBg}>
             {selectionData.length === 0 ? (
-              <Text textAlign="center" color="gray.600">
+              <Text textAlign="center" color={subTextColor}>
                 No approved applications yet, so no “Selections per Applicant” to show.
               </Text>
             ) : (
@@ -245,7 +217,7 @@ const VisualRepresentation: React.FC = () => {
           </TabPanel>
 
           {/* 2) TopSkillsChart: all applicants, so map skillData → { skill, count } */}
-          <TabPanel>
+          <TabPanel bg={panelBg}>
             <TopSkillsChart
               data={skillData.map(({ skillName, count }) => ({
                 skill: skillName,
@@ -255,7 +227,7 @@ const VisualRepresentation: React.FC = () => {
           </TabPanel>
 
           {/* 3) AvailabilityChart: all applicants, so map availabilityData → { type, count } */}
-          <TabPanel>
+          <TabPanel bg={panelBg}>
             <AvailabilityChart
               data={availabilityData.map(({ availability, count }) => ({
                 type: availability,
@@ -268,19 +240,19 @@ const VisualRepresentation: React.FC = () => {
 
       {/* ─── SUMMARY STATISTICS ─── */}
       <VStack align="start" mt={6} spacing={2}>
-        <Text>
+        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
           <strong>Most Chosen (approved):</strong>{" "}
           {mostChosen
             ? `${mostChosen.name} (${mostChosen.count} approvals)`
             : "N/A"}
         </Text>
-        <Text>
+        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
           <strong>Least Chosen (among approved):</strong>{" "}
           {leastChosen
             ? `${leastChosen.name} (${leastChosen.count} approvals)`
             : "N/A"}
         </Text>
-        <Text>
+        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
           <strong>Not Approved:</strong> {notApprovedCount} candidate(s)
         </Text>
       </VStack>

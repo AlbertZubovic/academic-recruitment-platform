@@ -1,7 +1,7 @@
 // src/components/applications/Applicant/ApproveRejectCheckbox.tsx
 
 import React, { useState, useEffect } from "react";
-import { HStack, Checkbox, useToast, Spinner } from "@chakra-ui/react";
+import { HStack, Checkbox, useToast, Spinner, useColorModeValue } from "@chakra-ui/react";
 import { useApplications } from "@/context/ApplicationContext";
 import { LecturerApplication } from "@/types/Application";
 
@@ -34,10 +34,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
     const checked = e.target.checked;
 
     if (!checked) {
-      // Unchecking “Approve” → revert to Pending (accepted = null)
+      // Unchecking “Approve” → revert to Pending
       setIsUpdating(true);
       try {
-        // Step 1: set accepted = true (ensures transition)
+        // Step 1: set accepted = true
         await updateApplicationStatus(courseId, applicationDetails.applicationId, {
           accepted: true,
         });

@@ -1,7 +1,7 @@
 // src/components/applications/ApplicationAccordionGroups.tsx
 
 import React from "react";
-import { Box, Accordion, Heading } from "@chakra-ui/react";
+import { Box, Accordion, Heading, useColorModeValue } from "@chakra-ui/react";
 import { useApplications } from "@/context/ApplicationContext";
 import ApplicationAccordionItem from "./ApplicationAccordionItem";
 
@@ -17,6 +17,10 @@ const ApplicationAccordionGroups: React.FC<ApplicationAccordionGroupsProps> = ({
   allExpanded,
 }) => {
   const { filteredApplicants, sortCriteria } = useApplications();
+
+  const highColor = useColorModeValue("purple.600", "purple.300");
+  const medColor = useColorModeValue("orange.500", "orange.300");
+  const lowColor = useColorModeValue("gray.600", "gray.400");
 
   // Render a group (High/Medium/Low demand)
   const renderGroup = (
@@ -56,17 +60,17 @@ const ApplicationAccordionGroups: React.FC<ApplicationAccordionGroupsProps> = ({
       <>
         {renderGroup(
           "High Demand Courses",
-          "purple.600",
+          highColor,
           (c) => c.applicants.length >= 5
         )}
         {renderGroup(
           "Medium Demand Courses",
-          "orange.500",
+          medColor,
           (c) => c.applicants.length >= 2 && c.applicants.length < 5
         )}
         {renderGroup(
           "Low Demand Courses",
-          "gray.600",
+          lowColor,
           (c) => c.applicants.length < 2
         )}
       </>

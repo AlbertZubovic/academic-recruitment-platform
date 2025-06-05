@@ -1,18 +1,12 @@
 // src/components/applications/Applicant/ApplicantCard.tsx
 
-/**
- * ApplicantCard Component
- * Displays a single applicant’s summary inside a course’s list.
- * Clicking the card opens a modal with details.
- * The “approve/reject” UI appears on the right.
- */
-
 import React from "react";
 import {
   Box,
   HStack,
   useDisclosure,
   Text,
+  useColorModeValue,
 } from "@chakra-ui/react";
 
 import ApplicantCardHeader from "./ApplicantCardHeader";
@@ -22,7 +16,6 @@ import ApplicantDetailsModal from "./ApplicantDetailsModal";
 import { LecturerApplication } from "@/types/Application";
 import { useApplications } from "@/context/ApplicationContext";
 
-// Props for ApplicantCard
 interface ApplicantCardProps {
   applicationDetails: LecturerApplication;
   courseId: string;
@@ -40,6 +33,13 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
     (u) => String(u.id) === String(applicationDetails.userId)
   );
 
+  // Color tokens for light/dark
+  const cardBg = useColorModeValue("white", "gray.700");
+  const cardHoverBg = useColorModeValue("gray.50", "gray.600");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const errorBg = useColorModeValue("red.50", "red.900");
+  const errorText = useColorModeValue("red.700", "red.300");
+
   if (!userProfile) {
     console.warn(
       `User profile not found for applicant ID: ${applicationDetails.userId}`
@@ -49,11 +49,11 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
         p={4}
         borderWidth={1}
         borderRadius="md"
-        bg="red.50"
+        bg={errorBg}
         boxShadow="sm"
         w="100%"
       >
-        <Text color="red.700">
+        <Text color={errorText}>
           Error: Applicant data missing for ID {applicationDetails.userId}
         </Text>
       </Box>
@@ -66,12 +66,13 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
       <Box
         p={4}
         borderWidth={1}
+        borderColor={borderColor}
         borderRadius="md"
-        bg="white"
+        bg={cardBg}
         boxShadow="sm"
         w="100%"
         cursor="pointer"
-        _hover={{ bg: "gray.50" }}
+        _hover={{ bg: cardHoverBg }}
         onClick={onOpen}
       >
         <HStack justify="space-between" align="start">

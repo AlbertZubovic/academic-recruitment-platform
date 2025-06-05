@@ -159,7 +159,7 @@ export const updateApplicationStatus = async (
       return;
     }
 
-    // 2) Validate accepted if provided (allow true, false, or null)
+    // 2) Validate accepted if provided
     if (
       accepted !== undefined &&
       accepted !== true &&
@@ -214,7 +214,6 @@ export const updateApplicationStatus = async (
   } catch (err) {
     console.error("[LECTURER] updateApplicationStatus error:", err);
     if (Array.isArray(err)) {
-      // class-validator errors
       const messages = err
         .map((e) => Object.values(e.constraints || {}).join(", "))
         .join("; ");

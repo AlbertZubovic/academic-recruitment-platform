@@ -26,7 +26,6 @@ const AuthButton: React.FC = () => {
       });
       router.push("/");
     } catch (err) {
-      // handle error (optional)
     }
   };
 

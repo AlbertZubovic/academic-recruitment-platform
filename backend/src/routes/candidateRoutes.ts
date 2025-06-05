@@ -8,7 +8,7 @@ import {
   applyToCourse,
   updateApplicationDetails,
   getMyApplications,
-  withdrawApplication,   // ← import this from the controller
+  withdrawApplication,
 } from "../controllers/candidateController";
 
 const router = Router();

@@ -14,9 +14,8 @@ import validator from "validator";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production", // true in production (HTTPS), false in dev
+  secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
-  // We will supply maxAge per‐request in signIn / signUp
 };
 
 export const signUp = async (req: Request, res: Response): Promise<void> => {
@@ -128,7 +127,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       default_availability: isCandidate ? availability : null,
     });
 
-    // 10) Validate via class-validator
+    // 10) Validate via class validator
     await validateOrReject(user);
 
     // 11) Save user
@@ -148,7 +147,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       );
       await skillRepo.save(newSkillEntities);
 
-      // 12c) Combine existing + newly created
+      // 12c) Combine existing and newly created
       const allSkillEntities = [...existingSkills, ...newSkillEntities];
       // 12d) Link UserSkill rows
       const userSkills = allSkillEntities.map((skill) =>
@@ -157,7 +156,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       await userSkillRepo.save(userSkills);
     }
 
-    // 13) Create JWT (7-day expiration for newly signed-up users)
+    // 13) Create JWT 
     const token = jwt.sign(
       {
         userId: user.user_ID,
@@ -242,16 +241,14 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
 
     // 5) Set the cookie accordingly:
     if (stayLoggedIn) {
-      // persistent 7-day cookie
       res.cookie("token", token, {
         ...COOKIE_OPTIONS,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
     } else {
-      // session cookie with 15-minute lifespan
       res.cookie("token", token, {
         ...COOKIE_OPTIONS,
-        maxAge: 15 * 60 * 1000, // 15 minutes in ms
+        maxAge: 15 * 60 * 1000,
       });
     }
 

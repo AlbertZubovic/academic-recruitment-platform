@@ -53,9 +53,7 @@ const CandidatePage: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedRole, setSelectedRole] = useState<ApplicationRole | "">("");
 
-  // #######################
   // Compute “Available” vs. “My” courses
-  // #######################
   const availableCourses = useMemo(
     () => courses.filter((c) => c.appliedRoles.length === 0),
     [courses]
@@ -65,9 +63,7 @@ const CandidatePage: React.FC = () => {
     [courses]
   );
 
-  // #######################
   // FEATURE #3: Application Stats
-  // #######################
   const myApps = useMemo(
     () =>
       myCourses.flatMap((c) =>
@@ -83,9 +79,7 @@ const CandidatePage: React.FC = () => {
   const pendingCount = myApps.filter(({ application }) => application.status === "Pending")
     .length;
 
-  // #######################
   // FEATURE #2: Save‐for‐Later (Bookmarks)
-  // #######################
   const localKey = "bookmarkedCourses";
   const [bookmarks, setBookmarks] = useState<BookmarkMap>({});
 
@@ -108,9 +102,7 @@ const CandidatePage: React.FC = () => {
     });
   };
 
-  // #######################
   // FEATURE #1: Compute “Matching %” & “Missing Skills”
-  // #######################
   const computeMatchPercent = (required: string[], owned: string[]) => {
     if (required.length === 0) return 100;
     const lowerOwned = new Set(owned.map((s) => s.toLowerCase()));
@@ -123,9 +115,7 @@ const CandidatePage: React.FC = () => {
     return required.filter((r) => !lowerOwned.has(r.toLowerCase()));
   };
 
-  // #######################
   // FEATURE #4: Recommended for You (≥70% match)
-  // #######################
   const recommendedCourses: Course[] = useMemo(() => {
     return courses
       .map((c) => {
@@ -138,9 +128,7 @@ const CandidatePage: React.FC = () => {
       .map(({ course }) => course);
   }, [courses, userSkills]);
 
-  // #######################
   // FEATURE #5: Withdraw All Pending
-  // #######################
   const handleWithdrawAll = async () => {
     for (const { course, application } of myApps.filter(
       ({ application }) => application.status === "Pending"
@@ -149,9 +137,7 @@ const CandidatePage: React.FC = () => {
     }
   };
 
-  // #######################
   // FEATURE #6: Export My Applications to CSV
-  // #######################
   const downloadCSV = () => {
     const header = ["CourseCode", "Role", "Availability", "Status", "Comment"];
     const rows = myApps.map(({ course, application }) => [
@@ -168,7 +154,7 @@ const CandidatePage: React.FC = () => {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", "my_applications.csv");
-    document.body.appendChild(link); // required for Firefox
+    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
@@ -184,7 +170,6 @@ const CandidatePage: React.FC = () => {
     setSelectedRole("");
   };
 
-  // Only candidates can access this page
   if (!user || !user.isCandidate) {
     return (
       <Text textAlign="center" mt={10}>
@@ -208,9 +193,7 @@ const CandidatePage: React.FC = () => {
           Edit Details
         </Button>
 
-        {/* ######################## */}
         {/* FEATURE #4: Recommended */}
-        {/* ######################## */}
         {recommendedCourses.length > 0 && (
           <>
             <Heading size="md">Recommended for You</Heading>
@@ -309,9 +292,7 @@ const CandidatePage: React.FC = () => {
           </>
         )}
 
-        {/* ######################## */}
         {/* FEATURE #2: Saved Courses */}
-        {/* ######################## */}
         {Object.keys(bookmarks).some((id) => bookmarks[id]) && (
           <>
             <Heading size="md">My Saved Courses</Heading>
@@ -412,9 +393,7 @@ const CandidatePage: React.FC = () => {
           </>
         )}
 
-        {/* ######################## */}
         {/* Available Courses (where you haven’t applied yet) */}
-        {/* ######################## */}
         <Heading size="md">Available Courses</Heading>
         {availableCourses.length === 0 ? (
           <Text>No available courses left to apply.</Text>
@@ -514,9 +493,7 @@ const CandidatePage: React.FC = () => {
 
         <Divider />
 
-        {/* ######################## */}
         {/* FEATURE #3: Application Statistics & Buttons */}
-        {/* ######################## */}
         <StatGroup>
           <Stat>
             <StatLabel>Total Applied</StatLabel>
@@ -555,9 +532,7 @@ const CandidatePage: React.FC = () => {
 
         <Divider />
 
-        {/* ######################## */}
         {/* My Applications List */}
-        {/* ######################## */}
         <Heading size="md">My Applications</Heading>
         {myCourses.length === 0 ? (
           <Text>No applications yet.</Text>

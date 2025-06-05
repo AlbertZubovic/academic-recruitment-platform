@@ -28,9 +28,6 @@ import {
 import { Course as CourseType } from "@/types/course";
 import { User } from "@/types/user";
 
-///////////////////////////////////////////////////////////////////////////////
-// — Type Definitions for Context Value —
-///////////////////////////////////////////////////////////////////////////////
 
 type CourseWithApplicants = CourseType & {
   applicants: LecturerApplication[];
@@ -84,10 +81,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const { user } = useAuth();
   const toast = useToast();
   const BASE_URL = "http://localhost:5000/api";
-
-  ////////////////////////////////////////////////////////////////////////////
-  // 1) Candidate‐side State + Methods
-  ////////////////////////////////////////////////////////////////////////////
 
   const [myApplications, setMyApplications] = useState<CandidateApplication[]>([]);
   const [loadingMyApps, setLoadingMyApps] = useState(false);
@@ -186,10 +179,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  ////////////////////////////////////////////////////////////////////////////
-  // 2) Lecturer‐side State + Methods
-  ////////////////////////////////////////////////////////////////////////////
-
   const [lecturerApplications, setLecturerApplications] =
     useState<Record<string, LecturerApplication[]>>({});
   const [loadingLectApps, setLoadingLectApps] = useState(false);
@@ -198,7 +187,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [courses, setCourses] = useState<CourseWithApplicants[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  // 2a) Fetch all courses (with their applicants) that this lecturer teaches
+  // 2a) Fetch all courses that this lecturer teaches
   const fetchCoursesWithApplicants = async () => {
     try {
       const res = await fetch(`${BASE_URL}/courses`, {
@@ -207,7 +196,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (!res.ok) throw new Error("Failed to fetch courses");
       const data: CourseWithApplicants[] = await res.json();
 
-      // Only include those courses where course.lecturer.id === current user’s id
       const myId = user?.id;
       const myCourses = data.filter((course) => course.lecturer?.id === myId);
       setCourses(myCourses);
@@ -222,7 +210,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // 2b) Fetch full list of candidate users (for name lookup in filters/charts)
+  // 2b) Fetch full list of candidate users
   const fetchAllCandidateUsers = async () => {
     try {
       const res = await fetch(`${BASE_URL}/users/candidates`, {
@@ -242,7 +230,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // 2c) Fetch applications for a single course (used when updating status)
+  // 2c) Fetch applications for a single course
   const fetchLecturerApplications = async (courseId: string) => {
     setErrorLect(null);
     setLoadingLectApps(true);
@@ -275,7 +263,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // 2d) Update an application’s status (approve/reject/ranking), then re-fetch
+  // 2d) Update an application’s status, then re-fetch
   const updateApplicationStatus = async (
     courseId: string,
     applicationId: string,
@@ -300,17 +288,13 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       // (1) Re-fetch that course’s applicant list
       await fetchLecturerApplications(courseId);
 
-      // (2) Re-fetch all courses (so that `courses` in context updates)
+      // (2) Re-fetch all courses
       await fetchCoursesWithApplicants();
     } catch (err: any) {
       setErrorLect(err.message);
       throw err;
     }
   };
-
-  ////////////////////////////////////////////////////////////////////////////
-  // 3) Search/filter/sort/drag logic
-  ////////////////////////////////////////////////////////////////////////////
 
   const [searchTerm, setSearchTerm] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<
@@ -372,9 +356,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       return false;
     })
-    // ────────────────────────────────────────────────────────────
-    // Sort each course’s filtered applicants by chosen criterion:
-    // ────────────────────────────────────────────────────────────
     .map((course) => {
       // a) Availability sort (Full-Time first → Part-Time)
       if (sortCriteria === "availability") {
@@ -398,7 +379,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         return { ...course, applicants: sortedApps };
       }
 
-      // c) Grouped or default (“course” does not reorder applicants here)
+      // c) Grouped or default
       return course;
     });
 
@@ -411,7 +392,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     const { active, over } = event;
     if (!active || !over) return;
 
-    const activeAppId = active.id as string; // this is the UUID applicationId
+    const activeAppId = active.id as string;
     const overAppId = over.id as string;
 
     // 1) Figure out which course contains that applicationId
@@ -427,7 +408,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         break;
       }
     }
-    if (courseIndex === -1) return; // not found in any course
+    if (courseIndex === -1) return;
     const course = courses[courseIndex];
 
     // 2) Find newIndex within that same course by matching applicationId
@@ -436,7 +417,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
     if (newIndex === -1) return;
 
-    // 3) Reorder locally (optimistic update)
+    // 3) Reorder locally
     const newList = arrayMove(course.applicants, oldIndex, newIndex);
     const updatedCourse = { ...course, applicants: newList };
     const newCourses = [...courses];
@@ -446,7 +427,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     // 4) Persist each applicant’s updated ranking
     for (let i = 0; i < newList.length; i++) {
       const lectApp = newList[i];
-      const newRank = i + 1; // 1-based
+      const newRank = i + 1;
       try {
         await updateApplicationStatus(course.id, lectApp.applicationId, {
           ranking: newRank,
@@ -458,37 +439,22 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         );
       }
     }
-
-    // ─────────────────────────────────────────────────────────────────
-    // DO NOT re-fetch all courses here—otherwise apps with “ranking = null”
-    // will reorder themselves back to the top. By removing the re-fetch,
-    // the dragged order “sticks” immediately in the UI.
-    // ─────────────────────────────────────────────────────────────────
   };
 
-  ////////////////////////////////////////////////////////////////////////////
-  // 4) INITIAL FETCH FOR LECTURER
-  ////////////////////////////////////////////////////////////////////////////
 
   useEffect(() => {
     if (user && user.isLecturer) {
       fetchCoursesWithApplicants();
       fetchAllCandidateUsers();
     } else {
-      // If not a lecturer, clear out the data
       setCourses([]);
       setAllUsers([]);
     }
   }, [user]);
 
-  ////////////////////////////////////////////////////////////////////////////
-  // 5) Context Provider Value
-  ////////////////////////////////////////////////////////////////////////////
-
   return (
     <ApplicationContext.Provider
       value={{
-        // Candidate state & methods
         myApplications,
         loadingMyApps,
         errorMy,
@@ -497,14 +463,12 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         deleteMyApplication,
         fetchMyApplications,
 
-        // Lecturer state & methods
         lecturerApplications,
         loadingLectApps,
         errorLect,
         fetchLecturerApplications,
         updateApplicationStatus,
 
-        // Search/filter/sort/drag state
         courses,
         allUsers,
         filteredApplicants,

@@ -11,7 +11,7 @@ import { UserSkill } from "../entities/UserSkill";
 
 export const updateCurrentUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user.userId; // set by authMiddleware
+    const userId = (req as any).user.userId;
     const { firstname, lastname, email, academic_credentials, default_skills } = req.body;
 
     // 1) Ensure required fields are present
@@ -20,7 +20,7 @@ export const updateCurrentUser = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // 2) Simple email format check (you could also rely on class-validator later)
+    // 2) Simple email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       res.status(400).json({ message: "Invalid email format." });
@@ -54,9 +54,9 @@ export const updateCurrentUser = async (req: Request, res: Response): Promise<vo
     user.firstname = firstname;
     user.lastname = lastname;
     user.email = email;
-    user.academic_credentials = academic_credentials ?? null; // allow null
+    user.academic_credentials = academic_credentials ?? null;
 
-    // 6) Validate updated user entity (class-validator on User)
+    // 6) Validate updated user entity
     try {
       await validateOrReject(user);
     } catch (validationErrors: any) {
@@ -67,7 +67,7 @@ export const updateCurrentUser = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // 7) Save user (this updates firstname, lastname, email, academic_credentials)
+    // 7) Save user
     await userRepo.save(user);
 
     // 8) Handle default_skills array if provided

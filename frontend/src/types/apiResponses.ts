@@ -14,7 +14,7 @@ import {
  * Response from POST /api/auth/signup
  */
 export interface SignUpResponse {
-  message: string;   // e.g., "Welcome Alice"
+  message: string;
   user: {
     id: string;
     email: string;
@@ -23,7 +23,7 @@ export interface SignUpResponse {
     isCandidate: boolean;
     isLecturer: boolean;
     defaultAvailability: string | null;
-    created: string;  // ISO timestamp
+    created: string;
   };
 }
 
@@ -31,8 +31,7 @@ export interface SignUpResponse {
  * Response from POST /api/auth/signin
  */
 export interface SignInResponse {
-  message: string;   // e.g., "Welcome Charlie"
-  // JWT is set in an HttpOnly cookie; no token property here.
+  message: string;
 }
 
 /**

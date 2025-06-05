@@ -8,8 +8,7 @@ import React, {
 } from "react";
 
 //
-// Keeps track of which applicants (by userId) have been “selected”
-// for each course. Internally: { [courseId: string]: string[] }.
+// Keeps track of which applicants (by userId) have been “selected” for each course.
 //
 
 interface SelectedApplicantsContextValue {
@@ -17,7 +16,7 @@ interface SelectedApplicantsContextValue {
 
   /**
    * Toggles selection of a given userId under a given courseId.
-   * Calls callback("selected") if newly added, or ("deselected") if removed.
+   * Calls callback if newly added, or if removed.
    */
   toggleApplicantSelection: (
     userId: string,

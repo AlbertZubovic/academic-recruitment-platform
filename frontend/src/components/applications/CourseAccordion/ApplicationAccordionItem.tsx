@@ -15,6 +15,7 @@ import {
   IconButton,
   Textarea,
   useToast,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { HamburgerIcon, CopyIcon } from "@chakra-ui/icons";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -36,6 +37,14 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
   const { isFilteredView } = useApplications();
   const toast = useToast();
 
+  // Color mode values
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const headerBgExpanded = useColorModeValue("blue.100", "blue.900");
+  const panelBg = useColorModeValue("gray.50", "gray.700");
+  const cardBg = useColorModeValue("white", "gray.600");
+  const cardBorderColor = useColorModeValue("gray.200", "gray.600");
+  const noApplicantsTextColor = useColorModeValue("gray.500", "gray.400");
+
   // 1) Count statuses
   const pendingCount = course.applicants.filter((a) => a.status === "Pending")
     .length;
@@ -44,7 +53,6 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
   const rejectedCount = course.applicants.filter((a) => a.status === "Rejected")
     .length;
 
-  // Copy the course name (not a URL) to the clipboard
   const copyCourseName = () => {
     navigator.clipboard.writeText(course.name).then(() => {
       toast({
@@ -60,14 +68,14 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
     <AccordionItem
       mb={4}
       borderWidth={1}
-      borderColor="gray.200"
+      borderColor={borderColor}
       borderRadius="md"
       overflow="hidden"
     >
       {/* Accordion Header */}
-      <AccordionButton _expanded={{ bg: "blue.100" }}>
+      <AccordionButton _expanded={{ bg: headerBgExpanded }}>
         <Box flex="1" textAlign="left">
-          <Text fontWeight="bold" fontSize="lg" color="blue.600">
+          <Text fontWeight="bold" fontSize="lg" color={useColorModeValue("blue.600", "blue.300")}>
             {course.name} ({course.courseCode}){" "}
             <Badge ml={2} colorScheme="gray" variant="solid" borderRadius="full" px={2}>
               {course.applicants.length} applicant
@@ -111,14 +119,13 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
       </AccordionButton>
 
       {/* Accordion Content */}
-      <AccordionPanel bg="gray.50" p={4}>
+      <AccordionPanel bg={panelBg} p={4}>
         {course.applicants.length === 0 ? (
-          <Text color="gray.500" fontStyle="italic">
+          <Text color={noApplicantsTextColor} fontStyle="italic">
             No applicants for this course.
           </Text>
         ) : (
           <SortableContext
-            // Each item’s id must be unique (we use applicationId)
             items={course.applicants.map(
               (app: LecturerApplication) => app.applicationId
             )}
@@ -128,14 +135,14 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
               {course.applicants.map((applicantDetail, index) => {
                 const uniqueItemId = applicantDetail.applicationId;
 
-                // Store the private note purely in localStorage under:
+                // Store the private note in localStorage under:
                 //   private_note__<courseId>__<applicationId>
                 const storageKey = `private_note__${course.id}__${uniqueItemId}`;
 
                 // 2) Local state for the textarea’s value
                 const [note, setNote] = useState<string>("");
 
-                // On mount, load from localStorage (or start as "")
+                // On mount, load from localStorage
                 useEffect(() => {
                   const saved = localStorage.getItem(storageKey);
                   if (saved !== null) {
@@ -160,18 +167,18 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
 
                 return (
                   <SortableItem
-                    key={uniqueItemId} // React key
-                    id={uniqueItemId} // dnd-kit ID
+                    key={uniqueItemId}
+                    id={uniqueItemId}
                     isDragDisabled={isFilteredView}
                   >
                     {(dragHandleProps) => (
                       <Box
-                        bg="white"
+                        bg={cardBg}
                         borderRadius="md"
                         boxShadow="sm"
                         w="100%"
                         border="1px solid"
-                        borderColor="gray.200"
+                        borderColor={cardBorderColor}
                       >
                         <Flex align="center" p={2}>
                           <Tooltip
@@ -193,7 +200,7 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
                                 : { ...dragHandleProps })}
                               aria-label="Drag to reorder applicant"
                             >
-                              <HamburgerIcon color="gray.500" />
+                              <HamburgerIcon color={useColorModeValue("gray.500", "gray.300")} />
                             </Box>
                           </Tooltip>
 
@@ -224,6 +231,7 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
                           <Textarea
                             placeholder="Add a private note…"
                             size="sm"
+                            bg={useColorModeValue("gray.50", "gray.600")}
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             onBlur={handleBlur}

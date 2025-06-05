@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
-  // On mount, try to load current user
   useEffect(() => {
     refreshUser()
       .catch(() => {})

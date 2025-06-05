@@ -25,7 +25,7 @@ interface ApplicationDetailsModalProps {
     lecturerComment?: string | null;
     appliedAvailability?: string;
     appliedSkills?: string[];
-    name?: string; // for lecturer view: applicant name
+    name?: string;
     applicationId?: string;
   };
 }

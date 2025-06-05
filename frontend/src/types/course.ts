@@ -24,7 +24,7 @@ export interface Course {
   lecturer: UserSummary | null;        // summary of the lecturer
 
   // NEW FIELDS returned by GET /api/candidates/courses:
-  appliedRoles: ApplicationRole[];     // e.g. ["Tutor"] if the user already applied as Tutor
+  appliedRoles: ApplicationRole[];
   applicationDetails?: {
     role: ApplicationRole;
     appliedAvailability: ApplicationAvailability;
