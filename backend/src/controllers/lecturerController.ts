@@ -149,8 +149,8 @@ export const updateApplicationStatus = async (
     }
 
     // 2) Validate accepted is boolean
-    if (accepted !== true && accepted !== false) {
-      res.status(400).json({ message: "Accepted must be true or false." });
+    if (accepted !== true && accepted !== false && accepted !== null) {
+      res.status(400).json({ message: "Accepted must be true or false, or null." });
       return;
     }
 

@@ -1,3 +1,5 @@
+// ── src/entities/Application.ts ──
+
 import {
   Entity,
   PrimaryColumn,
@@ -8,9 +10,9 @@ import {
 } from "typeorm";
 import {
   IsEnum,
-  IsIn,
-  IsInt,
   IsOptional,
+  IsBoolean,     // ← use IsBoolean instead of IsIn for `accepted`
+  IsInt,
   IsString,
   MaxLength,
 } from "class-validator";
@@ -51,10 +53,13 @@ export class Application {
   })
   applied_availability!: ApplicationAvailability;
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Make `accepted` nullable in DB AND allow null in validation:
   @Column({ type: "boolean", nullable: true, default: null })
   @IsOptional()
-  @IsIn([true, false], { message: "accepted must be boolean or null" })
+  @IsBoolean({ message: "accepted must be boolean or null" })
   accepted!: boolean | null;
+  // ──────────────────────────────────────────────────────────────────────────
 
   @Column({ type: "int", nullable: true })
   @IsOptional()

@@ -2,10 +2,9 @@
 
 /**
  * ApplicantCard Component
- * Displays an interactive view of a single applicant within a course's applicant list.
- * Shows name, credentials, skills, and availability relevant to the application.
- * Allows selection via checkbox.
- * Opens a modal on click for detailed applicant information and notes.
+ * Displays a single applicant’s summary inside a course’s list.
+ * Clicking the card opens a modal with details.
+ * The “approve/reject” UI appears on the right.
  */
 
 import React from "react";
@@ -17,15 +16,15 @@ import {
 } from "@chakra-ui/react";
 
 import ApplicantCardHeader from "./ApplicantCardHeader";
-import ApplicantSelectCheckbox from "./ApplicantSelectCheckbox";
+import ApproveRejectCheckbox from "./ApproveRejectCheckbox";
 import ApplicantDetailsModal from "./ApplicantDetailsModal";
 
 import { LecturerApplication } from "@/types/Application";
 import { useApplications } from "@/context/ApplicationContext";
 
-// Props accepted by the component
+// Props for ApplicantCard
 interface ApplicantCardProps {
-  applicationDetails: LecturerApplication; // LecturerApplication has fields like userId, availability, skills
+  applicationDetails: LecturerApplication;
   courseId: string;
 }
 
@@ -33,12 +32,10 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
   applicationDetails,
   courseId,
 }) => {
-  // Manage modal open/close state
   const { isOpen, onOpen, onClose } = useDisclosure();
-  // Grab `allUsers` from our new context so we can look up full User profile
   const { allUsers } = useApplications();
 
-  // Find the full user profile using applicationDetails.userId
+  // Look up full user profile by ID
   const userProfile = allUsers.find(
     (u) => String(u.id) === String(applicationDetails.userId)
   );
@@ -65,7 +62,7 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
 
   return (
     <>
-      {/* Clickable card that opens the modal on click */}
+      {/* Clicking the card opens the modal */}
       <Box
         p={4}
         borderWidth={1}
@@ -78,16 +75,15 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
         onClick={onOpen}
       >
         <HStack justify="space-between" align="start">
-          {/* Show applicant’s header (name, credentials, availability, skills) */}
+          {/* Left side: applicant header */}
           <ApplicantCardHeader
             userProfile={userProfile}
             applicationDetails={applicationDetails}
           />
 
-          {/* Checkbox for selecting/deselecting this applicant */}
+          {/* Right side: approve/reject checkboxes */}
           <Box onClick={(e) => e.stopPropagation()}>
-            <ApplicantSelectCheckbox
-              userProfile={userProfile}
+            <ApproveRejectCheckbox
               applicationDetails={applicationDetails}
               courseId={courseId}
             />
