@@ -266,7 +266,7 @@ const VisualRepresentation: React.FC = () => {
             : "N/A"}
         </Text>
         <Text>
-          <strong>Approved but Never Selected:</strong> {neverChosenCount} candidate(s)
+          <strong>Not Approved:</strong> {neverChosenCount} candidate(s)
         </Text>
       </VStack>
     </Box>

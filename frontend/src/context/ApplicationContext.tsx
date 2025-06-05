@@ -1,3 +1,5 @@
+// src/context/ApplicationContext.tsx
+
 import React, {
   createContext,
   useContext,
@@ -193,7 +195,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loadingLectApps, setLoadingLectApps] = useState(false);
   const [errorLect, setErrorLect] = useState<string | null>(null);
 
-  // This holds the full list of courses + their applicants
   const [courses, setCourses] = useState<CourseWithApplicants[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
@@ -274,7 +275,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // 2d) Update an application’s status (approve/reject/ranking), then re‐fetch
+  // 2d) Update an application’s status (approve/reject/ranking), then re-fetch
   const updateApplicationStatus = async (
     courseId: string,
     applicationId: string,
@@ -296,10 +297,10 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(data.message || "Failed to update status");
       }
 
-      // (1) Re‐fetch that course’s applicant list
+      // (1) Re-fetch that course’s applicant list
       await fetchLecturerApplications(courseId);
 
-      // (2) Re‐fetch all courses (so that `courses` in context updates)
+      // (2) Re-fetch all courses (so that `courses` in context updates)
       await fetchCoursesWithApplicants();
     } catch (err: any) {
       setErrorLect(err.message);
@@ -371,9 +372,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       return false;
     })
-    //  ────────────────────────────────────────────────────────────
-    //  Sort each course’s filtered applicants by chosen criterion:
-    //  ────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    // Sort each course’s filtered applicants by chosen criterion:
+    // ────────────────────────────────────────────────────────────
     .map((course) => {
       // a) Availability sort (Full-Time first → Part-Time)
       if (sortCriteria === "availability") {
@@ -397,8 +398,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         return { ...course, applicants: sortedApps };
       }
 
-      // c) Grouped or default (by whatever front end wants)
-      //    (“course” doesn’t reorder applicants, it’s handled by initial fetch order)
+      // c) Grouped or default (“course” does not reorder applicants here)
       return course;
     });
 
@@ -411,35 +411,42 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     const { active, over } = event;
     if (!active || !over) return;
 
-    const activeId = active.id as string; // e.g. "COSC101-<userId>"
-    const overId = over.id as string;
+    const activeAppId = active.id as string; // this is the UUID applicationId
+    const overAppId = over.id as string;
 
-    // Find the affected course in `courses`
-    const [courseCode] = activeId.split("-");
-    const idx = courses.findIndex((c) => c.courseCode === courseCode);
-    if (idx === -1) return;
-    const course = courses[idx];
+    // 1) Figure out which course contains that applicationId
+    let courseIndex = -1;
+    let oldIndex = -1;
+    for (let i = 0; i < courses.length; i++) {
+      const idxInCourse = courses[i].applicants.findIndex(
+        (a) => a.applicationId === activeAppId
+      );
+      if (idxInCourse > -1) {
+        courseIndex = i;
+        oldIndex = idxInCourse;
+        break;
+      }
+    }
+    if (courseIndex === -1) return; // not found in any course
+    const course = courses[courseIndex];
 
-    // Determine old/new positions
-    const oldIndex = course.applicants.findIndex(
-      (app) => `${course.courseCode}-${app.userId}` === activeId
-    );
+    // 2) Find newIndex within that same course by matching applicationId
     const newIndex = course.applicants.findIndex(
-      (app) => `${course.courseCode}-${app.userId}` === overId
+      (a) => a.applicationId === overAppId
     );
-    if (oldIndex === -1 || newIndex === -1) return;
+    if (newIndex === -1) return;
 
-    // 1) Reorder locally
+    // 3) Reorder locally (optimistic update)
     const newList = arrayMove(course.applicants, oldIndex, newIndex);
     const updatedCourse = { ...course, applicants: newList };
     const newCourses = [...courses];
-    newCourses[idx] = updatedCourse;
+    newCourses[courseIndex] = updatedCourse;
     setCourses(newCourses);
 
-    // 2) Persist each applicant’s updated ranking
+    // 4) Persist each applicant’s updated ranking
     for (let i = 0; i < newList.length; i++) {
       const lectApp = newList[i];
-      const newRank = i + 1; // 1‐based
+      const newRank = i + 1; // 1-based
       try {
         await updateApplicationStatus(course.id, lectApp.applicationId, {
           ranking: newRank,
@@ -452,8 +459,11 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
     }
 
-    // 3) Re‐fetch all courses so that server‐side ranking/order is restored
-    await fetchCoursesWithApplicants();
+    // ─────────────────────────────────────────────────────────────────
+    // DO NOT re-fetch all courses here—otherwise apps with “ranking = null”
+    // will reorder themselves back to the top. By removing the re-fetch,
+    // the dragged order “sticks” immediately in the UI.
+    // ─────────────────────────────────────────────────────────────────
   };
 
   ////////////////////////////////////////////////////////////////////////////

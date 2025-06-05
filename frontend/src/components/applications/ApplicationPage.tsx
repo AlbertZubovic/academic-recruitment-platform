@@ -84,7 +84,7 @@ const ApplicationPage: React.FC = () => {
       {/* Search + Sort controls */}
       <Flex mb={4} justify="center" align="center" gap={2} wrap="wrap">
         <Input
-          placeholder="Search by name, course, or skills"
+          placeholder="Search by name, skills, or course"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           width="60%"
