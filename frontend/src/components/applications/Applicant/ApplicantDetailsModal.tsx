@@ -25,7 +25,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   courseId: string;
-  userProfile: User;
+  userProfile: User;                    // <-- Must include `pastRoles: PastRole[]`
   applicationDetails: LecturerApplication;
 }
 
@@ -80,12 +80,7 @@ const ApplicantDetailsModal: React.FC<Props> = ({
             {/* 3) Availability */}
             <Text>
               <strong>Applied Availability:</strong>{" "}
-              {applicationDetails.appliedAvailability
-                ? applicationDetails.appliedAvailability
-                    .split("-")
-                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                    .join(" ")
-                : "N/A"}
+              {applicationDetails.appliedAvailability}
             </Text>
 
             {/* 4) Skills */}
@@ -93,7 +88,8 @@ const ApplicantDetailsModal: React.FC<Props> = ({
               <strong>Applied Skills:</strong>
             </Text>
             <Wrap>
-              {applicationDetails.appliedSkills && applicationDetails.appliedSkills.length > 0 ? (
+              {applicationDetails.appliedSkills &&
+              applicationDetails.appliedSkills.length > 0 ? (
                 applicationDetails.appliedSkills.map((skillName, i) => (
                   <WrapItem key={i}>
                     <Badge colorScheme="green">{skillName}</Badge>
@@ -110,12 +106,18 @@ const ApplicantDetailsModal: React.FC<Props> = ({
             {userProfile.pastRoles && userProfile.pastRoles.length > 0 && (
               <>
                 <Divider />
-                <Text fontWeight="medium">Past Roles (Profile):</Text>
+                <Text fontWeight="medium">Past Roles:</Text>
                 {userProfile.pastRoles.map((pr, i) => (
-                  <Box key={i} p={2} bg="gray.100" borderRadius="md" w="100%">
+                  <Box
+                    key={i}
+                    p={2}
+                    bg="gray.100"
+                    borderRadius="md"
+                    w="100%"
+                  >
                     <Text>
                       <strong>{pr.role}</strong> – {pr.courseName} (
- pr.courseCode)
+                      {pr.courseCode})
                     </Text>
                     <Text fontSize="sm" color="gray.600">
                       {pr.semester || "N/A"}

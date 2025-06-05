@@ -14,7 +14,11 @@ router.get("/candidates", authenticate, async (req, res) => {
   try {
     const candidates = await repo.find({
       where: { is_candidate: true, is_lecturer: false },
-      relations: ["userSkills", "userSkills.skill"],
+      relations: [
+        "userSkills",
+        "userSkills.skill",
+        "pastRoles", // ← load pastRoles as well
+      ],
       order: { lastname: "ASC", firstname: "ASC" },
     });
 
@@ -26,11 +30,18 @@ router.get("/candidates", authenticate, async (req, res) => {
       isLecturer: user.is_lecturer,
       isCandidate: user.is_candidate,
       isAdmin: user.is_admin,
-      defaultSkills: user.userSkills?.map((us) => us.skill.name),
+      defaultSkills: user.userSkills?.map((us) => us.skill.name) || [],
       defaultAvailability: user.default_availability,
       academicCredentials: user.academic_credentials,
       created: user.created,
       isBlocked: user.is_blocked,
+      pastRoles: user.pastRoles.map((pr) => ({
+        id: pr.id,
+        courseCode: pr.courseCode,
+        courseName: pr.courseName,
+        role: pr.role,
+        semester: pr.semester,
+      })),
     }));
 
     res.json(transformed);
@@ -42,7 +53,7 @@ router.get("/candidates", authenticate, async (req, res) => {
   }
 });
 
-// ─── NEW: update current user ───
+// ─── UPDATE current user ───
 // PUT /api/users/me
 router.put("/me", authenticate, updateCurrentUser);
 
