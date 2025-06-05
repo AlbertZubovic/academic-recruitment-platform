@@ -1,53 +1,57 @@
 // src/components/applications/Applicant/ApplicantCardHeader.tsx
 
-/**
- * ApplicantCardHeader Component
- * Displays the applicant’s profile name/credentials and application-specific availability/skills.
- */
-
 import { HStack, VStack, Text, Badge } from "@chakra-ui/react";
 import React from "react";
-import { Applicant } from "@/types/applicant"; // Application details type
-import { User } from "@/types/user"; // User profile type
+import { LecturerApplication } from "@/types/Application";
+import { User } from "@/types/user";
 
 interface Props {
-  userProfile: User; // Contains general user info (name, credentials, etc.)
-  applicationDetails: Applicant; // Contains application-specific info (appliedSkills, appliedAvailability)
+  userProfile: User;
+  applicationDetails: LecturerApplication;
 }
 
-const ApplicantCardHeader: React.FC<Props> = ({ userProfile, applicationDetails }) => (
+const ApplicantCardHeader: React.FC<Props> = ({
+  userProfile,
+  applicationDetails,
+}) => (
   <VStack align="start" spacing={1}>
-    {/* Full name from userProfile */}
+    {/* 1) Show the “role” they applied for */}
+    <Badge colorScheme="teal" variant="subtle" fontSize="xs">
+      {applicationDetails.role}
+    </Badge>
+
+    {/* 2) Full name from userProfile */}
     <Text fontWeight="bold" fontSize="lg">
       {userProfile.firstName} {userProfile.lastName}
     </Text>
 
-    {/* Credentials from userProfile */}
+    {/* 3) academicCredentials (instead of non‐existent “credentials”) */}
     <Text fontSize="sm" color="gray.600">
-      {userProfile.credentials || "No credentials"} {/* Add fallback */}
+      {userProfile.academicCredentials || "No academic credentials"}
     </Text>
 
-    {/* Availability + skill badges */}
+    {/* 4) Applied availability + skill badges */}
     <HStack spacing={2} wrap="wrap">
-      {/* Use appliedAvailability from applicationDetails */}
       <Badge colorScheme="purple">
-        {applicationDetails.appliedAvailability
-          ? applicationDetails.appliedAvailability
+        {applicationDetails.availability
+          ? applicationDetails.availability
               .split("-")
               .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
               .join(" ")
-          : "N/A"} {/* Add fallback */}
+          : "N/A"}
       </Badge>
 
-      {/* Use appliedSkills from applicationDetails */}
-      {applicationDetails.appliedSkills?.map((skill, i) => ( // Add optional chaining
+      {applicationDetails.skills?.map((skillName, i) => (
         <Badge key={i} colorScheme="blue">
-          {skill}
+          {skillName}
         </Badge>
       ))}
-      {/* Optional: Show message if no skills applied */}
-      {(!applicationDetails.appliedSkills || applicationDetails.appliedSkills.length === 0) && (
-          <Text fontSize="xs" color="gray.500">No specific skills listed for this application.</Text>
+
+      {(!applicationDetails.skills ||
+        applicationDetails.skills.length === 0) && (
+        <Text fontSize="xs" color="gray.500">
+          No specific skills
+        </Text>
       )}
     </HStack>
   </VStack>

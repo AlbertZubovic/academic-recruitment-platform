@@ -1,32 +1,51 @@
+// src/components/applications/ApplicationAccordionGroups.tsx
+
 /**
  * ApplicationAccordionGroups.tsx
  *
- * Responsible for rendering grouped or ungrouped accordions of courses.
- * Uses sorting/filtering logic from ApplicationContext to determine layout:
- * Grouped view: Courses are bucketed into High, Medium, Low demand groups
- * Default view: Courses are listed in one flat accordion list
- *
- * Renders an ApplicationAccordionItem for each course, which contains its applicants.
+ * Renders grouped or flat accordions of courses + their applicants,
+ * based on the current sort/filter settings in ApplicationContext.
  */
 
 import React from "react";
 import { Box, Accordion, Heading } from "@chakra-ui/react";
-import { useApplicationContext } from "@/context/ApplicationContext";
+import { useApplications } from "@/context/ApplicationContext";
 import ApplicationAccordionItem from "./ApplicationAccordionItem";
-import { Course } from "@/types/course";
 
-const ApplicationAccordionGroups = () => {
-  // Access state and sorting preference from context
+/**
+ * We know each course in `filteredApplicants` has this shape:
+ *   {
+ *     id: string;
+ *     courseCode: string;
+ *     name: string;
+ *     semester: string;
+ *     rolesAvailable: string[];
+ *     isDisabled: boolean;
+ *     skills: string[];
+ *     lecturer: UserSummary | null;
+ *     applicants: LecturerApplication[];
+ *     // ...plus any other Course fields…
+ *   }
+ *
+ * For conciseness, we’ll rely on TS inference rather than re‐declaring a new interface here.
+ */
+
+const ApplicationAccordionGroups: React.FC = () => {
+  // Pull everything we need from the new context hook:
   const {
     filteredApplicants,
     openPanels,
     sortCriteria,
-  } = useApplicationContext();
+  } = useApplications();
 
-  // Renders a heading + accordion section for a grouped category.
-  const renderGroup = (label: string, color: string, filter: (c: Course) => boolean) => {
-    const group = filteredApplicants.filter(filter);
-    if (group.length === 0) return null; // If no matching courses, skip the section
+  // Helper to render a single “group” section (High/Medium/Low demand):
+  const renderGroup = (
+    label: string,
+    color: string,
+    filterFn: (c: typeof filteredApplicants[number]) => boolean
+  ) => {
+    const group = filteredApplicants.filter(filterFn);
+    if (group.length === 0) return null;
 
     return (
       <Box key={label} mt={8}>
@@ -42,20 +61,30 @@ const ApplicationAccordionGroups = () => {
     );
   };
 
-  // When sort is set to grouped, display demand buckets
+  // If “grouped” sort is active, break into demand buckets:
   if (sortCriteria === "grouped") {
     return (
       <>
-        {renderGroup("High Demand Courses", "purple.600", (c) => c.applicants.length >= 5)}
-        {renderGroup("Medium Demand Courses", "orange.500", (c) =>
-          c.applicants.length >= 2 && c.applicants.length < 5
+        {renderGroup(
+          "High Demand Courses",
+          "purple.600",
+          (c) => c.applicants.length >= 5
         )}
-        {renderGroup("Low Demand Courses", "gray.600", (c) => c.applicants.length < 2)}
+        {renderGroup(
+          "Medium Demand Courses",
+          "orange.500",
+          (c) => c.applicants.length >= 2 && c.applicants.length < 5
+        )}
+        {renderGroup(
+          "Low Demand Courses",
+          "gray.600",
+          (c) => c.applicants.length < 2
+        )}
       </>
     );
   }
 
-  // Default view: flat list of all filtered courses
+  // Otherwise, show one flat Accordion of all filtered courses:
   return (
     <Accordion allowMultiple defaultIndex={openPanels}>
       {filteredApplicants.map((course) => (

@@ -8,7 +8,7 @@
  */
 
 import React from "react";
-import ApplicationPage from "@/components/applications/ApplicationContainer";
+import ApplicationPage from "@/components/applications/ApplicationPage";
 
 export default function Applications() {
   return (

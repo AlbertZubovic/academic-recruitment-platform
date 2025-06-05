@@ -3,11 +3,10 @@
 /**
  * ApplicationAccordionItem.tsx
  *
- * This component renders a single accordion item for a course.
- * It includes:
- * A header with course name and number of applicants
- * A collapsible panel showing all applicant cards for the course
- * Drag and drop support via SortableItem (disabled in filtered view)
+ * Renders one course’s AccordionItem:
+ * - Header with course name + applicant count
+ * - AccordionPanel listing that course’s applicants
+ *   (wrapped in a SortableContext if not filtered)
  */
 
 import React from "react";
@@ -26,72 +25,87 @@ import {
 import { HamburgerIcon } from "@chakra-ui/icons";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
-import { useApplicationContext } from "@/context/ApplicationContext";
-import SortableItem from "../Controls/SortableItem"; // Assuming this component exists and works with dnd-kit
-import ApplicantCard from "../Applicant/ApplicantCard"; // The component displaying applicant info
+import { useApplications } from "@/context/ApplicationContext";
+import SortableItem from "../Controls/SortableItem";
+import ApplicantCard from "../Applicant/ApplicantCard";
 
-import { Course } from "@/types/course";
+import { LecturerApplication } from "@/types/Application";
+import { Course as CourseType } from "@/types/course";
 
-import { Applicant } from "@/types/applicant"; // The type for application details
-
-// Define props for the component
+/**
+ * We expect each `course` prop to have:
+ *   {
+ *     id: string;
+ *     courseCode: string;
+ *     name: string;
+ *     applicants: LecturerApplication[];
+ *     // plus other Course fields (semester, rolesAvailable, skills, lecturer, etc.)
+ *   }
+ */
 interface ApplicationAccordionItemProps {
-  course: Course;
+  course: CourseType & { applicants: LecturerApplication[] };
 }
 
-const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({ course }) => {
-  // Get necessary data and state from the ApplicationContext
-  // NOTE: We don't actually need allUsers directly here anymore,
-  // as ApplicantCard fetches the profile itself.
-  const { isFilteredView } = useApplicationContext();
+const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
+  course,
+}) => {
+  const { isFilteredView } = useApplications();
 
   return (
-    <AccordionItem mb={4} borderWidth={1} borderColor="gray.200" borderRadius="md" overflow="hidden">
-      {/* Header Button for Accordion */}
+    <AccordionItem
+      mb={4}
+      borderWidth={1}
+      borderColor="gray.200"
+      borderRadius="md"
+      overflow="hidden"
+    >
+      {/* Accordion Header */}
       <AccordionButton _expanded={{ bg: "blue.100" }}>
         <Box flex="1" textAlign="left">
           <Text fontWeight="bold" fontSize="lg" color="blue.600">
             {course.name} ({course.courseCode}){" "}
-            <Badge ml={2} colorScheme="gray" variant="solid" borderRadius="full" px={2}>
-              {course.applicants.length} applicant{course.applicants.length !== 1 ? 's' : ''}
+            <Badge
+              ml={2}
+              colorScheme="gray"
+              variant="solid"
+              borderRadius="full"
+              px={2}
+            >
+              {course.applicants.length} applicant
+              {course.applicants.length !== 1 ? "s" : ""}
             </Badge>
           </Text>
         </Box>
         <AccordionIcon />
       </AccordionButton>
 
-      {/* Accordion Content Panel */}
+      {/* Accordion Content */}
       <AccordionPanel bg="gray.50" p={4}>
-        {/* Display message if no applicants */}
         {course.applicants.length === 0 ? (
           <Text color="gray.500" fontStyle="italic">
             No applicants for this course.
           </Text>
         ) : (
-          // If there are applicants, set up the sortable context
           <SortableContext
-            // Provide unique string IDs for each applicant in this course context
-            items={course.applicants.map((applicantDetail: Applicant) => `${course.courseCode}-${applicantDetail.userId}`)}
-            strategy={verticalListSortingStrategy} // How items rearrange visually
+            // Each “item” ID must be a unique string.
+            // We use applicationId (UUID) to guarantee uniqueness.
+            items={course.applicants.map(
+              (app: LecturerApplication) => app.applicationId
+            )}
+            strategy={verticalListSortingStrategy}
           >
             <VStack spacing={4} align="stretch">
-              {/* Map through the applicants for this course */}
-              {course.applicants.map((applicantDetail: Applicant, index: number) => {
-                // We don't need to find the userProfile here anymore
-
-                // Generate the unique ID for dnd-kit for this specific item
-                const uniqueItemId = `${course.courseCode}-${applicantDetail.userId}`;
+              {course.applicants.map((applicantDetail, index) => {
+                // applicationId is guaranteed to be unique for each row
+                const uniqueItemId = applicantDetail.applicationId;
 
                 return (
-                  // Wrap each applicant card in a SortableItem for drag functionality
                   <SortableItem
-                    key={uniqueItemId} // React key must be unique
-                    id={uniqueItemId} // ID used by dnd-kit
-                    isDragDisabled={isFilteredView} // Disable dragging if filters/sorting are active
+                    key={uniqueItemId}      // <-- This is the React “key”
+                    id={uniqueItemId}       // <-- And dnd-kit’s “id”
+                    isDragDisabled={isFilteredView}
                   >
-                    {/* Render prop provides drag handle props */}
                     {(dragHandleProps) => (
-                      // Styling wrapper for the draggable item
                       <Box
                         bg="white"
                         borderRadius="md"
@@ -101,41 +115,51 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({ cou
                         borderColor="gray.200"
                       >
                         <Flex align="center" p={2}>
-                          {/* Drag Handle - only visually active when not filtered */}
-                          <Tooltip label={isFilteredView ? "Ranking disabled while filtering" : "Drag to Rank"} placement="left" hasArrow>
+                          <Tooltip
+                            label={
+                              isFilteredView
+                                ? "Ranking disabled while filtering"
+                                : "Drag to Rank"
+                            }
+                            placement="left"
+                            hasArrow
+                          >
                             <Box
                               cursor={isFilteredView ? "not-allowed" : "grab"}
-                              pr={3} // Increased padding for easier grabbing
-                              py={2} // Vertical padding for handle area
+                              pr={3}
+                              py={2}
                               opacity={isFilteredView ? 0.4 : 1}
-                              {...dragHandleProps} // Apply drag listeners and attributes here
+                              // Only spread listeners when drag is allowed
+                              {...(isFilteredView
+                                ? {}
+                                : { ...dragHandleProps })}
                               aria-label="Drag to reorder applicant"
                             >
                               <HamburgerIcon color="gray.500" />
                             </Box>
                           </Tooltip>
 
-                          {/* Main applicant content */}
                           <Box flex="1">
-                            {/* --- FIX: Remove userProfile prop --- */}
                             <ApplicantCard
-                              // userProfile={userProfile} // REMOVED
                               applicationDetails={applicantDetail}
-                              courseId={course.id} // Pass the course ID
+                              courseId={course.id}
                             />
                           </Box>
 
-                          {/* Preference badge (only show when not filtered/sorted by availability) */}
                           {!isFilteredView && (
-                            <Tooltip label={`Current Rank: ${index + 1}`} placement="right" hasArrow>
+                            <Tooltip
+                              label={`Current Rank: ${index + 1}`}
+                              placement="right"
+                              hasArrow
+                            >
                               <Badge
                                 colorScheme="purple"
                                 variant="solid"
-                                fontSize="md" // Slightly larger font
+                                fontSize="md"
                                 px={3}
                                 py={1}
-                                borderRadius="full" // Fully rounded badge
-                                ml={2} // Margin to separate from card content
+                                borderRadius="full"
+                                ml={2}
                               >
                                 #{index + 1}
                               </Badge>

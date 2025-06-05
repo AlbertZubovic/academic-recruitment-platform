@@ -1,14 +1,5 @@
 // src/components/applications/Applicant/ApplicantDetailsModal.tsx
 
-/**
- * ApplicantDetailsModal.tsx
- *
- * This modal component displays detailed information about a specific applicant.
- * Shown when an applicant card is clicked
- * Displays personal details, availability, skills, past roles
- * Allows lecturers to leave a comment (persisted in localStorage)
- */
-
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -27,35 +18,35 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
-import { Applicant } from "@/types/applicant";
+import { LecturerApplication } from "@/types/Application";
 import { User } from "@/types/user";
-
-
-
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   courseId: string;
-  userProfile: User; // <-- Receive the full user profile
-  applicationDetails: Applicant; // <-- Receive application details
+  userProfile: User;
+  applicationDetails: LecturerApplication;
 }
 
-const ApplicantDetailsModal: React.FC<Props> = ({ isOpen, onClose, userProfile, applicationDetails, courseId }) => {
+const ApplicantDetailsModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  userProfile,
+  applicationDetails,
+  courseId,
+}) => {
   const [comment, setComment] = useState("");
-  // Use userProfile.id for the comment key
   const commentKey = `comment-${courseId}-${userProfile.id}`;
 
-  // Load saved comment from localStorage when modal opens
   useEffect(() => {
     if (isOpen) {
       const saved = localStorage.getItem(commentKey);
       if (saved) setComment(saved);
-      else setComment(""); // Reset comment if none saved
+      else setComment("");
     }
   }, [isOpen, commentKey]);
 
-  // Save comment to localStorage
   const saveComment = () => localStorage.setItem(commentKey, comment);
 
   return (
@@ -63,61 +54,78 @@ const ApplicantDetailsModal: React.FC<Props> = ({ isOpen, onClose, userProfile, 
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>
-          {/* Use name from userProfile */}
           {userProfile.firstName} {userProfile.lastName}
         </ModalHeader>
         <ModalCloseButton />
 
         <ModalBody pb={6}>
           <VStack align="start" spacing={4}>
-            {/* Display details from userProfile */}
-            <Text><strong>Email:</strong> {userProfile.email}</Text>
-            <Text><strong>Credentials:</strong> {userProfile.credentials || "N/A"}</Text>
+            {/* 1) Basic user info */}
+            <Text>
+              <strong>Email:</strong> {userProfile.email}
+            </Text>
+            <Text>
+              <strong>Credentials:</strong>{" "}
+              {userProfile.academicCredentials || "N/A"}
+            </Text>
 
             <Divider />
             <Text fontWeight="medium">Application Details for this Course:</Text>
-             {/* Availability submitted with application */}
+
+            {/* 2) Role they applied for */}
+            <Text>
+              <strong>Role Applied:</strong> {applicationDetails.role}
+            </Text>
+
+            {/* 3) Availability */}
             <Text>
               <strong>Applied Availability:</strong>{" "}
-              {applicationDetails.appliedAvailability
-                ? applicationDetails.appliedAvailability
+              {applicationDetails.availability
+                ? applicationDetails.availability
                     .split("-")
                     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
                     .join(" ")
                 : "N/A"}
             </Text>
 
-            {/* Skills submitted with application */}
-            <Text><strong>Applied Skills:</strong></Text>
+            {/* 4) Skills */}
+            <Text>
+              <strong>Applied Skills:</strong>
+            </Text>
             <Wrap>
-              {applicationDetails.appliedSkills?.length > 0 ? (
-                 applicationDetails.appliedSkills.map((skill, i) => (
-                    <WrapItem key={i}>
-                      <Badge colorScheme="green">{skill}</Badge>
-                    </WrapItem>
-                 ))
+              {applicationDetails.skills && applicationDetails.skills.length > 0 ? (
+                applicationDetails.skills.map((skillName, i) => (
+                  <WrapItem key={i}>
+                    <Badge colorScheme="green">{skillName}</Badge>
+                  </WrapItem>
+                ))
               ) : (
-                 <Text fontSize="sm" color="gray.500">No specific skills listed for this application.</Text>
+                <Text fontSize="sm" color="gray.500">
+                  No specific skills listed.
+                </Text>
               )}
             </Wrap>
 
-            {/* Past roles from userProfile */}
-            {userProfile.pastRoles?.length > 0 && (
+            {/* 5) Past roles from userProfile */}
+            {userProfile.pastRoles && userProfile.pastRoles.length > 0 && (
               <>
                 <Divider />
-                <Text fontWeight="medium">Past Roles (General Profile):</Text>
-                {userProfile.pastRoles.map((role, i) => (
+                <Text fontWeight="medium">Past Roles (Profile):</Text>
+                {userProfile.pastRoles.map((pr, i) => (
                   <Box key={i} p={2} bg="gray.100" borderRadius="md" w="100%">
                     <Text>
-                      <strong>{role.role}</strong> – {role.courseName} ({role.courseCode})
+                      <strong>{pr.role}</strong> – {pr.courseName} (
+ pr.courseCode)
                     </Text>
-                    <Text fontSize="sm" color="gray.600">{role.semester}</Text>
+                    <Text fontSize="sm" color="gray.600">
+                      {pr.semester || "N/A"}
+                    </Text>
                   </Box>
                 ))}
               </>
             )}
 
-            {/* Comment section */}
+            {/* 6) Comment section */}
             <Divider />
             <Text fontWeight="medium">Comments:</Text>
             <Input

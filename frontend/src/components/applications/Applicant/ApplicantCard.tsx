@@ -13,43 +13,59 @@ import {
   Box,
   HStack,
   useDisclosure,
-  Text, // Import Text for fallback
+  Text,
 } from "@chakra-ui/react";
 
 import ApplicantCardHeader from "./ApplicantCardHeader";
 import ApplicantSelectCheckbox from "./ApplicantSelectCheckbox";
 import ApplicantDetailsModal from "./ApplicantDetailsModal";
-import { Applicant } from "@/types/applicant"; // Application details type
-import { useApplicationContext } from "@/context/ApplicationContext"; // <-- Import context hook
+
+import { LecturerApplication } from "@/types/Application";
+import { useApplications } from "@/context/ApplicationContext";
 
 // Props accepted by the component
 interface ApplicantCardProps {
-  // Rename applicant prop to be specific about what it contains
-  applicationDetails: Applicant; // The details submitted with the application
-  courseId: string;             // The course this applicant is being shown under
+  applicationDetails: LecturerApplication; // LecturerApplication has fields like userId, availability, skills
+  courseId: string;
 }
 
-const ApplicantCard: React.FC<ApplicantCardProps> = ({ applicationDetails, courseId }) => {
-  // Manages modal open/close state
+const ApplicantCard: React.FC<ApplicantCardProps> = ({
+  applicationDetails,
+  courseId,
+}) => {
+  // Manage modal open/close state
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { allUsers } = useApplicationContext(); // <-- Get all users from context
+  // Grab `allUsers` from our new context so we can look up full User profile
+  const { allUsers } = useApplications();
 
-  // Find the full user profile using the userId from applicationDetails
-  const userProfile = allUsers.find(u => String(u.id) === String(applicationDetails.userId));
+  // Find the full user profile using applicationDetails.userId
+  const userProfile = allUsers.find(
+    (u) => String(u.id) === String(applicationDetails.userId)
+  );
 
-  // Handle case where user profile might not be found (data inconsistency)
   if (!userProfile) {
-    console.warn(`User profile not found for applicant ID: ${applicationDetails.userId}`);
+    console.warn(
+      `User profile not found for applicant ID: ${applicationDetails.userId}`
+    );
     return (
-        <Box p={4} borderWidth={1} borderRadius="md" bg="red.50" boxShadow="sm" w="100%">
-            <Text color="red.700">Error: Applicant data missing for ID {applicationDetails.userId}</Text>
-        </Box>
+      <Box
+        p={4}
+        borderWidth={1}
+        borderRadius="md"
+        bg="red.50"
+        boxShadow="sm"
+        w="100%"
+      >
+        <Text color="red.700">
+          Error: Applicant data missing for ID {applicationDetails.userId}
+        </Text>
+      </Box>
     );
   }
 
   return (
     <>
-      {/* Clickable card that opens modal on click */}
+      {/* Clickable card that opens the modal on click */}
       <Box
         p={4}
         borderWidth={1}
@@ -62,30 +78,29 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({ applicationDetails, cours
         onClick={onOpen}
       >
         <HStack justify="space-between" align="start">
-          {/* Pass both user profile and application details */}
+          {/* Show applicant’s header (name, credentials, availability, skills) */}
           <ApplicantCardHeader
             userProfile={userProfile}
             applicationDetails={applicationDetails}
           />
 
-          {/* Checkbox needs the userProfile for display in toast, and courseId */}
-          {/* It also needs the userId from applicationDetails for toggling */}
+          {/* Checkbox for selecting/deselecting this applicant */}
           <Box onClick={(e) => e.stopPropagation()}>
             <ApplicantSelectCheckbox
-              userProfile={userProfile} // Pass user profile for name in toast
-              applicationDetails={applicationDetails} // Pass details for userId
+              userProfile={userProfile}
+              applicationDetails={applicationDetails}
               courseId={courseId}
             />
           </Box>
         </HStack>
       </Box>
 
-      {/* Modal needs the full user profile for display */}
+      {/* Details modal */}
       <ApplicantDetailsModal
         isOpen={isOpen}
         onClose={onClose}
-        userProfile={userProfile} // Pass the full user profile
-        applicationDetails={applicationDetails} // Pass application details if needed inside modal
+        userProfile={userProfile}
+        applicationDetails={applicationDetails}
         courseId={courseId}
       />
     </>

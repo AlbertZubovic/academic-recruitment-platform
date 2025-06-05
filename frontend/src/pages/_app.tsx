@@ -1,4 +1,5 @@
 // src/pages/_app.tsx
+
 import { ChakraProvider, createStandaloneToast } from "@chakra-ui/react";
 import "@/styles/modules/globals.css";
 import type { AppProps } from "next/app";
@@ -6,6 +7,8 @@ import Head from "next/head";
 import Layout from "@/components/layout/Layout";
 import { AuthProvider } from "@/context/AuthContext";
 import { CourseProvider } from "@/context/CourseContext";
+import { ApplicationProvider } from "@/context/ApplicationContext";
+import { SelectedApplicantsProvider } from "@/context/SelectedApplicantsContext";
 import { useEffect } from "react";
 
 const { ToastContainer, toast: globalToast } = createStandaloneToast();
@@ -15,12 +18,12 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     if (sessionStorage.getItem("showSavedToast") === "true") {
       globalToast({
-        title: 'Profile Saved',
-        status: 'success',
+        title: "Profile Saved",
+        status: "success",
         duration: 3000,
         isClosable: true,
-        position: 'bottom',
-        containerStyle: { marginBottom: '10%' },
+        position: "bottom",
+        containerStyle: { marginBottom: "10%" },
       });
       sessionStorage.removeItem("showSavedToast");
     }
@@ -35,8 +38,12 @@ export default function App({ Component, pageProps }: AppProps) {
       <ChakraProvider>
         <AuthProvider>
           <CourseProvider>
-            <Layout Component={Component} pageProps={pageProps} />
-            <ToastContainer />
+            <ApplicationProvider>
+              <SelectedApplicantsProvider>
+                <Layout Component={Component} pageProps={pageProps} />
+                <ToastContainer />
+              </SelectedApplicantsProvider>
+            </ApplicationProvider>
           </CourseProvider>
         </AuthProvider>
       </ChakraProvider>

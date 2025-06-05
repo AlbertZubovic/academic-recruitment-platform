@@ -41,7 +41,9 @@ interface CourseContextValue {
   deleteApplication: (courseId: string) => Promise<void>;
 }
 
-const CourseContext = createContext<CourseContextValue | undefined>(undefined);
+const CourseContext = createContext<CourseContextValue | undefined>(
+  undefined
+);
 
 export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -71,9 +73,14 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    if (user) {
+    //
+    // Only a candidate should ever call /api/candidates/courses.
+    // Lecturers/Admins must skip that endpoint to avoid a 403.
+    //
+    if (user && user.isCandidate) {
       fetchCourses().finally(() => setLoading(false));
     } else {
+      // Not a candidate (or not logged in): clear out and stop loading
       setCourses([]);
       setLoading(false);
     }

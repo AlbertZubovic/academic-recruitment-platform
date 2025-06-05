@@ -24,7 +24,7 @@ import { SelectedApplicantsProvider } from "@/context/SelectedApplicantsContext"
 import { Tutor } from "@/types/tutor";
 import TutorDetails from "@/components/candidates/CandidateDetailsCard";
 import TutorDetailsPage from "@/components/candidates/CandidateDetailsCard";
-import ApplicationPage from "@/components/applications/ApplicationContainer";
+import ApplicationPage from "@/components/applications/ApplicationPage";
 import { ApplicationProvider } from "@/context/ApplicationContext";
 
 

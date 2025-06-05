@@ -8,32 +8,39 @@
 import React from "react";
 import { Checkbox, useToast } from "@chakra-ui/react";
 import { useSelectedApplicants } from "@/context/SelectedApplicantsContext";
-import { Applicant } from "@/types/applicant"; // Application details type
-import { User } from "@/types/user"; // User profile type
+import { LecturerApplication } from "@/types/Application";
+import { User } from "@/types/user";
 
 interface Props {
-  userProfile: User; // For displaying name in toast
-  applicationDetails: Applicant; // For getting the userId
+  userProfile: User;                   // User profile for toast
+  applicationDetails: LecturerApplication; // applicationDetails.userId, etc.
   courseId: string;
 }
 
-const ApplicantSelectCheckbox: React.FC<Props> = ({ userProfile, applicationDetails, courseId }) => {
-  const { selectedApplicants, toggleApplicantSelection } = useSelectedApplicants();
+const ApplicantSelectCheckbox: React.FC<Props> = ({
+  userProfile,
+  applicationDetails,
+  courseId,
+}) => {
+  const { selectedApplicants, toggleApplicantSelection } =
+    useSelectedApplicants();
   const toast = useToast();
 
-  // Use userId from applicationDetails for checking selection state
+  // Determine if this userId is currently selected for the given courseId
   const applicantUserId = String(applicationDetails.userId);
-  const isChecked = (selectedApplicants[courseId] || []).includes(applicantUserId);
+  const isChecked = (selectedApplicants[courseId] || []).includes(
+    applicantUserId
+  );
 
   return (
     <Checkbox
       isChecked={isChecked}
       onChange={() => {
-        // Pass the userId to the toggle function
         toggleApplicantSelection(applicantUserId, courseId, (action) => {
           toast({
-            title: `Applicant ${action === "selected" ? "Selected" : "Deselected"}`,
-            // Use name from userProfile for the toast message
+            title: `Applicant ${
+              action === "selected" ? "Selected" : "Deselected"
+            }`,
             description: `${userProfile.firstName} ${userProfile.lastName} has been ${action}.`,
             status: action === "selected" ? "success" : "info",
             duration: 2000,
