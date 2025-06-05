@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+// src/pages/LandingPage.tsx
+
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Image,
@@ -9,48 +11,88 @@ import {
   Avatar,
   Spinner,
   useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  List,
-  ListItem,
   Button,
   Tag,
-  Wrap,
+  IconButton,
+  Tooltip,
+  useColorMode,
 } from "@chakra-ui/react";
+import { SunIcon, MoonIcon, StarIcon } from "@chakra-ui/icons";
+import { FaRegStar } from "react-icons/fa";
 import styles from "@/styles/modules/pageContent.module.css";
 import { useAuth } from "@/context/AuthContext";
 import { useCourses } from "@/context/CourseContext";
 import { useApplications } from "@/context/ApplicationContext";
 import ProfileModal from "@/components/modals/ProfileModal";
 import ApplicationDetailsModal from "@/components/modals/ApplicationDetailsModal";
+import { Course as CourseType } from "@/types/course";
+
+interface SelectedApp {
+  course: any;
+  appDetail: any;
+}
 
 const LandingPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const { courses: candidateCourses } = useCourses();
-  const { courses: lecturerCourses } = useApplications();
+  const { courses: candidateCourses } = useCourses();        // courses from /api/candidates/courses
+  const { courses: lecturerCourses } = useApplications();    // full course list for lecturers
   const isLoggedIn = !!user;
 
-  const {
-    isOpen: isProfileOpen,
-    onOpen: onProfileOpen,
-    onClose: onProfileClose,
-  } = useDisclosure();
+  const { isOpen: isProfileOpen, onOpen: onProfileOpen, onClose: onProfileClose } =
+    useDisclosure();
+  const { isOpen: isAppDetailsOpen, onOpen: onAppDetailsOpen, onClose: onAppDetailsClose } =
+    useDisclosure();
 
-  const {
-    isOpen: isAppDetailsOpen,
-    onOpen: onAppDetailsOpen,
-    onClose: onAppDetailsClose,
-  } = useDisclosure();
+  const [selectedApp, setSelectedApp] = useState<SelectedApp | null>(null);
+  const { colorMode, toggleColorMode } = useColorMode();
 
-  const [selectedApp, setSelectedApp] = useState<{
-    course: any;
-    appDetail: any;
-  } | null>(null);
+  // ─────────────── Favorite/Bookmark Logic ───────────────
+  const [availableCourses, setAvailableCourses] = useState<CourseType[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
+  // On mount, read the same "bookmarkedCourses" object that CandidatePage writes
+  useEffect(() => {
+    const stored = localStorage.getItem("bookmarkedCourses");
+    if (stored) {
+      try {
+        const bookmarkMap: Record<string, boolean> = JSON.parse(stored);
+        const ids = Object.entries(bookmarkMap)
+          .filter(([_, isBookmarked]) => isBookmarked)
+          .map(([courseId]) => courseId);
+        setFavoriteIds(new Set(ids));
+      } catch {
+        setFavoriteIds(new Set());
+      }
+    }
+  }, []);
+
+  // Fetch “all courses” for candidates whenever a candidate logs in
+  useEffect(() => {
+    if (user && user.isCandidate) {
+      fetch("http://localhost:5000/api/courses", {
+        credentials: "include",
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch courses");
+          return res.json();
+        })
+        .then((data: CourseType[]) => {
+          setAvailableCourses(data);
+        })
+        .catch(() => {
+          setAvailableCourses([]);
+        });
+    } else {
+      setAvailableCourses([]);
+    }
+  }, [user]);
+
+  // Filter “bookmarked” courses out of availableCourses
+  const bookmarkedCourses = useMemo(() => {
+    return availableCourses.filter((c) => favoriteIds.has(c.id));
+  }, [availableCourses, favoriteIds]);
+
+  // ─────────────── Candidate/Application Modal Logic ───────────────
   const handleApplicationClick = (course: any, appDetail: any) => {
     const detailForModal = {
       ...appDetail,
@@ -61,29 +103,26 @@ const LandingPage: React.FC = () => {
     onAppDetailsOpen();
   };
 
-  // For lecturers: which courses they teach
-  const myTaughtCourses = React.useMemo(() => {
+  // ─────────────── Lecturer Helpers ───────────────
+  const myTaughtCourses = useMemo(() => {
     if (!user || !user.isLecturer) return [];
     return lecturerCourses.filter((c) => c.lecturer?.id === user.id);
   }, [lecturerCourses, user]);
 
-  // For lecturers: all pending applications across their courses
-  const pendingApplications = React.useMemo(() => {
+  const pendingApplications = useMemo(() => {
     if (!user || !user.isLecturer) return [];
     const pendings: Array<{ course: any; appDetail: any }> = [];
     myTaughtCourses.forEach((course) => {
-      course.applicants
+      (course.applicants || [])
         .filter((app: any) => app.status === "Pending")
-        .forEach((app: any) => {
-          pendings.push({ course, appDetail: app });
-        });
+        .forEach((app: any) => pendings.push({ course, appDetail: app }));
     });
     return pendings;
-  }, [myTaughtCourses]);
+  }, [myTaughtCourses, user]);
 
   return (
     <main className={styles.pageContent}>
-      {/* Hero Section */}
+      {/* ─────────────── Hero Section ─────────────── */}
       <Box className={styles.heroContainer}>
         <Image
           src="https://plus.unsplash.com/premium_photo-1671070290640-25f7935a813e?q=80&w=1973&auto=format&fit=crop&ixlib=rb-4.0.3"
@@ -96,20 +135,34 @@ const LandingPage: React.FC = () => {
         </Text>
       </Box>
 
-      {/* Welcome Section */}
+      {/* ─────────────── Welcome + Toggles ─────────────── */}
       <VStack className={styles.welcomeSection} align="start" spacing={6}>
-        <Box>
-          <Heading className={styles.heading}>Welcome to TeachTeam</Heading>
-          <Text className={styles.subheading}>
-            A place by teachers, for teachers.
-          </Text>
-        </Box>
+        <HStack w="100%" justify="space-between">
+          <Box>
+            <Heading className={styles.heading}>Welcome to TeachTeam</Heading>
+            <Text className={styles.subheading}>
+              A place by teachers, for teachers.
+            </Text>
+          </Box>
+
+          {/* Dark Mode Toggle */}
+          <Tooltip
+            label={colorMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            <IconButton
+              aria-label="Toggle dark mode"
+              icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
+              onClick={toggleColorMode}
+              size="md"
+            />
+          </Tooltip>
+        </HStack>
 
         {authLoading && <Spinner size="lg" />}
 
         {!authLoading && isLoggedIn && user && (
           <>
-            {/* Profile Card */}
+            {/* ─────────────── Profile Card ─────────────── */}
             <Box
               className={styles.userInfoBox}
               w="100%"
@@ -137,66 +190,144 @@ const LandingPage: React.FC = () => {
               </HStack>
             </Box>
 
-            {/* Candidate View */}
+            {/* ─────────────── Candidate View ─────────────── */}
             {user.isCandidate && (
-              <Box mt={4}>
-                <Heading size="sm" mb={2}>
-                  My Applications
-                </Heading>
+              <>
+                {/* ——— Bookmarked Courses ——— */}
+                <Box mt={4} w="100%">
+                  <Heading size="sm" mb={2}>
+                    Bookmarked Courses
+                  </Heading>
 
-                {candidateCourses.filter((c) => c.appliedRoles.length > 0)
-                  .length === 0 ? (
-                  <Text color="gray.500" fontSize="sm">
-                    No applications yet.
-                  </Text>
-                ) : (
-                  <VStack align="start" spacing={2} w="100%">
-                    {candidateCourses
-                      .filter((c) => c.appliedRoles.length > 0)
-                      .map((course) =>
-                        course.applicationDetails?.map((appDetail, idx) => {
-                          const statusColor =
-                            appDetail.status === "Approved"
-                              ? "green"
-                              : appDetail.status === "Pending"
-                              ? "yellow"
-                              : "red";
+                  {bookmarkedCourses.length === 0 ? (
+                    <Text color="gray.500" fontSize="sm">
+                      You have no bookmarked courses.
+                    </Text>
+                  ) : (
+                    <VStack align="start" spacing={2} w="100%">
+                      {bookmarkedCourses.map((course) => (
+                        <HStack key={course.id} w="100%">
+                          <Button
+                            flex="1"
+                            justifyContent="flex-start"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="blue"
+                            onClick={() => {
+                              /* (Optionally scroll to that course in the UI) */
+                            }}
+                          >
+                            {course.name} ({course.courseCode})
+                          </Button>
+                          <Tooltip
+                            label={
+                              favoriteIds.has(course.id)
+                                ? "Bookmarked"
+                                : "Bookmark this course"
+                            }
+                          >
+                            <IconButton
+                              aria-label={
+                                favoriteIds.has(course.id) ? "Bookmarked" : "Bookmark"
+                              }
+                              icon={
+                                favoriteIds.has(course.id) ? (
+                                  <StarIcon color="yellow.400" />
+                                ) : (
+                                  <FaRegStar />
+                                )
+                              }
+                              size="sm"
+                              variant="ghost"
+                              // If we also want LandingPage to toggle, uncomment below:
+                              // onClick={() => toggleFavorite(course.id)}
+                            />
+                          </Tooltip>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </Box>
 
-                          return (
-                            <HStack
-                              key={`${course.id}-${appDetail.role}-${idx}`}
-                              w="100%"
-                            >
-                              <Button
-                                flex="1"
-                                justifyContent="flex-start"
-                                size="sm"
-                                variant="outline"
-                                colorScheme="blue"
-                                onClick={() =>
-                                  handleApplicationClick(course, appDetail)
-                                }
+                {/* ——— My Applications ——— */}
+                <Box mt={6} w="100%">
+                  <Heading size="sm" mb={2}>
+                    My Applications
+                  </Heading>
+
+                  {candidateCourses.filter((c) => c.appliedRoles.length > 0).length === 0 ? (
+                    <Text color="gray.500" fontSize="sm">
+                      No applications yet.
+                    </Text>
+                  ) : (
+                    <VStack align="start" spacing={2} w="100%">
+                      {candidateCourses
+                        .filter((c) => c.appliedRoles.length > 0)
+                        .map((course) =>
+                          (course.applicationDetails || []).map((appDetail, idx) => {
+                            const statusColor =
+                              appDetail.status === "Approved"
+                                ? "green"
+                                : appDetail.status === "Pending"
+                                ? "yellow"
+                                : "red";
+
+                            return (
+                              <HStack
+                                key={`${course.id}-${appDetail.role}-${idx}`}
+                                w="100%"
                               >
-                                {course.name} ({course.courseCode}) –{" "}
-                                {appDetail.role}
-                              </Button>
-                              <Tag size="sm" colorScheme={statusColor}>
-                                {appDetail.status}
-                              </Tag>
-                            </HStack>
-                          );
-                        })
-                      )}
-                  </VStack>
-                )}
-              </Box>
+                                <Button
+                                  flex="1"
+                                  justifyContent="flex-start"
+                                  size="sm"
+                                  variant="outline"
+                                  colorScheme="blue"
+                                  onClick={() => handleApplicationClick(course, appDetail)}
+                                >
+                                  {course.name} ({course.courseCode}) – {appDetail.role}
+                                </Button>
+                                <Tag size="sm" colorScheme={statusColor}>
+                                  {appDetail.status}
+                                </Tag>
+                                <Tooltip
+                                  label={
+                                    favoriteIds.has(course.id)
+                                      ? "Bookmarked"
+                                      : "Bookmark this course"
+                                  }
+                                >
+                                  <IconButton
+                                    aria-label={
+                                      favoriteIds.has(course.id) ? "Bookmarked" : "Bookmark"
+                                    }
+                                    icon={
+                                      favoriteIds.has(course.id) ? (
+                                        <StarIcon color="yellow.400" />
+                                      ) : (
+                                        <FaRegStar />
+                                      )
+                                    }
+                                    size="sm"
+                                    variant="ghost"
+                                    // Likewise, you could call toggleFavorite(course.id) here
+                                  />
+                                </Tooltip>
+                              </HStack>
+                            );
+                          })
+                        )}
+                    </VStack>
+                  )}
+                </Box>
+              </>
             )}
 
-            {/* Lecturer View */}
+            {/* ─────────────── Lecturer View ─────────────── */}
             {user.isLecturer && (
               <>
-                {/* Pending Applications Section */}
-                <Box mt={4}>
+                {/* ——— Pending Applications ——— */}
+                <Box mt={4} w="100%">
                   <Heading size="sm" mb={2}>
                     Pending Applications
                   </Heading>
@@ -218,12 +349,9 @@ const LandingPage: React.FC = () => {
                             size="sm"
                             variant="outline"
                             colorScheme="teal"
-                            onClick={() =>
-                              handleApplicationClick(course, appDetail)
-                            }
+                            onClick={() => handleApplicationClick(course, appDetail)}
                           >
-                            {appDetail.name} – {appDetail.role} on{" "}
-                            {course.courseCode}
+                            {appDetail.name} – {appDetail.role} on {course.courseCode}
                           </Button>
                           <Tag size="sm" colorScheme="yellow">
                             Pending
@@ -234,8 +362,8 @@ const LandingPage: React.FC = () => {
                   )}
                 </Box>
 
-                {/* My Courses Section */}
-                <Box mt={6}>
+                {/* ——— My Courses ——— */}
+                <Box mt={6} w="100%">
                   <Heading size="sm" mb={2}>
                     My Courses
                   </Heading>
@@ -268,14 +396,12 @@ const LandingPage: React.FC = () => {
               </>
             )}
 
-            {/* Profile Modal */}
+            {/* ───────────── Modals ───────────── */}
             <ProfileModal
               isOpen={isProfileOpen}
               onClose={onProfileClose}
-              user={user}
+              user={user!}
             />
-
-            {/* Application Details Modal */}
             {selectedApp && (
               <ApplicationDetailsModal
                 isOpen={isAppDetailsOpen}
