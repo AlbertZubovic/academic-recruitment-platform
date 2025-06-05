@@ -15,15 +15,13 @@ import {
   Select,
   Checkbox,
   Stack,
+  HStack,
   Link,
 } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import NextLink from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import {
-  ApplicationAvailability,
-  ApplicationRole,
-} from "@/types/enums";
+import { ApplicationAvailability } from "@/types/enums";
 import { SignInPayload, SignUpPayload } from "@/types/apiRequests";
 
 interface AuthFormProps {
@@ -37,11 +35,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+
+  // NEW: track stayLoggedIn for cookie duration
+  const [stayLoggedIn, setStayLoggedIn] = useState(false);
+
+  // Signup-only fields
   const [isCandidate, setIsCandidate] = useState(false);
   const [isLecturer, setIsLecturer] = useState(false);
-  const [availability, setAvailability] = useState<
-    ApplicationAvailability
-  >(ApplicationAvailability.FULL_TIME);
+  const [availability, setAvailability] = useState<ApplicationAvailability>(
+    ApplicationAvailability.FULL_TIME
+  );
   const [skills, setSkills] = useState<string[]>([]);
   const [currentSkill, setCurrentSkill] = useState("");
 
@@ -81,8 +84,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           "Password must have at least 8 characters, 1 uppercase letter, and 1 number.";
       if (!isCandidate && !isLecturer)
         errs.role = "Select Candidate or Lecturer.";
-      if (!availability)
-        errs.availability = "Select availability.";
+      if (!availability) errs.availability = "Select availability.";
       if (isCandidate && skills.length === 0)
         errs.skills = "Add at least one skill for Candidate role.";
     }
@@ -105,9 +107,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
     if (type === "signin") {
       try {
-        const payload: SignInPayload = { email, password, rememberMe };
+        // INCLUDE stayLoggedIn in payload
+        const payload: SignInPayload = {
+          email,
+          password,
+          rememberMe,
+          stayLoggedIn,
+        };
         await signIn(payload);
         success = true;
+
         if (rememberMe) {
           localStorage.setItem("rememberedEmail", email);
           localStorage.setItem("rememberedPassword", password);
@@ -342,7 +351,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             </FormControl>
 
             {type === "signup" && (
-              <FormControl isInvalid={!!errors.confirmPassword} isRequired>
+              <FormControl
+                isInvalid={!!errors.confirmPassword}
+                isRequired
+              >
                 <FormLabel>Confirm Password</FormLabel>
                 <Input
                   type="password"
@@ -351,17 +363,27 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                   placeholder="Confirm password"
                   autoComplete="off"
                 />
-                <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
+                <FormErrorMessage>
+                  {errors.confirmPassword}
+                </FormErrorMessage>
               </FormControl>
             )}
 
             {type === "signin" && (
-              <Checkbox
-                isChecked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              >
-                Remember me
-              </Checkbox>
+              <HStack spacing={6} align="center">
+                <Checkbox
+                  isChecked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                >
+                  Remember me
+                </Checkbox>
+                <Checkbox
+                  isChecked={stayLoggedIn}
+                  onChange={(e) => setStayLoggedIn(e.target.checked)}
+                >
+                  Stay logged in
+                </Checkbox>
+              </HStack>
             )}
 
             <Button

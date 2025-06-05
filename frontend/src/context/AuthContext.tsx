@@ -23,7 +23,9 @@ interface AuthContextValue {
   setUser: (u: User | null) => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined
+);
 
 const AUTH_API_BASE = "http://localhost:5000/api/auth";
 
@@ -35,10 +37,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
+  // On mount, try to load current user
   useEffect(() => {
     refreshUser()
-      .catch(() => {
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -133,7 +135,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, signIn, signUp, signOut, refreshUser, setUser }}
+      value={{
+        user,
+        loading,
+        error,
+        signIn,
+        signUp,
+        signOut,
+        refreshUser,
+        setUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

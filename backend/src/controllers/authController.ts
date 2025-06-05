@@ -1,3 +1,5 @@
+// src/controllers/authController.ts
+
 import { Request, Response } from "express";
 import { validateOrReject } from "class-validator";
 import { In } from "typeorm";
@@ -12,9 +14,9 @@ import validator from "validator";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: process.env.NODE_ENV === "production", // true in production (HTTPS), false in dev
   sameSite: "lax" as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  // We will supply maxAge per‐request in signIn / signUp
 };
 
 export const signUp = async (req: Request, res: Response): Promise<void> => {
@@ -134,26 +136,28 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 
     // 12) If candidate, create UserSkill rows
     if (isCandidate && skills.length > 0) {
+      // 12a) Find existing Skill entities by name
       const existingSkills = await skillRepo.find({
         where: { name: In(skills as string[]) },
       });
       const existingNames = new Set(existingSkills.map((s) => s.name));
+      // 12b) Create any new Skill entities for names that didn't exist
       const newNames = (skills as string[]).filter((n) => !existingNames.has(n));
-
       const newSkillEntities = newNames.map((n) =>
         skillRepo.create({ skill_ID: uuidv4(), name: n })
       );
       await skillRepo.save(newSkillEntities);
 
+      // 12c) Combine existing + newly created
       const allSkillEntities = [...existingSkills, ...newSkillEntities];
-
+      // 12d) Link UserSkill rows
       const userSkills = allSkillEntities.map((skill) =>
         userSkillRepo.create({ user, skill })
       );
       await userSkillRepo.save(userSkills);
     }
 
-    // 13) Create JWT
+    // 13) Create JWT (7-day expiration for newly signed-up users)
     const token = jwt.sign(
       {
         userId: user.user_ID,
@@ -165,8 +169,10 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, COOKIE_OPTIONS);
+    // 14) Set a 7-day cookie
+    res.cookie("token", token, { ...COOKIE_OPTIONS, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
+    // 15) Respond
     res.status(201).json({
       message: `Welcome ${user.firstname}`,
       user: {
@@ -194,9 +200,14 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const signIn = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, rememberMe } = req.body;
+  // 1) Destructure stayLoggedIn from the request body
+  const { email, password, stayLoggedIn } = req.body as {
+    email: string;
+    password: string;
+    stayLoggedIn?: boolean;
+  };
 
-  // 1) Check presence
+  // 2) Check for email/password presence
   if (!email || !password) {
     res.status(400).json({ message: "Email and password are required." });
     return;
@@ -209,13 +220,15 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
       relations: ["userSkills", "userSkills.skill"],
     });
 
-    // 2) Verify user exists and password matches
+    // 3) Verify user exists and password matches
     if (!user || !(await comparePassword(password, user.password))) {
       res.status(401).json({ message: "Invalid credentials." });
       return;
     }
 
-    // 3) Create JWT
+    // 4) Create JWT with expiration based on stayLoggedIn
+    //    - If stayLoggedIn === true, expires in 7 days
+    //    - Otherwise expires in 15 minutes
     const token = jwt.sign(
       {
         userId: user.user_ID,
@@ -224,14 +237,25 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
         isAdmin: user.is_admin,
       },
       process.env.JWT_SECRET as string,
-      { expiresIn: rememberMe ? "7d" : "1h" }
+      { expiresIn: stayLoggedIn ? "7d" : "15m" }
     );
 
-    res.cookie("token", token, {
-      ...COOKIE_OPTIONS,
-      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000,
-    });
+    // 5) Set the cookie accordingly:
+    if (stayLoggedIn) {
+      // persistent 7-day cookie
+      res.cookie("token", token, {
+        ...COOKIE_OPTIONS,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+      });
+    } else {
+      // session cookie with 15-minute lifespan
+      res.cookie("token", token, {
+        ...COOKIE_OPTIONS,
+        maxAge: 15 * 60 * 1000, // 15 minutes in ms
+      });
+    }
 
+    // 6) Respond
     res.status(200).json({ message: `Welcome ${user.firstname}` });
   } catch (err) {
     console.error("Signin error:", err);
