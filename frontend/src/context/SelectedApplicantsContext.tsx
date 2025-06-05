@@ -8,22 +8,16 @@ import React, {
 } from "react";
 
 //
-// This context keeps track of which applicants (by userId) have been
-// “selected” or “deselected” for each course. Internally we store a map:
-//    { [courseId: string]: string[] }
-// where the array is the list of userIds selected for that course.
+// Keeps track of which applicants (by userId) have been “selected”
+// for each course. Internally: { [courseId: string]: string[] }.
 //
 
 interface SelectedApplicantsContextValue {
-  /** 
-   * For each courseId, an array of userIds that are currently “checked.”
-   */
   selectedApplicants: Record<string, string[]>;
 
   /**
    * Toggles selection of a given userId under a given courseId.
-   * Invokes the callback with "selected" if that userId was just added,
-   * or "deselected" if it was just removed.
+   * Calls callback("selected") if newly added, or ("deselected") if removed.
    */
   toggleApplicantSelection: (
     userId: string,
@@ -54,11 +48,9 @@ export const SelectedApplicantsProvider: React.FC<{ children: ReactNode }> = ({
 
       let newList: string[];
       if (isAlready) {
-        // remove it
         newList = currentList.filter((id) => id !== userId);
         callback("deselected");
       } else {
-        // add it
         newList = [...currentList, userId];
         callback("selected");
       }

@@ -29,7 +29,7 @@ export enum ApplicationAvailability {
  */
 export enum ApplicationRole {
   TUTOR = "Tutor",
-  LAB_ASSISTANT = "Lab Assistant",
+  LAB_ASSISTANT = "Lab-Assistant",
 }
 
 /**

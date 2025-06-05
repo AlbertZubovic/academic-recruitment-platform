@@ -16,7 +16,7 @@ import { AppliedSkill } from "../entities/AppliedSkill";
 
 /**
  * GET /api/candidates/courses
- * Returns all courses, indicating which roles (if any) the logged‐in candidate has applied for.
+ * Returns all courses, indicating if the logged-in candidate has applied.
  */
 export const getCandidateCourses = async (
   req: Request,
@@ -33,36 +33,35 @@ export const getCandidateCourses = async (
       relations: ["skills", "lecturer"],
     });
 
-    // 2) Fetch this candidate’s applications (could be multiple per course, different roles)
+    // 2) Fetch this candidate’s applications
     const applications = await applicationRepo.find({
       where: { user: { user_ID: candidateId } },
       relations: ["course", "appliedSkills", "appliedSkills.skill"],
     });
 
-    // 3) Build response: for each course, collect *all* matching application roles
+    // 3) Build response
     const transformed = courses.map((course) => {
-      // Find every application this candidate has made to THIS course
-      const appsForThisCourse = applications.filter(
+      // Collect all applications for this candidate & this course (could be multiple roles)
+      const myApps = applications.filter(
         (a) => a.course.course_ID === course.course_ID
       );
 
-      // Collect just the “role” strings they’ve already applied for
-      const appliedRoles = appsForThisCourse.map((app) => app.role);
+      // Extract appliedRoles array from existing applications
+      const appliedRoles = myApps.map((a) => a.role);
 
-      // Collect detailed info per application (optional)
-      const applicationDetails = appsForThisCourse.map((app) => ({
-        role: app.role,
-        appliedAvailability: app.applied_availability,
-        appliedSkills: app.appliedSkills
-          .map((as) => as.skill?.name)
-          .filter(Boolean),
+      // Pick one applicationDetail object per application entry
+      const applicationDetails = myApps.map((a) => ({
+        role: a.role,
+        appliedAvailability: a.applied_availability,
+        appliedSkills: a.appliedSkills.map((as) => as.skill.name),
         status:
-          app.accepted === null
+          a.accepted === null
             ? "Pending"
-            : app.accepted
+            : a.accepted
             ? "Approved"
             : "Rejected",
-        lecturerComment: app.lecturer_comment,
+        lecturerComment: a.lecturer_comment,
+        ranking: a.ranking,
       }));
 
       return {
@@ -70,10 +69,10 @@ export const getCandidateCourses = async (
         name: course.display_name,
         courseCode: course.course_code,
         semester: course.semester,
-        rolesAvailable: course.roles_available, // ["Tutor", "Lab-Assistant"]
+        rolesAvailable: course.roles_available, // simple-array column
         skills: course.skills.map((s) => s.name),
-        appliedRoles, // e.g. ["Tutor"] or ["Lab-Assistant","Tutor"]
-        applicationDetails, // optional: list of detail objects for UI
+        appliedRoles, // e.g. ["Tutor", "Lab-Assistant"]
+        applicationDetails, // array of objects, one per applied role
       };
     });
 
@@ -146,6 +145,7 @@ export const applyToCourse = async (
     const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
 
     // 5) Fetch course + verify it exists
+    //    roles_available is a simple-array, so no relations needed here
     const course = await courseRepo.findOne({
       where: { course_ID: courseId },
     });
@@ -162,22 +162,22 @@ export const applyToCourse = async (
       return;
     }
 
-    // 7) Prevent duplicate application for the same role
-    const existingAppSameRole = await appRepo.findOne({
+    // 7) Prevent duplicate application for same role on same course
+    const existingApp = await appRepo.findOne({
       where: {
         user: { user_ID: candidateId },
         course: { course_ID: courseId },
         role: role as ApplicationRole,
       },
     });
-    if (existingAppSameRole) {
+    if (existingApp) {
       res.status(400).json({
-        message: `You have already applied as "${role}" on this course.`,
+        message: `You have already applied as ${role} for this course.`,
       });
       return;
     }
 
-    // 8) Lookup or create skill entities in one pass
+    // 8) Lookup or create Skill entities for each applied skill
     const existingSkills = await skillRepo.find({
       where: { name: In(appliedSkills as string[]) },
     });
@@ -193,7 +193,7 @@ export const applyToCourse = async (
 
     const allSkillEntities = [...existingSkills, ...newSkillEntities];
 
-    // 9) Transactionally create Application + AppliedSkill rows
+    // 9) Transactionally create the Application + AppliedSkill rows
     await AppDataSource.manager.transaction(async (txMgr) => {
       const application = txMgr.create(Application, {
         application_ID: uuidv4(),
@@ -259,7 +259,7 @@ export const updateApplicationDetails = async (
     const skillRepo = AppDataSource.getRepository(Skill);
     const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
 
-    // 1) Fetch existing application
+    // 1) Fetch existing application (regardless of role—we assume only one can be edited at a time)
     const application = await appRepo.findOne({
       where: {
         user: { user_ID: candidateId },
@@ -300,7 +300,7 @@ export const updateApplicationDetails = async (
         return;
       }
 
-      // a) Find or create skill entities
+      // a) Find or create Skill entities
       const existingSkills = await skillRepo.find({
         where: { name: In(appliedSkills as string[]) },
       });
@@ -336,7 +336,7 @@ export const updateApplicationDetails = async (
     // 4) Validate updated application
     await validateOrReject(application);
 
-    // 5) Save
+    // 5) Save changes
     await appRepo.save(application);
 
     res.json({ message: "Application updated successfully." });
@@ -354,6 +354,47 @@ export const updateApplicationDetails = async (
     return;
   }
 };
+
+/**
+ * DELETE /api/candidates/courses/:id/applications/me
+ * Withdraw (delete) the logged‐in candidate’s application for that course.
+ */
+export const withdrawApplication = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const candidateId = (req as any).user.userId;
+    const { id: courseId } = req.params;
+
+    const appRepo = AppDataSource.getRepository(Application);
+
+    // 1) Find *all* existing application rows for this user + course
+    const existingApps = await appRepo.find({
+      where: {
+        user: { user_ID: candidateId },
+        course: { course_ID: courseId },
+      },
+    });
+
+    if (existingApps.length === 0) {
+      // No application found → 404
+      res.status(404).json({ message: "Application not found." });
+      return;
+    }
+
+    // 2) Remove them all
+    await appRepo.remove(existingApps);
+
+    res.status(200).json({ message: "Application(s) withdrawn successfully." });
+    return;
+  } catch (err) {
+    console.error("[CANDIDATE] withdrawApplication error:", err);
+    res.status(500).json({ message: "Internal server error." });
+    return;
+  }
+};
+
 
 /**
  * GET /api/candidates/applications
@@ -387,7 +428,6 @@ export const getMyApplications = async (
           ? "Approved"
           : "Rejected",
       lecturerComment: app.lecturer_comment,
-      ranking: app.ranking,
     }));
 
     res.json(response);

@@ -1,3 +1,5 @@
+// src/routes/candidateRoutes.ts
+
 import { Router } from "express";
 import { authenticate } from "../middleware/authMiddleware";
 import { authorizeCandidate } from "../middleware/roleMiddleware";
@@ -6,6 +8,7 @@ import {
   applyToCourse,
   updateApplicationDetails,
   getMyApplications,
+  withdrawApplication,   // ← import this from the controller
 } from "../controllers/candidateController";
 
 const router = Router();
@@ -32,6 +35,15 @@ router.patch(
   authenticate,
   authorizeCandidate,
   updateApplicationDetails
+);
+
+// ─── ADD THIS DELETE ROUTE ───
+// DELETE /api/candidates/courses/:id/applications/me – withdraw the application
+router.delete(
+  "/courses/:id/applications/me",
+  authenticate,
+  authorizeCandidate,
+  withdrawApplication
 );
 
 // GET /api/candidates/applications – list candidate’s applications
