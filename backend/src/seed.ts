@@ -297,13 +297,14 @@ async function seed() {
   }
 
   // 7) Create courses (assign to lecturer L1, L2, or L3)
+  //    All courses now have both Tutor and Lab-Assistant available
   const courseData = [
     {
       id: "CO101",
       code: "COSC101",
       name: "Introduction To Programming",
       semester: "Fall 2025",
-      roles: [ApplicationRole.TUTOR],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["Python", "Problem Solving"],
       lecturerId: "L1",
     },
@@ -312,7 +313,7 @@ async function seed() {
       code: "COSC202",
       name: "Data Structures And Algorithms",
       semester: "Spring 2026",
-      roles: [ApplicationRole.LAB_ASSISTANT],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["Java", "Data Structures"],
       lecturerId: "L2",
     },
@@ -321,7 +322,7 @@ async function seed() {
       code: "COSC303",
       name: "Web Development Fundamentals",
       semester: "Fall 2025",
-      roles: [ApplicationRole.TUTOR],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["HTML", "CSS", "JavaScript"],
       lecturerId: "L1",
     },
@@ -330,7 +331,7 @@ async function seed() {
       code: "COSC404",
       name: "Database Systems",
       semester: "Spring 2026",
-      roles: [ApplicationRole.LAB_ASSISTANT],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["SQL", "Database Design", "Normalization"],
       lecturerId: "L3",
     },
@@ -339,7 +340,7 @@ async function seed() {
       code: "COSC505",
       name: "Operating Systems Concepts",
       semester: "Fall 2025",
-      roles: [ApplicationRole.TUTOR],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["C", "Linux", "Memory Management"],
       lecturerId: "L2",
     },
@@ -348,7 +349,7 @@ async function seed() {
       code: "COSC606",
       name: "Advanced Algorithms",
       semester: "Fall 2025",
-      roles: [ApplicationRole.LAB_ASSISTANT],
+      roles: [ApplicationRole.TUTOR, ApplicationRole.LAB_ASSISTANT],
       skills: ["Algorithms", "Graph Theory", "Complexity Analysis"],
       lecturerId: "L3",
     },
