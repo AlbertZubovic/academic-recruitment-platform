@@ -1,7 +1,10 @@
+// src/routes/userRoutes.ts
+
 import { Router } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { authenticate } from "../middleware/authMiddleware";
+import { updateCurrentUser } from "../controllers/userController";
 
 const router = Router();
 
@@ -38,5 +41,9 @@ router.get("/candidates", authenticate, async (req, res) => {
     return;
   }
 });
+
+// ─── NEW: update current user ───
+// PUT /api/users/me
+router.put("/me", authenticate, updateCurrentUser);
 
 export default router;

@@ -53,6 +53,9 @@ interface ApplyModalProps {
   onClose: () => void;
   course: Course;
   isEdit?: boolean;
+
+  /** NEW: defaultRole tells the form which role to pre‐select */
+  defaultRole?: ApplicationRole;
 }
 
 const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
@@ -60,58 +63,70 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   onClose,
   course,
   isEdit = false,
+  defaultRole,
 }) => {
   const { applyToCourse, updateApplicationDetails } = useCourses();
   const { user } = useAuth();
   const toast = useToast();
 
-  // If editing, grab the existing application details:
-  const existingApplication = (course as any).application;
+  // Find if there’s an existing application object for defaultRole
+  const existingAppForRole = (course.applicationDetails || []).find(
+    (app) => app.role === defaultRole
+  );
 
-  // Determine default “role” (use the first available role if nothing else):
-  const defaultRole: ApplicationRole =
-    (existingApplication?.role as ApplicationRole) ||
-    (course.rolesAvailable[0] as ApplicationRole);
+  // Determine which role to pre‐select (fall back to the first available)
+  const firstAllowedRole: ApplicationRole = course.rolesAvailable[0];
+  const initialRole: ApplicationRole =
+    defaultRole && course.rolesAvailable.includes(defaultRole)
+      ? defaultRole
+      : firstAllowedRole;
 
-  // Determine default “availability”:
-  //   • If editing and existingApplication.appliedAvailability exists, use that.
-  //   • Else, convert user.defaultAvailability (UserAvailability) → ApplicationAvailability.
-  const defaultAvailability: ApplicationAvailability = existingApplication
-    ? (existingApplication.appliedAvailability as ApplicationAvailability)
+  // Determine default availability:
+  //   • If editing and existingAppForRole exists, use that.
+  //   • Else, convert user.defaultAvailability → ApplicationAvailability.
+  const initialAvailability: ApplicationAvailability = existingAppForRole
+    ? existingAppForRole.appliedAvailability
     : mapUserToApplicationAvailability(user?.defaultAvailability ?? null);
 
   // Default skills come from either the existing application or the user’s default
-  const defaultSkills: string[] =
-    existingApplication?.appliedSkills ?? user?.defaultSkills ?? [];
+  const initialSkills: string[] =
+    existingAppForRole?.appliedSkills ?? user?.defaultSkills ?? [];
 
-  // Local state (typed exactly as the enum types, not as plain strings)
-  const [role, setRole] = useState<ApplicationRole>(defaultRole);
+  // Local state (typed exactly as the enum types, not plain strings)
+  const [role, setRole] = useState<ApplicationRole>(initialRole);
   const [availability, setAvailability] = useState<ApplicationAvailability>(
-    defaultAvailability
+    initialAvailability
   );
-  const [skills, setSkills] = useState<string[]>(defaultSkills);
+  const [skills, setSkills] = useState<string[]>(initialSkills);
   const [newSkill, setNewSkill] = useState("");
 
-  // Whenever the modal opens (or if editing status changes), reset fields:
+  // Whenever the modal opens or defaultRole changes, reset fields:
   useEffect(() => {
     if (!isOpen) return;
 
-    if (isEdit && existingApplication) {
-      // Populate from existing application
-      setRole(existingApplication.role as ApplicationRole);
-      setAvailability(
-        existingApplication.appliedAvailability as ApplicationAvailability
-      );
-      setSkills(existingApplication.appliedSkills ?? []);
-    } else {
-      // New application: use the first available role + user's default availability
-      setRole(course.rolesAvailable[0] as ApplicationRole);
-      setAvailability(
-        mapUserToApplicationAvailability(user?.defaultAvailability ?? null)
-      );
-      setSkills(user?.defaultSkills ?? []);
-    }
-  }, [isOpen, isEdit, existingApplication, user, course.rolesAvailable]);
+    const chosenRole: ApplicationRole =
+      defaultRole && course.rolesAvailable.includes(defaultRole)
+        ? defaultRole
+        : course.rolesAvailable[0];
+
+    const chosenApp = (course.applicationDetails || []).find(
+      (app) => app.role === chosenRole
+    );
+
+    setRole(chosenRole);
+    setAvailability(
+      chosenApp
+        ? chosenApp.appliedAvailability
+        : mapUserToApplicationAvailability(user?.defaultAvailability ?? null)
+    );
+    setSkills(chosenApp ? chosenApp.appliedSkills : user?.defaultSkills ?? []);
+  }, [
+    isOpen,
+    defaultRole,
+    course.applicationDetails,
+    user,
+    course.rolesAvailable,
+  ]);
 
   const handleAddSkill = () => {
     const trimmed = newSkill.trim();
@@ -126,7 +141,7 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Ensure role, availability, and at least one skill are chosen:
+    // Ensure role, availability, and ≥1 skill are chosen
     if (!role || !availability || skills.length === 0) {
       toast({
         title:
@@ -138,12 +153,15 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
     }
 
     let success = false;
-    if (isEdit) {
+    if (isEdit && existingAppForRole) {
+      // Update the existing application for this role
       success = await updateApplicationDetails(course.id, {
+        role: role,
         appliedAvailability: availability,
         appliedSkills: skills,
       });
     } else {
+      // New application
       success = await applyToCourse(course.id, {
         role: role,
         appliedAvailability: availability,
@@ -153,7 +171,9 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
 
     if (success) {
       toast({
-        title: isEdit ? "Application updated!" : "Application submitted!",
+        title: isEdit
+          ? `Updated application as ${role}!`
+          : `Applied as ${role}!`,
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -174,7 +194,9 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>
-          {isEdit ? "Edit Application" : `Apply for ${course.name}`}
+          {isEdit
+            ? `Edit Application (as ${role})`
+            : `Apply for ${course.name}: ${role}`}
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -203,8 +225,7 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
                 value={availability}
                 onChange={(e) =>
                   setAvailability(
-                    e.target
-                      .value as ApplicationAvailability
+                    e.target.value as ApplicationAvailability
                   )
                 }
               >

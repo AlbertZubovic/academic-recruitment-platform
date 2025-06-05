@@ -40,8 +40,8 @@ const LandingPage: React.FC = () => {
 
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
 
-  const handleApplicationClick = (course: any) => {
-    setSelectedApp(course);
+  const handleApplicationClick = (course: any, appDetail: any) => {
+    setSelectedApp({ course, appDetail });
   };
 
   return (
@@ -107,25 +107,50 @@ const LandingPage: React.FC = () => {
               <Heading size="sm" mb={2}>
                 My Applications
               </Heading>
-              {courses.filter((c) => (c as any).application).length === 0 ? (
+
+              {/* Filter courses where the candidate has applied to at least one role */}
+              {courses.filter((c) => c.appliedRoles.length > 0).length === 0 ? (
                 <Text color="gray.500" fontSize="sm">
                   No applications yet.
                 </Text>
               ) : (
-                <VStack align="start" spacing={2}>
+                <VStack align="start" spacing={2} w="100%">
+                  {/*
+                    For each course with at least one application, render a full‐width HStack:
+                    1) A Button that flexes to fill all leftover space (so all rows match width)
+                    2) A small Tag indicating status, pinned to the right
+                  */}
                   {courses
-                    .filter((c) => (c as any).application)
-                    .map((course) => (
-                      <Button
-                        key={course.id}
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                        onClick={() => handleApplicationClick(course)}
-                      >
-                        {course.name} ({course.courseCode})
-                      </Button>
-                    ))}
+                    .filter((c) => c.appliedRoles.length > 0)
+                    .map((course) =>
+                      course.applicationDetails?.map((appDetail, idx) => {
+                        // determine tag color for status
+                        const statusColor =
+                          appDetail.status === "Approved"
+                            ? "green"
+                            : appDetail.status === "Pending"
+                            ? "yellow"
+                            : "red";
+
+                        return (
+                          <HStack key={`${course.id}-${appDetail.role}-${idx}`} w="100%">
+                            <Button
+                              flex="1"
+                              justifyContent="flex-start"
+                              size="sm"
+                              variant="outline"
+                              colorScheme="blue"
+                              onClick={() => handleApplicationClick(course, appDetail)}
+                            >
+                              {course.name} ({course.courseCode}) – {appDetail.role}
+                            </Button>
+                            <Tag size="sm" colorScheme={statusColor}>
+                              {appDetail.status}
+                            </Tag>
+                          </HStack>
+                        );
+                      })
+                    )}
                 </VStack>
               )}
             </Box>
@@ -192,21 +217,22 @@ const LandingPage: React.FC = () => {
                   {selectedApp ? (
                     <VStack align="start" spacing={3}>
                       <Text>
-                        <strong>Course:</strong> {selectedApp.name} (
-                        {selectedApp.courseCode})
+                        <strong>Course:</strong> {selectedApp.course.name} (
+                        {selectedApp.course.courseCode})
+                      </Text>
+                      <Text>
+                        <strong>Role:</strong> {selectedApp.appDetail.role}
                       </Text>
                       <Text>
                         <strong>Availability:</strong>{" "}
-                        {(selectedApp as any).application
-                          ?.appliedAvailability || "N/A"}
+                        {selectedApp.appDetail.appliedAvailability}
                       </Text>
                       <Text>
                         <strong>Applied Skills:</strong>
                       </Text>
-                      {(selectedApp as any).application?.appliedSkills
-                        ?.length > 0 ? (
+                      {selectedApp.appDetail.appliedSkills.length > 0 ? (
                         <Wrap>
-                          {(selectedApp as any).application.appliedSkills.map(
+                          {selectedApp.appDetail.appliedSkills.map(
                             (skill: string, idx: number) => (
                               <Tag key={idx} colorScheme="blue">
                                 {skill}
@@ -217,22 +243,13 @@ const LandingPage: React.FC = () => {
                       ) : (
                         <Text color="gray.500">No applied skills listed</Text>
                       )}
-                      {(selectedApp as any).application?.status && (
-                        <Text>
-                          <strong>Status:</strong>{" "}
-                          {(selectedApp as any).application.status}
-                        </Text>
-                      )}
-                      {(selectedApp as any).application?.ranking !== undefined && (
-                        <Text>
-                          <strong>Ranking:</strong>{" "}
-                          {(selectedApp as any).application.ranking ?? "N/A"}
-                        </Text>
-                      )}
-                      {(selectedApp as any).application?.lecturerComment && (
+                      <Text>
+                        <strong>Status:</strong> {selectedApp.appDetail.status}
+                      </Text>
+                      {selectedApp.appDetail.lecturerComment && (
                         <Text>
                           <strong>Lecturer Comment:</strong>{" "}
-                          {(selectedApp as any).application.lecturerComment}
+                          {selectedApp.appDetail.lecturerComment}
                         </Text>
                       )}
                     </VStack>

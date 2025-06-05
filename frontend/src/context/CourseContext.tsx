@@ -51,7 +51,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all courses (along with any existing “application” object if the candidate has already applied)
+  // Fetch all courses (including appliedRoles/applicationDetails)
   const fetchCourses = async () => {
     setError(null);
     try {
@@ -86,11 +86,12 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   /**
-   * POST a new application. Now we send:
+   * POST a new application.
+   * Body must be:
    *   {
-   *     role: "...",                     // e.g. "Tutor" or "Lab-Assistant"
-   *     appliedAvailability: "...",      // e.g. "Full-Time" or "Part-Time"
-   *     appliedSkills: ["S1","S2",...]
+   *     role: string,                   // "Tutor" or "Lab-Assistant"
+   *     appliedAvailability: string,    // "Full-Time" or "Part-Time"
+   *     appliedSkills: string[],
    *   }
    */
   const applyToCourse = async (
@@ -101,7 +102,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       appliedSkills: string[];
     }
   ) => {
-    setError(null);
     try {
       const body = {
         role: payload.role,
@@ -129,8 +129,13 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   /**
-   * PATCH an existing application. We allow changing any of:
-   *   role, appliedAvailability, appliedSkills
+   * PATCH an existing application (for a given role).
+   * Body may include:
+   *   {
+   *     role?: string,
+   *     appliedAvailability?: string,
+   *     appliedSkills?: string[],
+   *   }
    */
   const updateApplicationDetails = async (
     courseId: string,
@@ -140,7 +145,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       appliedSkills?: string[];
     }
   ) => {
-    setError(null);
     try {
       const body: any = {};
       if (payload.role) body.role = payload.role;
@@ -167,9 +171,8 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // DELETE (withdraw) an existing application
+  // DELETE (withdraw) all applications for this user+course.
   const deleteApplication = async (courseId: string) => {
-    setError(null);
     try {
       const res = await fetch(
         `${API_BASE}/candidates/courses/${courseId}/applications/me`,

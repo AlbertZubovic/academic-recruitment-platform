@@ -16,7 +16,7 @@ import { AppliedSkill } from "../entities/AppliedSkill";
 
 /**
  * GET /api/candidates/courses
- * Returns all courses, indicating if the logged-in candidate has applied.
+ * Returns all courses, indicating which roles (if any) the logged‐in candidate has applied for.
  */
 export const getCandidateCourses = async (
   req: Request,
@@ -33,40 +33,47 @@ export const getCandidateCourses = async (
       relations: ["skills", "lecturer"],
     });
 
-    // 2) Fetch this candidate’s applications
+    // 2) Fetch this candidate’s applications (could be multiple per course, different roles)
     const applications = await applicationRepo.find({
       where: { user: { user_ID: candidateId } },
       relations: ["course", "appliedSkills", "appliedSkills.skill"],
     });
 
-    // 3) Build response
+    // 3) Build response: for each course, collect *all* matching application roles
     const transformed = courses.map((course) => {
-      const app = applications.find(
+      // Find every application this candidate has made to THIS course
+      const appsForThisCourse = applications.filter(
         (a) => a.course.course_ID === course.course_ID
       );
+
+      // Collect just the “role” strings they’ve already applied for
+      const appliedRoles = appsForThisCourse.map((app) => app.role);
+
+      // Collect detailed info per application (optional)
+      const applicationDetails = appsForThisCourse.map((app) => ({
+        role: app.role,
+        appliedAvailability: app.applied_availability,
+        appliedSkills: app.appliedSkills
+          .map((as) => as.skill?.name)
+          .filter(Boolean),
+        status:
+          app.accepted === null
+            ? "Pending"
+            : app.accepted
+            ? "Approved"
+            : "Rejected",
+        lecturerComment: app.lecturer_comment,
+      }));
 
       return {
         id: course.course_ID,
         name: course.display_name,
         courseCode: course.course_code,
         semester: course.semester,
-        rolesAvailable: course.roles_available, // simple-array column
+        rolesAvailable: course.roles_available, // ["Tutor", "Lab-Assistant"]
         skills: course.skills.map((s) => s.name),
-        hasApplied: !!app,
-        application: app
-          ? {
-              appliedAvailability: app.applied_availability,
-              appliedSkills: app.appliedSkills
-                .map((as) => as.skill?.name)
-                .filter(Boolean),
-              status:
-                app.accepted === null
-                  ? "Pending"
-                  : app.accepted
-                  ? "Approved"
-                  : "Rejected",
-            }
-          : null,
+        appliedRoles, // e.g. ["Tutor"] or ["Lab-Assistant","Tutor"]
+        applicationDetails, // optional: list of detail objects for UI
       };
     });
 
@@ -139,7 +146,6 @@ export const applyToCourse = async (
     const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
 
     // 5) Fetch course + verify it exists
-    //      ↓ No relations load for roles_available; it's a simple-array
     const course = await courseRepo.findOne({
       where: { course_ID: courseId },
     });
@@ -156,13 +162,17 @@ export const applyToCourse = async (
       return;
     }
 
-    // 7) Prevent duplicate application
-    const existingApp = await appRepo.findOne({
-      where: { user: { user_ID: candidateId }, course: { course_ID: courseId } },
+    // 7) Prevent duplicate application for the same role
+    const existingAppSameRole = await appRepo.findOne({
+      where: {
+        user: { user_ID: candidateId },
+        course: { course_ID: courseId },
+        role: role as ApplicationRole,
+      },
     });
-    if (existingApp) {
+    if (existingAppSameRole) {
       res.status(400).json({
-        message: "You have already applied to this course.",
+        message: `You have already applied as "${role}" on this course.`,
       });
       return;
     }
@@ -377,6 +387,7 @@ export const getMyApplications = async (
           ? "Approved"
           : "Rejected",
       lecturerComment: app.lecturer_comment,
+      ranking: app.ranking,
     }));
 
     res.json(response);
