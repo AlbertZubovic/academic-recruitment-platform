@@ -1,5 +1,3 @@
-// src/context/ApplicationContext.tsx
-
 import React, {
   createContext,
   useContext,
@@ -37,7 +35,7 @@ type CourseWithApplicants = CourseType & {
 };
 
 interface ApplicationContextValue {
-  // 1) Candidate-side
+  // 1) Candidate‐side
   myApplications: CandidateApplication[];
   loadingMyApps: boolean;
   errorMy: string | null;
@@ -46,7 +44,7 @@ interface ApplicationContextValue {
   deleteMyApplication: (courseId: string) => Promise<void>;
   fetchMyApplications: () => Promise<void>;
 
-  // 2) Lecturer-side
+  // 2) Lecturer‐side
   lecturerApplications: Record<string, LecturerApplication[]>;
   loadingLectApps: boolean;
   errorLect: string | null;
@@ -57,7 +55,7 @@ interface ApplicationContextValue {
     payload: UpdateApplicationStatusRequest
   ) => Promise<void>;
 
-  // 3) Search/filter/sort/drag
+  // 3) “Search/filter/sort/drag”
   courses: CourseWithApplicants[];
   allUsers: User[];
 
@@ -69,7 +67,7 @@ interface ApplicationContextValue {
   availabilityFilter: "all" | "full-time" | "part-time";
   setAvailabilityFilter: (f: "all" | "full-time" | "part-time") => void;
 
-  sortCriteria: string; // "course" | "availability" | "grouped"
+  sortCriteria: string; // "course" | "availability" | "role" | "grouped"
   handleSort: (c: string) => void;
 
   isFilteredView: boolean;
@@ -86,7 +84,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const BASE_URL = "http://localhost:5000/api";
 
   ////////////////////////////////////////////////////////////////////////////
-  // 1) Candidate-side State + Methods
+  // 1) Candidate‐side State + Methods
   ////////////////////////////////////////////////////////////////////////////
 
   const [myApplications, setMyApplications] = useState<CandidateApplication[]>([]);
@@ -187,7 +185,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   ////////////////////////////////////////////////////////////////////////////
-  // 2) Lecturer-side State + Methods
+  // 2) Lecturer‐side State + Methods
   ////////////////////////////////////////////////////////////////////////////
 
   const [lecturerApplications, setLecturerApplications] =
@@ -195,6 +193,55 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loadingLectApps, setLoadingLectApps] = useState(false);
   const [errorLect, setErrorLect] = useState<string | null>(null);
 
+  // This holds the full list of courses + their applicants
+  const [courses, setCourses] = useState<CourseWithApplicants[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  // 2a) Fetch all courses (with their applicants) that this lecturer teaches
+  const fetchCoursesWithApplicants = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/courses`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch courses");
+      const data: CourseWithApplicants[] = await res.json();
+
+      // Only include those courses where course.lecturer.id === current user’s id
+      const myId = user?.id;
+      const myCourses = data.filter((course) => course.lecturer?.id === myId);
+      setCourses(myCourses);
+    } catch (err: any) {
+      toast({
+        title: "Error loading courses",
+        description: err.message,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // 2b) Fetch full list of candidate users (for name lookup in filters/charts)
+  const fetchAllCandidateUsers = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/users/candidates`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch candidates");
+      const data: User[] = await res.json();
+      setAllUsers(data);
+    } catch (err: any) {
+      toast({
+        title: "Error loading users",
+        description: err.message,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // 2c) Fetch applications for a single course (used when updating status)
   const fetchLecturerApplications = async (courseId: string) => {
     setErrorLect(null);
     setLoadingLectApps(true);
@@ -227,6 +274,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // 2d) Update an application’s status (approve/reject/ranking), then re‐fetch
   const updateApplicationStatus = async (
     courseId: string,
     applicationId: string,
@@ -247,8 +295,12 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         const data = await res.json();
         throw new Error(data.message || "Failed to update status");
       }
-      // Refresh that course’s applications after any change
+
+      // (1) Re‐fetch that course’s applicant list
       await fetchLecturerApplications(courseId);
+
+      // (2) Re‐fetch all courses (so that `courses` in context updates)
+      await fetchCoursesWithApplicants();
     } catch (err: any) {
       setErrorLect(err.message);
       throw err;
@@ -256,82 +308,29 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   ////////////////////////////////////////////////////////////////////////////
-  // 3) “Search / filter / sort / drag” logic for all courses + applicants
+  // 3) Search/filter/sort/drag logic
   ////////////////////////////////////////////////////////////////////////////
 
-  // 3a) Raw list of “all courses” (each includes `applicants: LecturerApplication[]`)
-  const [courses, setCourses] = useState<CourseWithApplicants[]>([]);
-
-  // 3b) Full list of all candidate user-profiles (for ApplicantCard)
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-
-  // 3c) Search + filter + sort state
   const [searchTerm, setSearchTerm] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<
     "all" | "full-time" | "part-time"
   >("all");
   const [sortCriteria, setSortCriteria] = useState<string>("course");
 
-  // Fetch everything when lecturer logs in
-  const fetchCoursesWithApplicants = async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/courses`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch courses");
-      const data: CourseWithApplicants[] = await res.json();
-      setCourses(data);
-    } catch (err: any) {
-      toast({
-        title: "Error loading courses",
-        description: err.message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const fetchAllCandidateUsers = async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/users/candidates`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch candidates");
-      const data: User[] = await res.json();
-      setAllUsers(data);
-    } catch (err: any) {
-      toast({
-        title: "Error loading users",
-        description: err.message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (user && user.isLecturer) {
-      fetchCoursesWithApplicants();
-      fetchAllCandidateUsers();
-    }
-  }, [user]);
-
-  // 3d) True if any search/filter/sort is active
+  // True if any search/filter/sort is active
   const isFilteredView = Boolean(
     searchTerm || availabilityFilter !== "all" || sortCriteria !== "course"
   );
 
-  // 3e) Which panels are open by default
+  // By default, no panels are open
   const openPanels: number[] = [];
 
-  // 3f) Build filteredApplicants
+  // Build filteredApplicants from `courses` + `allUsers`
   const filteredApplicants = courses
     .map((course) => {
-      // 1) Filter course.applicants array itself
+      // Filter each course’s applicants according to search/availability
       let filteredApps = (course.applicants || []).filter((app) => {
-        // a) searchTerm: match applicant name or skills
+        // a) searchTerm
         if (searchTerm) {
           const lower = searchTerm.toLowerCase();
           const userObj = allUsers.find((u) => u.id === app.userId);
@@ -347,7 +346,6 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
             return false;
           }
         }
-
         // b) availabilityFilter
         if (availabilityFilter !== "all") {
           const filterValue =
@@ -356,17 +354,14 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
             return false;
           }
         }
-
         return true;
       });
 
       return { ...course, applicants: filteredApps };
     })
-    // 2) Drop courses with no matching applicants AND name/code doesn’t match searchTerm
+    // Drop courses with no matching applicants AND course name/code doesn’t match searchTerm
     .filter((course) => {
-      if (course.applicants.length > 0) {
-        return true;
-      }
+      if (course.applicants.length > 0) return true;
       if (searchTerm) {
         const lower = searchTerm.toLowerCase();
         return (
@@ -376,8 +371,11 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       return false;
     })
-    // 3) If sortCriteria === “availability”, re-order each course’s applicants
+    //  ────────────────────────────────────────────────────────────
+    //  Sort each course’s filtered applicants by chosen criterion:
+    //  ────────────────────────────────────────────────────────────
     .map((course) => {
+      // a) Availability sort (Full-Time first → Part-Time)
       if (sortCriteria === "availability") {
         const sortedApps = [...course.applicants].sort((a, b) =>
           a.appliedAvailability === "Full-Time" && b.appliedAvailability === "Part-Time"
@@ -386,6 +384,21 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         );
         return { ...course, applicants: sortedApps };
       }
+
+      // b) Role sort (Tutor first → Lab-Assistant)
+      if (sortCriteria === "role") {
+        const sortedApps = [...course.applicants].sort((a, b) =>
+          a.role === "Tutor" && b.role === "Lab-Assistant"
+            ? -1
+            : a.role === b.role
+            ? 0
+            : 1
+        );
+        return { ...course, applicants: sortedApps };
+      }
+
+      // c) Grouped or default (by whatever front end wants)
+      //    (“course” doesn’t reorder applicants, it’s handled by initial fetch order)
       return course;
     });
 
@@ -393,7 +406,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     setSortCriteria(criteria);
   };
 
-  // 3g) onDragEnd: reorder locally and persist new ranking
+  // When dragging ends, reorder locally and persist new rankings
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (!active || !over) return;
@@ -401,13 +414,13 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     const activeId = active.id as string; // e.g. "COSC101-<userId>"
     const overId = over.id as string;
 
-    // parse out courseCode
+    // Find the affected course in `courses`
     const [courseCode] = activeId.split("-");
     const idx = courses.findIndex((c) => c.courseCode === courseCode);
     if (idx === -1) return;
     const course = courses[idx];
 
-    // find old/new indices
+    // Determine old/new positions
     const oldIndex = course.applicants.findIndex(
       (app) => `${course.courseCode}-${app.userId}` === activeId
     );
@@ -416,17 +429,17 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // 1) reorder locally
+    // 1) Reorder locally
     const newList = arrayMove(course.applicants, oldIndex, newIndex);
     const updatedCourse = { ...course, applicants: newList };
     const newCourses = [...courses];
     newCourses[idx] = updatedCourse;
     setCourses(newCourses);
 
-    // 2) persist each applicant’s updated ranking
+    // 2) Persist each applicant’s updated ranking
     for (let i = 0; i < newList.length; i++) {
       const lectApp = newList[i];
-      const newRank = i + 1; // 1-based
+      const newRank = i + 1; // 1‐based
       try {
         await updateApplicationStatus(course.id, lectApp.applicationId, {
           ranking: newRank,
@@ -439,13 +452,29 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
     }
 
-    // 3) Re-fetch all courses so that the newly-saved rankings are returned in order:
+    // 3) Re‐fetch all courses so that server‐side ranking/order is restored
     await fetchCoursesWithApplicants();
   };
 
   ////////////////////////////////////////////////////////////////////////////
-  // 4) Context Provider Value
+  // 4) INITIAL FETCH FOR LECTURER
   ////////////////////////////////////////////////////////////////////////////
+
+  useEffect(() => {
+    if (user && user.isLecturer) {
+      fetchCoursesWithApplicants();
+      fetchAllCandidateUsers();
+    } else {
+      // If not a lecturer, clear out the data
+      setCourses([]);
+      setAllUsers([]);
+    }
+  }, [user]);
+
+  ////////////////////////////////////////////////////////////////////////////
+  // 5) Context Provider Value
+  ////////////////////////////////////////////////////////////////////////////
+
   return (
     <ApplicationContext.Provider
       value={{

@@ -17,46 +17,53 @@ import {
   AlertIcon,
 } from "@chakra-ui/react";
 
-import { useSelectedApplicants } from "@/context/SelectedApplicantsContext";
-import { useCourses } from "@/context/CourseContext";
+import { useApplications } from "@/context/ApplicationContext";
 
 import ApplicantSelectionChart from "./Charts/ApplicantSelectionChart";
 import TopSkillsChart from "./Charts/TopSkillsChart";
 import AvailabilityChart from "./Charts/AvailabilityChart";
 
-import { Course } from "@/types/course";
 import { LecturerApplication } from "@/types/Application";
+import { Course as CourseType } from "@/types/course";
 
-// ─── 1) MATCH EXACTLY WHAT APPLICANTSELECTIONCHART EXPECTS ───
-//  It needs an array of objects: { id: string; name: string; count: number; }
+/**
+ *  1) ApplicantSelectionChart expects:
+ *     { id: string; name: string; count: number }[]
+ */
 interface SelectionData {
-  id:    string; // userId
-  name:  string; // userName
-  count: number; // how many times this userId appears in selectedApplicants
+  id:    string;
+  name:  string;
+  count: number;
 }
 
-// ─── 2) TOPSKILLSCHART expects: { skillName: string; count: number } ───
+/**
+ *  2) TopSkillsChart expects:
+ *     { skill: string; count: number }[]
+ */
 interface SkillData {
   skillName: string;
   count:     number;
 }
 
-// ─── 3) AVAILABILITYCHART expects: { availability: string; count: number } ───
+/**
+ *  3) AvailabilityChart expects:
+ *     { type: string; count: number }[]
+ */
 interface AvailabilityData {
-  availability: string;
+  availability: string; // intermediate shape
   count:        number;
 }
 
 const VisualRepresentation: React.FC = () => {
-  const { selectedApplicants } = useSelectedApplicants();
-  const { courses } = useCourses();
+  // Only the courses this lecturer teaches are in context now
+  const { courses } = useApplications();
 
-  // State for the three data arrays
+  // Intermediate state arrays
   const [selectionData, setSelectionData] = useState<SelectionData[]>([]);
   const [skillData, setSkillData] = useState<SkillData[]>([]);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityData[]>([]);
 
-  // Loading / error states
+  // Loading / error flags
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,42 +72,45 @@ const VisualRepresentation: React.FC = () => {
     setError(null);
 
     try {
-      // ═══════════════════════════════════════════════════════════════
-      // 1) FLATTEN all LecturerApplication across all courses into one array
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 1) Gather **all** LecturerApplication objects across this lecturer’s courses
+      //    and also separately collect only approved ones.
+      // ────────────────────────────────────────────────────────────────
       const allApps: LecturerApplication[] = [];
-      courses.forEach((course: Course & { applicants?: LecturerApplication[] }) => {
-        (course.applicants || []).forEach((lectApp) => {
-          allApps.push(lectApp);
+      const approvedApps: LecturerApplication[] = [];
+
+      courses.forEach((course: CourseType & { applicants?: LecturerApplication[] }) => {
+        (course.applicants || []).forEach((app) => {
+          allApps.push(app);
+          if (app.status === "Approved") {
+            approvedApps.push(app);
+          }
         });
       });
 
-      // ═══════════════════════════════════════════════════════════════
-      // 2) BUILD userMap: userId → userName (first time we see them)
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 2) Build a map of userId → userName from approvedApps (for Selections chart)
+      // ────────────────────────────────────────────────────────────────
       const userMap: Record<string, string> = {};
-      allApps.forEach((lectApp) => {
-        const uid = String(lectApp.userId);
+      approvedApps.forEach((app) => {
+        const uid = String(app.userId);
         if (!userMap[uid]) {
-          userMap[uid] = lectApp.name;
+          userMap[uid] = app.name;
         }
       });
 
-      // ═══════════════════════════════════════════════════════════════
-      // 3) COUNT how many times each userId appears in selectedApplicants
-      //    selectedApplicants: { [courseId: string]: string[] }
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 3) Count how many approvals per userId
+      // ────────────────────────────────────────────────────────────────
       const counts: Record<string, number> = {};
-      Object.values(selectedApplicants).forEach((uidArray) => {
-        uidArray.forEach((uid) => {
-          const key = String(uid);
-          counts[key] = (counts[key] || 0) + 1;
-        });
+      approvedApps.forEach((app) => {
+        const uid = String(app.userId);
+        counts[uid] = (counts[uid] || 0) + 1;
       });
 
-      // ═══════════════════════════════════════════════════════════════
-      // 4) BUILD selectionData = [ { id, name, count }, … ]
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 4) Build selectionData = [ { id, name, count }, … ]
+      // ────────────────────────────────────────────────────────────────
       const selArray: SelectionData[] = Object.entries(userMap).map(
         ([uid, name]) => ({
           id:    uid,
@@ -109,35 +119,25 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ═══════════════════════════════════════════════════════════════
-      // 5) TALLY UP "selected" applications to build skillMap + availabilityMap
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 5) Tally skills and availability among **all** applicants (not only approved)
+      // ────────────────────────────────────────────────────────────────
       const skillMap: Record<string, number> = {};
       const availabilityMap: Record<string, number> = {};
 
-      courses.forEach((course: Course & { applicants?: LecturerApplication[] }) => {
-        // Build a Set of userIds selected for THIS course
-        const selectedForThisCourse = new Set(
-          (selectedApplicants[course.id] || []).map((id) => String(id))
-        );
-
-        (course.applicants || []).forEach((lectApp) => {
-          const uid = String(lectApp.userId);
-          if (selectedForThisCourse.has(uid)) {
-            // Count each applied skill
-            lectApp.appliedSkills.forEach((skill) => {
-              skillMap[skill] = (skillMap[skill] || 0) + 1;
-            });
-            // Count appliedAvailability
-            const avail = lectApp.appliedAvailability; // e.g. "Full-Time"
-            availabilityMap[avail] = (availabilityMap[avail] || 0) + 1;
-          }
+      allApps.forEach((app) => {
+        // a) Count each appliedSkill
+        app.appliedSkills.forEach((skill) => {
+          skillMap[skill] = (skillMap[skill] || 0) + 1;
         });
+        // b) Count appliedAvailability
+        const avail = app.appliedAvailability; // "Full-Time" or "Part-Time"
+        availabilityMap[avail] = (availabilityMap[avail] || 0) + 1;
       });
 
-      // ═══════════════════════════════════════════════════════════════
-      // 6) CONVERT skillMap → [ { skillName, count }, … ]
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 6) Convert skillMap → [ { skillName, count }, … ]
+      // ────────────────────────────────────────────────────────────────
       const skillArray: SkillData[] = Object.entries(skillMap).map(
         ([skillName, cnt]) => ({
           skillName,
@@ -145,9 +145,9 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ═══════════════════════════════════════════════════════════════
-      // 7) CONVERT availabilityMap → [ { availability, count }, … ]
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 7) Convert availabilityMap → [ { availability, count }, … ]
+      // ────────────────────────────────────────────────────────────────
       const availArray: AvailabilityData[] = Object.entries(availabilityMap).map(
         ([availability, cnt]) => ({
           availability,
@@ -155,9 +155,9 @@ const VisualRepresentation: React.FC = () => {
         })
       );
 
-      // ═══════════════════════════════════════════════════════════════
-      // 8) SET STATE
-      // ═══════════════════════════════════════════════════════════════
+      // ────────────────────────────────────────────────────────────────
+      // 8) Store in local state
+      // ────────────────────────────────────────────────────────────────
       setSelectionData(selArray);
       setSkillData(skillArray);
       setAvailabilityData(availArray);
@@ -166,7 +166,7 @@ const VisualRepresentation: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedApplicants, courses]);
+  }, [courses]); // Re‐run whenever `courses` changes
 
   if (loading) {
     return (
@@ -175,6 +175,7 @@ const VisualRepresentation: React.FC = () => {
       </Center>
     );
   }
+
   if (error) {
     return (
       <Box mt={8}>
@@ -186,19 +187,15 @@ const VisualRepresentation: React.FC = () => {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // 9) SUMMARY STATS (only among those with count > 0)
-  // ═══════════════════════════════════════════════════════════════
+  // ────────────────────────────────────────────────────────────────
+  // Calculate summary stats (only among those with count > 0)
+  // ────────────────────────────────────────────────────────────────
   const selectedOnly = selectionData.filter((a) => a.count > 0);
   const mostChosen = selectedOnly.length
-    ? selectedOnly.reduce((max, curr) =>
-        curr.count > max.count ? curr : max
-      )
+    ? selectedOnly.reduce((max, curr) => (curr.count > max.count ? curr : max))
     : null;
   const leastChosen = selectedOnly.length
-    ? selectedOnly.reduce((min, curr) =>
-        curr.count < min.count ? curr : min
-      )
+    ? selectedOnly.reduce((min, curr) => (curr.count < min.count ? curr : min))
     : null;
   const neverChosenCount = selectionData.filter((a) => a.count === 0).length;
 
@@ -208,51 +205,68 @@ const VisualRepresentation: React.FC = () => {
         Selection Overview
       </Heading>
       <Text fontSize="sm" color="gray.500" textAlign="center" mb={4}>
-        (Charts update based on Selection)
+        (Top Skills & Availability include all applicants;
+         “Selections per Applicant” counts only approved applications.)
       </Text>
 
       {/* ─── TABBED CHARTS ─── */}
       <Tabs isLazy>
         <TabList mb={4} overflowX="auto">
           <Tab>Selections per Applicant</Tab>
-          <Tab>Top Skills (from Selected Applications)</Tab>
-          <Tab>Availability (from Selected Applications)</Tab>
+          <Tab>Top Skills (All Applicants)</Tab>
+          <Tab>Availability (All Applicants)</Tab>
         </TabList>
 
         <TabPanels>
-          {/* 1) Pass selectionData to ApplicantSelectionChart */}
+          {/* 1) Selections per Applicant */}
           <TabPanel>
-            <ApplicantSelectionChart data={selectionData} />
+            {selectionData.length === 0 ? (
+              <Text textAlign="center" color="gray.600">
+                No approved applications yet, so no “Selections per Applicant” to show.
+              </Text>
+            ) : (
+              <ApplicantSelectionChart data={selectionData} />
+            )}
           </TabPanel>
 
-          {/* 2) Pass skillData to TopSkillsChart */}
+          {/* 2) TopSkillsChart: all applicants, so map skillData → { skill, count } */}
           <TabPanel>
-            <TopSkillsChart data={skillData} />
+            <TopSkillsChart
+              data={skillData.map(({ skillName, count }) => ({
+                skill: skillName,
+                count,
+              }))}
+            />
           </TabPanel>
 
-          {/* 3) Pass availabilityData to AvailabilityChart */}
+          {/* 3) AvailabilityChart: all applicants, so map availabilityData → { type, count } */}
           <TabPanel>
-            <AvailabilityChart data={availabilityData} />
+            <AvailabilityChart
+              data={availabilityData.map(({ availability, count }) => ({
+                type: availability,
+                count,
+              }))}
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>
 
-      {/* ─── SUMMARY STATS ─── */}
+      {/* ─── SUMMARY STATISTICS ─── */}
       <VStack align="start" mt={6} spacing={2}>
         <Text>
-          <strong>Most Chosen:</strong>{" "}
+          <strong>Most Chosen (approved):</strong>{" "}
           {mostChosen
-            ? `${mostChosen.name} (${mostChosen.count} selections)`
+            ? `${mostChosen.name} (${mostChosen.count} approvals)`
             : "N/A"}
         </Text>
         <Text>
-          <strong>Least Chosen (among those selected):</strong>{" "}
+          <strong>Least Chosen (among approved):</strong>{" "}
           {leastChosen
-            ? `${leastChosen.name} (${leastChosen.count} selections)`
+            ? `${leastChosen.name} (${leastChosen.count} approvals)`
             : "N/A"}
         </Text>
         <Text>
-          <strong>Applied but Never Selected:</strong> {neverChosenCount} candidate(s)
+          <strong>Approved but Never Selected:</strong> {neverChosenCount} candidate(s)
         </Text>
       </VStack>
     </Box>

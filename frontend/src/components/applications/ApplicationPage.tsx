@@ -1,14 +1,5 @@
 // src/components/applications/ApplicationContainer.tsx
 
-/**
- * ApplicationPage.tsx
- *
- * Main page component for managing course applications.
- * Displays all courses + applicants, allows search/filter/sort, and drag‐and‐drop ranking.
- *
- * Only users with isLecturer privileges can access this page.
- */
-
 import React from "react";
 import {
   Box,
@@ -22,9 +13,9 @@ import {
   Button,
 } from "@chakra-ui/react";
 import { FaSortAmountDownAlt } from "react-icons/fa";
+
 import { useAuth } from "@/context/AuthContext";
-import { useSelectedApplicants } from "@/context/SelectedApplicantsContext";
-import { useApplications } from "@/context/ApplicationContext"; // <— changed
+import { useApplications } from "@/context/ApplicationContext";
 
 import { DndContext, closestCenter } from "@dnd-kit/core";
 
@@ -34,10 +25,10 @@ import VisualRepresentation from "./Visuals/VisualRepresentation";
 
 const ApplicationPage: React.FC = () => {
   const { user } = useAuth();
-  const { selectedApplicants } = useSelectedApplicants();
 
   // Pull everything from the refactored hook:
   const {
+    courses,
     searchTerm,
     setSearchTerm,
     availabilityFilter,
@@ -47,6 +38,14 @@ const ApplicationPage: React.FC = () => {
     isFilteredView,
     handleDragEnd,
   } = useApplications();
+
+  // Compute total number of approved applications across all this lecturer’s courses:
+  const totalApproved = courses.reduce((sum, course) => {
+    return (
+      sum +
+      (course.applicants || []).filter((app) => app.status === "Approved").length
+    );
+  }, 0);
 
   // Only lecturers can access this page
   if (!user || !user.isLecturer) {
@@ -117,10 +116,9 @@ const ApplicationPage: React.FC = () => {
         </ButtonGroup>
       </Flex>
 
-      {/* Selected applicants total */}
+      {/* Total approved applications */}
       <Text textAlign="center" mb={4} color="gray.600">
-        Total Selected:{" "}
-        <strong>{Object.values(selectedApplicants).flat().length}</strong>
+        Total Approved: <strong>{totalApproved}</strong>
       </Text>
 
       {/* Warning banner when in a filtered state */}
