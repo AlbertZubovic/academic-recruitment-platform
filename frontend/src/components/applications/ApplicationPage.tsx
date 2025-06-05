@@ -1,6 +1,6 @@
 // src/components/applications/ApplicationPage.tsx
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -45,15 +45,13 @@ const ApplicationPage: React.FC = () => {
   // Track whether “Expand All” has been clicked:
   const [allExpanded, setAllExpanded] = useState(false);
 
-  // Re-set expandedIndices whenever the underlying filtered list changes:
-  // If “allExpanded” is true, expand all; otherwise collapse all.
+  // Only re‐compute expandedIndices when allExpanded changes:
   useEffect(() => {
     if (allExpanded) {
       setExpandedIndices(filteredApplicants.map((_, i) => i));
-    } else {
-      setExpandedIndices([]);
     }
-  }, [filteredApplicants, allExpanded]);
+    // Note: We no longer clear expandedIndices on filteredApplicants update.
+  }, [allExpanded]);
 
   // Compute total number of approved applications across all this lecturer’s courses:
   const totalApproved = courses.reduce((sum, course) => {
@@ -67,7 +65,10 @@ const ApplicationPage: React.FC = () => {
   // Only lecturers can access this page
   if (!user || !user.isLecturer) {
     return (
-      <Text textAlign="center" color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+      <Text
+        textAlign="center"
+        color={useColorModeValue("gray.800", "whiteAlpha.900")}
+      >
         You are not authorized to view this page.
       </Text>
     );
@@ -78,9 +79,9 @@ const ApplicationPage: React.FC = () => {
   };
   const handleCollapseAll = () => {
     setAllExpanded(false);
+    setExpandedIndices([]);
   };
 
-  // ─────────────── Color values for light/dark ───────────────
   const containerBg = useColorModeValue("gray.50", "gray.800");
   const headingColor = useColorModeValue("blue.600", "blue.300");
   const textColor = useColorModeValue("gray.600", "gray.400");
@@ -98,7 +99,13 @@ const ApplicationPage: React.FC = () => {
       shadow="lg"
     >
       {/* Page heading */}
-      <Heading as="h2" size="xl" mb={6} textAlign="center" color={headingColor}>
+      <Heading
+        as="h2"
+        size="xl"
+        mb={6}
+        textAlign="center"
+        color={headingColor}
+      >
         Applications
       </Heading>
 
