@@ -8,28 +8,40 @@ import React, {
   ReactNode,
 } from "react";
 import { Course } from "@/types/course";
+import { ApplicationRole } from "@/types/enums";
 import { useAuth } from "./AuthContext";
+
+// Point to your backend’s base URL
+const API_BASE = "http://localhost:5000/api";
 
 interface CourseContextValue {
   courses: Course[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+
   applyToCourse: (
     courseId: string,
-    payload: { role: string; appliedAvailability: string; appliedSkills: string[] }
+    payload: {
+      role: ApplicationRole;
+      appliedAvailability: string;
+      appliedSkills: string[];
+    }
   ) => Promise<boolean>;
+
   updateApplicationDetails: (
     courseId: string,
-    payload: { appliedAvailability?: string; appliedSkills?: string[] }
+    payload: {
+      role?: ApplicationRole;
+      appliedAvailability?: string;
+      appliedSkills?: string[];
+    }
   ) => Promise<boolean>;
+
   deleteApplication: (courseId: string) => Promise<void>;
 }
 
 const CourseContext = createContext<CourseContextValue | undefined>(undefined);
-
-// Adjust this base URL if your API root differs
-const COURSE_API_BASE = "http://localhost:5000/api/candidates";
 
 export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -39,10 +51,11 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch all courses (along with any existing “application” object if the candidate has already applied)
   const fetchCourses = async () => {
     setError(null);
     try {
-      const res = await fetch(`${COURSE_API_BASE}/courses`, {
+      const res = await fetch(`${API_BASE}/candidates/courses`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -72,39 +85,37 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(false);
   };
 
+  /**
+   * POST a new application. Now we send:
+   *   {
+   *     role: "...",                     // e.g. "Tutor" or "Lab-Assistant"
+   *     appliedAvailability: "...",      // e.g. "Full-Time" or "Part-Time"
+   *     appliedSkills: ["S1","S2",...]
+   *   }
+   */
   const applyToCourse = async (
     courseId: string,
-    payload: { role: string; appliedAvailability: string; appliedSkills: string[] }
-  ) => {
-    try {
-      const res = await fetch(`${COURSE_API_BASE}/courses/${courseId}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        return false;
-      }
-      await fetchCourses();
-      return true;
-    } catch {
-      return false;
+    payload: {
+      role: ApplicationRole;
+      appliedAvailability: string;
+      appliedSkills: string[];
     }
-  };
-
-  const updateApplicationDetails = async (
-    courseId: string,
-    payload: { appliedAvailability?: string; appliedSkills?: string[] }
   ) => {
+    setError(null);
     try {
+      const body = {
+        role: payload.role,
+        appliedAvailability: payload.appliedAvailability,
+        appliedSkills: payload.appliedSkills,
+      };
+
       const res = await fetch(
-        `${COURSE_API_BASE}/courses/${courseId}/applications/me`,
+        `${API_BASE}/candidates/courses/${courseId}/apply`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         }
       );
       if (!res.ok) {
@@ -117,10 +128,51 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  /**
+   * PATCH an existing application. We allow changing any of:
+   *   role, appliedAvailability, appliedSkills
+   */
+  const updateApplicationDetails = async (
+    courseId: string,
+    payload: {
+      role?: ApplicationRole;
+      appliedAvailability?: string;
+      appliedSkills?: string[];
+    }
+  ) => {
+    setError(null);
+    try {
+      const body: any = {};
+      if (payload.role) body.role = payload.role;
+      if (payload.appliedAvailability)
+        body.appliedAvailability = payload.appliedAvailability;
+      if (payload.appliedSkills) body.appliedSkills = payload.appliedSkills;
+
+      const res = await fetch(
+        `${API_BASE}/candidates/courses/${courseId}/applications/me`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        }
+      );
+      if (!res.ok) {
+        return false;
+      }
+      await fetchCourses();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // DELETE (withdraw) an existing application
   const deleteApplication = async (courseId: string) => {
+    setError(null);
     try {
       const res = await fetch(
-        `${COURSE_API_BASE}/courses/${courseId}/applications/me`,
+        `${API_BASE}/candidates/courses/${courseId}/applications/me`,
         {
           method: "DELETE",
           credentials: "include",

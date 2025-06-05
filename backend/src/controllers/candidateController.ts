@@ -50,7 +50,7 @@ export const getCandidateCourses = async (
         name: course.display_name,
         courseCode: course.course_code,
         semester: course.semester,
-        rolesAvailable: course.roles_available,
+        rolesAvailable: course.roles_available, // simple-array column
         skills: course.skills.map((s) => s.name),
         hasApplied: !!app,
         application: app
@@ -139,9 +139,9 @@ export const applyToCourse = async (
     const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
 
     // 5) Fetch course + verify it exists
+    //      ↓ No relations load for roles_available; it's a simple-array
     const course = await courseRepo.findOne({
       where: { course_ID: courseId },
-      relations: ["roles_available"],
     });
     if (!course) {
       res.status(404).json({ message: "Course not found." });
