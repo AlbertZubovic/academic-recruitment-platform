@@ -1,44 +1,24 @@
 // src/components/applications/ApplicationAccordionGroups.tsx
 
-/**
- * ApplicationAccordionGroups.tsx
- *
- * Renders grouped or flat accordions of courses + their applicants,
- * based on the current sort/filter settings in ApplicationContext.
- */
-
 import React from "react";
 import { Box, Accordion, Heading } from "@chakra-ui/react";
 import { useApplications } from "@/context/ApplicationContext";
 import ApplicationAccordionItem from "./ApplicationAccordionItem";
 
-/**
- * We know each course in `filteredApplicants` has this shape:
- *   {
- *     id: string;
- *     courseCode: string;
- *     name: string;
- *     semester: string;
- *     rolesAvailable: string[];
- *     isDisabled: boolean;
- *     skills: string[];
- *     lecturer: UserSummary | null;
- *     applicants: LecturerApplication[];
- *     // ...plus any other Course fields…
- *   }
- *
- * For conciseness, we’ll rely on TS inference rather than re‐declaring a new interface here.
- */
+interface ApplicationAccordionGroupsProps {
+  expandedIndices: number[];
+  setExpandedIndices: (vals: number[]) => void;
+  allExpanded: boolean;
+}
 
-const ApplicationAccordionGroups: React.FC = () => {
-  // Pull everything we need from the new context hook:
-  const {
-    filteredApplicants,
-    openPanels,
-    sortCriteria,
-  } = useApplications();
+const ApplicationAccordionGroups: React.FC<ApplicationAccordionGroupsProps> = ({
+  expandedIndices,
+  setExpandedIndices,
+  allExpanded,
+}) => {
+  const { filteredApplicants, sortCriteria } = useApplications();
 
-  // Helper to render a single “group” section (High/Medium/Low demand):
+  // Render a group (High/Medium/Low demand)
   const renderGroup = (
     label: string,
     color: string,
@@ -47,12 +27,21 @@ const ApplicationAccordionGroups: React.FC = () => {
     const group = filteredApplicants.filter(filterFn);
     if (group.length === 0) return null;
 
+    // Compute default indices [0,1,2,...] if allExpanded; otherwise []
+    const defaultIdx = allExpanded ? group.map((_, i) => i) : [];
+
     return (
       <Box key={label} mt={8}>
         <Heading size="md" mb={3} color={color}>
           {label}
         </Heading>
-        <Accordion allowMultiple defaultIndex={openPanels}>
+
+        {/* Use `key` to force remount when allExpanded toggles */}
+        <Accordion
+          allowMultiple
+          defaultIndex={defaultIdx}
+          key={allExpanded ? "all" : "none"}
+        >
           {group.map((course) => (
             <ApplicationAccordionItem key={course.id} course={course} />
           ))}
@@ -61,7 +50,7 @@ const ApplicationAccordionGroups: React.FC = () => {
     );
   };
 
-  // If “grouped” sort is active, break into demand buckets:
+  // If “grouped” sort is active, show by demand buckets:
   if (sortCriteria === "grouped") {
     return (
       <>
@@ -84,9 +73,15 @@ const ApplicationAccordionGroups: React.FC = () => {
     );
   }
 
-  // Otherwise, show one flat Accordion of all filtered courses:
+  // Otherwise, flat list, fully controlled by expandedIndices:
   return (
-    <Accordion allowMultiple defaultIndex={openPanels}>
+    <Accordion
+      allowMultiple
+      index={expandedIndices}
+      onChange={(newIndices) =>
+        setExpandedIndices(newIndices as number[])
+      }
+    >
       {filteredApplicants.map((course) => (
         <ApplicationAccordionItem key={course.id} course={course} />
       ))}

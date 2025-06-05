@@ -17,15 +17,17 @@ import {
   ModalCloseButton,
   Wrap,
   WrapItem,
+  useToast,
 } from "@chakra-ui/react";
 import { LecturerApplication } from "@/types/Application";
 import { User } from "@/types/user";
+import { useApplications } from "@/context/ApplicationContext"; // ← import context
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   courseId: string;
-  userProfile: User;                    // <-- Must include `pastRoles: PastRole[]`
+  userProfile: User;                    // Must include `pastRoles: PastRole[]`
   applicationDetails: LecturerApplication;
 }
 
@@ -36,18 +38,39 @@ const ApplicantDetailsModal: React.FC<Props> = ({
   applicationDetails,
   courseId,
 }) => {
-  const [comment, setComment] = useState("");
-  const commentKey = `comment-${courseId}-${userProfile.id}`;
+  const { updateApplicationStatus } = useApplications();
+  const toast = useToast();
+
+  // Initialize from backend’s lecturerComment
+  const [comment, setComment] = useState<string>("");
 
   useEffect(() => {
     if (isOpen) {
-      const saved = localStorage.getItem(commentKey);
-      if (saved) setComment(saved);
-      else setComment("");
+      setComment(applicationDetails.lecturerComment || "");
     }
-  }, [isOpen, commentKey]);
+  }, [isOpen, applicationDetails.lecturerComment]);
 
-  const saveComment = () => localStorage.setItem(commentKey, comment);
+  // When “Save Comment” is clicked, send to backend
+  const saveComment = async () => {
+    try {
+      await updateApplicationStatus(courseId, applicationDetails.applicationId, {
+        lecturerComment: comment,
+      });
+      toast({
+        title: "Comment saved",
+        status: "success",
+        duration: 1500,
+        isClosable: true,
+      });
+    } catch {
+      toast({
+        title: "Failed to save comment",
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+      });
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
@@ -127,9 +150,9 @@ const ApplicantDetailsModal: React.FC<Props> = ({
               </>
             )}
 
-            {/* 6) Comment section */}
+            {/* 6) Comment section (from DB) */}
             <Divider />
-            <Text fontWeight="medium">Comments:</Text>
+            <Text fontWeight="medium">Lecturer Comment:</Text>
             <Input
               placeholder="Add a comment..."
               value={comment}

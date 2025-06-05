@@ -1,15 +1,6 @@
 // src/components/applications/CourseAccordion/ApplicationAccordionItem.tsx
 
-/**
- * ApplicationAccordionItem.tsx
- *
- * Renders one course’s AccordionItem:
- * - Header with course name + applicant count
- * - AccordionPanel listing that course’s applicants
- *   (wrapped in a SortableContext if not filtered)
- */
-
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   AccordionItem,
   AccordionButton,
@@ -21,8 +12,11 @@ import {
   Badge,
   Flex,
   Tooltip,
+  IconButton,
+  Textarea,
+  useToast,
 } from "@chakra-ui/react";
-import { HamburgerIcon } from "@chakra-ui/icons";
+import { HamburgerIcon, CopyIcon } from "@chakra-ui/icons";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { useApplications } from "@/context/ApplicationContext";
@@ -32,16 +26,6 @@ import ApplicantCard from "../Applicant/ApplicantCard";
 import { LecturerApplication } from "@/types/Application";
 import { Course as CourseType } from "@/types/course";
 
-/**
- * We expect each `course` prop to have:
- *   {
- *     id: string;
- *     courseCode: string;
- *     name: string;
- *     applicants: LecturerApplication[];
- *     // plus other Course fields (semester, rolesAvailable, skills, lecturer, etc.)
- *   }
- */
 interface ApplicationAccordionItemProps {
   course: CourseType & { applicants: LecturerApplication[] };
 }
@@ -50,6 +34,27 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
   course,
 }) => {
   const { isFilteredView } = useApplications();
+  const toast = useToast();
+
+  // 1) Count statuses
+  const pendingCount = course.applicants.filter((a) => a.status === "Pending")
+    .length;
+  const approvedCount = course.applicants.filter((a) => a.status === "Approved")
+    .length;
+  const rejectedCount = course.applicants.filter((a) => a.status === "Rejected")
+    .length;
+
+  // Copy the course name (not a URL) to the clipboard
+  const copyCourseName = () => {
+    navigator.clipboard.writeText(course.name).then(() => {
+      toast({
+        title: "Course name copied!",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    });
+  };
 
   return (
     <AccordionItem
@@ -64,18 +69,44 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
         <Box flex="1" textAlign="left">
           <Text fontWeight="bold" fontSize="lg" color="blue.600">
             {course.name} ({course.courseCode}){" "}
-            <Badge
-              ml={2}
-              colorScheme="gray"
-              variant="solid"
-              borderRadius="full"
-              px={2}
-            >
+            <Badge ml={2} colorScheme="gray" variant="solid" borderRadius="full" px={2}>
               {course.applicants.length} applicant
               {course.applicants.length !== 1 ? "s" : ""}
             </Badge>
+
+            {/* Status badges */}
+            {pendingCount > 0 && (
+              <Badge ml={2} colorScheme="yellow" borderRadius="full">
+                {pendingCount} Pending
+              </Badge>
+            )}
+            {approvedCount > 0 && (
+              <Badge ml={2} colorScheme="green" borderRadius="full">
+                {approvedCount} Approved
+              </Badge>
+            )}
+            {rejectedCount > 0 && (
+              <Badge ml={2} colorScheme="red" borderRadius="full">
+                {rejectedCount} Rejected
+              </Badge>
+            )}
           </Text>
         </Box>
+
+        {/* Copy Course Name button */}
+        <Tooltip label="Copy course name to clipboard" placement="left" hasArrow>
+          <IconButton
+            aria-label="Copy course name"
+            icon={<CopyIcon />}
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              copyCourseName();
+            }}
+            mr={2}
+          />
+        </Tooltip>
+
         <AccordionIcon />
       </AccordionButton>
 
@@ -87,8 +118,7 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
           </Text>
         ) : (
           <SortableContext
-            // Each “item” ID must be a unique string.
-            // We use applicationId (UUID) to guarantee uniqueness.
+            // Each item’s id must be unique (we use applicationId)
             items={course.applicants.map(
               (app: LecturerApplication) => app.applicationId
             )}
@@ -96,13 +126,42 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
           >
             <VStack spacing={4} align="stretch">
               {course.applicants.map((applicantDetail, index) => {
-                // applicationId is guaranteed to be unique for each row
                 const uniqueItemId = applicantDetail.applicationId;
+
+                // Store the private note purely in localStorage under:
+                //   private_note__<courseId>__<applicationId>
+                const storageKey = `private_note__${course.id}__${uniqueItemId}`;
+
+                // 2) Local state for the textarea’s value
+                const [note, setNote] = useState<string>("");
+
+                // On mount, load from localStorage (or start as "")
+                useEffect(() => {
+                  const saved = localStorage.getItem(storageKey);
+                  if (saved !== null) {
+                    setNote(saved);
+                  } else {
+                    setNote("");
+                  }
+                }, [storageKey]);
+
+                // Save to localStorage on blur
+                const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+                  const newVal = e.target.value;
+                  setNote(newVal);
+                  localStorage.setItem(storageKey, newVal);
+                  toast({
+                    title: "Note saved locally",
+                    status: "success",
+                    duration: 1500,
+                    isClosable: true,
+                  });
+                };
 
                 return (
                   <SortableItem
-                    key={uniqueItemId}      // <-- This is the React “key”
-                    id={uniqueItemId}       // <-- And dnd-kit’s “id”
+                    key={uniqueItemId} // React key
+                    id={uniqueItemId} // dnd-kit ID
                     isDragDisabled={isFilteredView}
                   >
                     {(dragHandleProps) => (
@@ -129,7 +188,6 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
                               pr={3}
                               py={2}
                               opacity={isFilteredView ? 0.4 : 1}
-                              // Only spread listeners when drag is allowed
                               {...(isFilteredView
                                 ? {}
                                 : { ...dragHandleProps })}
@@ -147,25 +205,30 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
                           </Box>
 
                           {!isFilteredView && (
-                            <Tooltip
-                              label={`Current Rank: ${index + 1}`}
-                              placement="right"
-                              hasArrow
+                            <Badge
+                              colorScheme="purple"
+                              variant="solid"
+                              fontSize="md"
+                              px={3}
+                              py={1}
+                              borderRadius="full"
+                              ml={2}
                             >
-                              <Badge
-                                colorScheme="purple"
-                                variant="solid"
-                                fontSize="md"
-                                px={3}
-                                py={1}
-                                borderRadius="full"
-                                ml={2}
-                              >
-                                #{index + 1}
-                              </Badge>
-                            </Tooltip>
+                              #{index + 1}
+                            </Badge>
                           )}
                         </Flex>
+
+                        {/* Inline “Private Note” Textarea (client‐only, localStorage) */}
+                        <Box p={2} pt={0}>
+                          <Textarea
+                            placeholder="Add a private note…"
+                            size="sm"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            onBlur={handleBlur}
+                          />
+                        </Box>
                       </Box>
                     )}
                   </SortableItem>
