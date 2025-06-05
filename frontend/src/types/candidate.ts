@@ -7,8 +7,8 @@ import { PastRole } from "./PastRole";
  * This matches what CandidateDetailsPage builds.
  */
 export interface Candidate {
-  firstname: string;
-  lastname: string;
+  firstName: string;
+  lastName: string;
   email: string;
   credentials: string;
   skills: string[];

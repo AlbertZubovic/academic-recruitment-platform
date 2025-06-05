@@ -110,8 +110,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const mapped: User = {
           id: data.id,
           email: data.email,
-          firstname: data.firstname,
-          lastname: data.lastname,
+          firstName: data.firstName,
+          lastName: data.lastName,
           isLecturer: data.isLecturer,
           isCandidate: data.isCandidate,
           isAdmin: data.isAdmin,

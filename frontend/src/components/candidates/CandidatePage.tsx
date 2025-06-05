@@ -75,7 +75,7 @@ const CandidatePage: React.FC = () => {
         </Heading>
 
         <Text fontSize="lg" textAlign="center" color="gray.600">
-          Welcome {user?.firstname} {user?.lastname}
+          Welcome {user?.firstName} {user?.lastName}
         </Text>
 
         <Button onClick={() => router.push("/mydetails")}>

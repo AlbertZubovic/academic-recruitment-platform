@@ -54,7 +54,7 @@ const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({
         <FormLabel>First Name</FormLabel>
         <Input
           name="firstName"
-          value={candidateDetails.firstname || ""}
+          value={candidateDetails.firstName || ""}
           onChange={handleChange}
         />
         <FormErrorMessage>{errors.firstName}</FormErrorMessage>
@@ -64,7 +64,7 @@ const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({
         <FormLabel>Last Name</FormLabel>
         <Input
           name="lastName"
-          value={candidateDetails.lastname || ""}
+          value={candidateDetails.lastName || ""}
           onChange={handleChange}
         />
         <FormErrorMessage>{errors.lastName}</FormErrorMessage>

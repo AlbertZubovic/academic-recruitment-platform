@@ -42,7 +42,7 @@ const CandidateDetailsCard: React.FC<CandidateDetailsCardProps> = ({
     <Box borderWidth={1} borderRadius="md" p={4} boxShadow="sm">
       {/* Name Heading */}
       <Heading size="md" mb={2}>
-        {user.firstname || "N/A"} {user.lastname || ""}
+        {user.firstName || "N/A"} {user.lastName || ""}
       </Heading>
 
       <Stack spacing={4}>

@@ -34,8 +34,8 @@ const CandidateDetailsPage = () => {
   useEffect(() => {
     if (user) {
       setCandidateDetails({
-        firstname: user.firstname,
-        lastname: user.lastname,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         credentials: user.academicCredentials || "",
         skills: user.defaultSkills || [],
@@ -48,9 +48,9 @@ const CandidateDetailsPage = () => {
 
   const validateAllFields = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!candidateDetails.firstname?.trim())
+    if (!candidateDetails.firstName?.trim())
       newErrors.firstName = "First name is required.";
-    if (!candidateDetails.lastname?.trim())
+    if (!candidateDetails.lastName?.trim())
       newErrors.lastName = "Last name is required.";
     if (
       !candidateDetails.email ||
@@ -65,8 +65,8 @@ const CandidateDetailsPage = () => {
     if (!validateAllFields()) return false;
     try {
       const payload = {
-        firstname: candidateDetails.firstname,
-        lastname: candidateDetails.lastname,
+        firstname: candidateDetails.firstName,
+        lastname: candidateDetails.lastName,
         email: candidateDetails.email,
         academic_credentials: candidateDetails.credentials,
         default_skills: candidateDetails.skills,

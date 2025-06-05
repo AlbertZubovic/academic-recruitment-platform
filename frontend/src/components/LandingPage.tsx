@@ -86,11 +86,11 @@ const LandingPage: React.FC = () => {
             >
               <HStack spacing={4}>
                 <Avatar
-                  name={`${user.firstname} ${user.lastname}`}
+                  name={`${user.firstName} ${user.lastName}`}
                 />
                 <VStack align="start" spacing={0}>
                   <Text fontWeight="bold">
-                    {user.firstname} {user.lastname}
+                    {user.firstName} {user.lastName}
                   </Text>
                   <Text fontSize="sm" color="gray.600">
                     {user.email}
@@ -139,7 +139,7 @@ const LandingPage: React.FC = () => {
                 <ModalBody>
                   <VStack align="start" spacing={3}>
                     <Text>
-                      <strong>Name:</strong> {user.firstname} {user.lastname}
+                      <strong>Name:</strong> {user.firstName} {user.lastName}
                     </Text>
                     <Text>
                       <strong>Email:</strong> {user.email}

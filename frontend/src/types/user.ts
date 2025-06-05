@@ -9,8 +9,8 @@ import { PastRole } from "./PastRole";
 export interface UserSummary {
   id: string;
   email: string;
-  firstname: string;
-  lastname: string;
+  firstName: string;
+  lastName: string;
   isLecturer: boolean;
   isCandidate: boolean;
   isAdmin: boolean;
@@ -25,10 +25,10 @@ export interface UserSummary {
  * A full user object from the backend.
  */
 export interface User {
-  id: string;                    // user_ID (UUID)
+  id: string;
   email: string;
-  firstname: string;
-  lastname: string;
+  firstName: string;
+  lastName: string;
   isLecturer: boolean;
   isCandidate: boolean;
   isAdmin: boolean;
@@ -36,6 +36,6 @@ export interface User {
   defaultAvailability: UserAvailability | null;
   academicCredentials: string | null;
   pastRoles: PastRole[];
-  created: string;               // ISO timestamp
+  created: string;
   isBlocked: boolean;
 }
