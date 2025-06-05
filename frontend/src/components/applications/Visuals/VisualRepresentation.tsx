@@ -188,8 +188,11 @@ const VisualRepresentation: React.FC = () => {
   }
 
   // ────────────────────────────────────────────────────────────────
-  // Calculate summary stats (only among those with count > 0)
+  // Calculate summary stats:
+  //   • most/least chosen among APPROVED
+  //   • “Not Approved” = (# of distinct all-applicants) − (# of distinct approved-applicants)
   // ────────────────────────────────────────────────────────────────
+  // a) most/least chosen among approved
   const selectedOnly = selectionData.filter((a) => a.count > 0);
   const mostChosen = selectedOnly.length
     ? selectedOnly.reduce((max, curr) => (curr.count > max.count ? curr : max))
@@ -197,7 +200,19 @@ const VisualRepresentation: React.FC = () => {
   const leastChosen = selectedOnly.length
     ? selectedOnly.reduce((min, curr) => (curr.count < min.count ? curr : min))
     : null;
-  const neverChosenCount = selectionData.filter((a) => a.count === 0).length;
+
+  // b) “Not Approved” = applicants who appear anywhere (allApps) but never got an approval
+  const uniqueAllIds = new Set<string>();
+  const uniqueApprovedIds = new Set<string>();
+  courses.forEach((course) => {
+    (course.applicants || []).forEach((app) => {
+      uniqueAllIds.add(String(app.userId));
+      if (app.status === "Approved") {
+        uniqueApprovedIds.add(String(app.userId));
+      }
+    });
+  });
+  const notApprovedCount = uniqueAllIds.size - uniqueApprovedIds.size;
 
   return (
     <Box bg="white" p={6} borderRadius="md" boxShadow="md" mt={8}>
@@ -205,8 +220,8 @@ const VisualRepresentation: React.FC = () => {
         Selection Overview
       </Heading>
       <Text fontSize="sm" color="gray.500" textAlign="center" mb={4}>
-        (Top Skills & Availability include all applicants;
-         “Selections per Applicant” counts only approved applications.)
+        (Top Skills & Availability include all applicants;  
+        “Selections per Applicant” counts only approved applications.)
       </Text>
 
       {/* ─── TABBED CHARTS ─── */}
@@ -266,7 +281,7 @@ const VisualRepresentation: React.FC = () => {
             : "N/A"}
         </Text>
         <Text>
-          <strong>Not Approved:</strong> {neverChosenCount} candidate(s)
+          <strong>Not Approved:</strong> {notApprovedCount} candidate(s)
         </Text>
       </VStack>
     </Box>
