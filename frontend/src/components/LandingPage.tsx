@@ -15,10 +15,9 @@ import {
   Tag,
   IconButton,
   Tooltip,
-  useColorMode,
   useColorModeValue,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, StarIcon } from "@chakra-ui/icons";
+import { StarIcon } from "@chakra-ui/icons";
 import { FaRegStar } from "react-icons/fa";
 import styles from "@/styles/modules/pageContent.module.css";
 import { useAuth } from "@/context/AuthContext";
@@ -41,11 +40,10 @@ const LandingPage: React.FC = () => {
 
   const { isOpen: isProfileOpen, onOpen: onProfileOpen, onClose: onProfileClose } =
     useDisclosure();
-  const { isOpen: isAppDetailsOpen, onOpen: onAppDetailsOpen, onClose: onAppDetailsClose } =
+  const { isOpen: isAppDetailsOpen, onOpen: onAppDetailsOpen } =
     useDisclosure();
 
   const [selectedApp, setSelectedApp] = useState<SelectedApp | null>(null);
-  const { colorMode, toggleColorMode } = useColorMode();
 
   // ─────────────── Color values for light/dark ───────────────
   const pageBg = useColorModeValue("white", "gray.800");
@@ -76,7 +74,7 @@ const LandingPage: React.FC = () => {
     }
   }, []);
 
-  // Fetch “all courses” for candidates whenever a candidate logs in
+  // Fetch "all courses" for candidates whenever a candidate logs in
   useEffect(() => {
     if (user && user.isCandidate) {
       fetch("http://localhost:5000/api/courses", {
@@ -166,18 +164,6 @@ const LandingPage: React.FC = () => {
                 A place by teachers, for teachers.
               </Text>
             </Box>
-
-            {/* Dark Mode Toggle */}
-            <Tooltip
-              label={colorMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
-            >
-              <IconButton
-                aria-label="Toggle dark mode"
-                icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
-                onClick={toggleColorMode}
-                size="md"
-              />
-            </Tooltip>
           </HStack>
 
           {authLoading && <Spinner size="lg" />}

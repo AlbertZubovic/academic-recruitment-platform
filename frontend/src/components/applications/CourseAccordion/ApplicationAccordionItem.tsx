@@ -31,19 +31,153 @@ interface ApplicationAccordionItemProps {
   course: CourseType & { applicants: LecturerApplication[] };
 }
 
+// New component for handling individual applicant notes
+interface ApplicantNoteProps {
+  courseId: string;
+  applicationId: string;
+  applicantDetail: LecturerApplication;
+  index: number;
+  isFilteredView: boolean;
+}
+
+const ApplicantNote: React.FC<ApplicantNoteProps> = ({
+  courseId,
+  applicationId,
+  applicantDetail,
+  index,
+  isFilteredView,
+}) => {
+  const toast = useToast();
+  const { updateApplicationStatus } = useApplications();
+  
+  // Color theme hooks at component level
+  const cardBg = useColorModeValue("white", "gray.800");
+  const cardBorderColor = useColorModeValue("gray.200", "gray.600");
+  const dragIconColor = useColorModeValue("gray.500", "gray.300");
+  const textareaColor = useColorModeValue("gray.50", "gray.600");
+
+  // Local state for the textarea's value - initialize from database
+  const [note, setNote] = useState<string>("");
+
+  // On mount, load from applicantDetail (database)
+  useEffect(() => {
+    setNote(applicantDetail.lecturerComment || "");
+  }, [applicantDetail.lecturerComment]);
+
+  // Save to database on blur
+  const handleBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    const newVal = e.target.value;
+    setNote(newVal);
+    
+    try {
+      await updateApplicationStatus(courseId, applicationId, {
+        lecturerComment: newVal,
+      });
+      toast({
+        title: "Comment saved",
+        status: "success",
+        duration: 1500,
+        isClosable: true,
+      });
+    } catch {
+      toast({
+        title: "Failed to save comment",
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+      });
+    }
+  };
+
+  return (
+    <SortableItem
+      id={applicationId}
+      isDragDisabled={isFilteredView}
+    >
+      {(dragHandleProps) => (
+        <Box
+          bg={cardBg}
+          borderRadius="md"
+          boxShadow="sm"
+          w="100%"
+          border="1px solid"
+          borderColor={cardBorderColor}
+        >
+          <Flex align="center" p={2}>
+            <Tooltip
+              label={
+                isFilteredView
+                  ? "Ranking disabled while filtering"
+                  : "Drag to Rank"
+              }
+              placement="left"
+              hasArrow
+            >
+              <Box
+                cursor={isFilteredView ? "not-allowed" : "grab"}
+                pr={3}
+                py={2}
+                opacity={isFilteredView ? 0.4 : 1}
+                {...(isFilteredView
+                  ? {}
+                  : { ...dragHandleProps })}
+                aria-label="Drag to reorder applicant"
+              >
+                <HamburgerIcon color={dragIconColor} />
+              </Box>
+            </Tooltip>
+
+            <Box flex="1">
+              <ApplicantCard
+                applicationDetails={applicantDetail}
+                courseId={courseId}
+              />
+            </Box>
+
+            {!isFilteredView && (
+              <Badge
+                colorScheme="purple"
+                variant="solid"
+                fontSize="md"
+                px={3}
+                py={1}
+                borderRadius="full"
+                ml={2}
+              >
+                #{index + 1}
+              </Badge>
+            )}
+          </Flex>
+
+          {/* Lecturer Comment Textarea (saved to database) */}
+          <Box p={2} pt={0}>
+            <Textarea
+              placeholder="Add a comment…"
+              size="sm"
+              bg={textareaColor}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onBlur={handleBlur}
+            />
+          </Box>
+        </Box>
+      )}
+    </SortableItem>
+  );
+};
+
 const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
   course,
 }) => {
-  const { isFilteredView } = useApplications();
   const toast = useToast();
-
-  // Color mode values
+  
+  // Color theme hooks - moved to top level to avoid calling inside callbacks
   const borderColor = useColorModeValue("gray.200", "gray.600");
-  const headerBgExpanded = useColorModeValue("blue.100", "blue.900");
+  const headerBgExpanded = useColorModeValue("blue.50", "blue.900");
   const panelBg = useColorModeValue("gray.50", "gray.700");
-  const cardBg = useColorModeValue("white", "gray.600");
-  const cardBorderColor = useColorModeValue("gray.200", "gray.600");
   const noApplicantsTextColor = useColorModeValue("gray.500", "gray.400");
+
+  const { isFilteredView } = useApplications();
 
   // 1) Count statuses
   const pendingCount = course.applicants.filter((a) => a.status === "Pending")
@@ -132,116 +266,16 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
             strategy={verticalListSortingStrategy}
           >
             <VStack spacing={4} align="stretch">
-              {course.applicants.map((applicantDetail, index) => {
-                const uniqueItemId = applicantDetail.applicationId;
-
-                // Store the private note in localStorage under:
-                //   private_note__<courseId>__<applicationId>
-                const storageKey = `private_note__${course.id}__${uniqueItemId}`;
-
-                // 2) Local state for the textarea’s value
-                const [note, setNote] = useState<string>("");
-
-                // On mount, load from localStorage
-                useEffect(() => {
-                  const saved = localStorage.getItem(storageKey);
-                  if (saved !== null) {
-                    setNote(saved);
-                  } else {
-                    setNote("");
-                  }
-                }, [storageKey]);
-
-                // Save to localStorage on blur
-                const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-                  const newVal = e.target.value;
-                  setNote(newVal);
-                  localStorage.setItem(storageKey, newVal);
-                  toast({
-                    title: "Note saved locally",
-                    status: "success",
-                    duration: 1500,
-                    isClosable: true,
-                  });
-                };
-
-                return (
-                  <SortableItem
-                    key={uniqueItemId}
-                    id={uniqueItemId}
-                    isDragDisabled={isFilteredView}
-                  >
-                    {(dragHandleProps) => (
-                      <Box
-                        bg={cardBg}
-                        borderRadius="md"
-                        boxShadow="sm"
-                        w="100%"
-                        border="1px solid"
-                        borderColor={cardBorderColor}
-                      >
-                        <Flex align="center" p={2}>
-                          <Tooltip
-                            label={
-                              isFilteredView
-                                ? "Ranking disabled while filtering"
-                                : "Drag to Rank"
-                            }
-                            placement="left"
-                            hasArrow
-                          >
-                            <Box
-                              cursor={isFilteredView ? "not-allowed" : "grab"}
-                              pr={3}
-                              py={2}
-                              opacity={isFilteredView ? 0.4 : 1}
-                              {...(isFilteredView
-                                ? {}
-                                : { ...dragHandleProps })}
-                              aria-label="Drag to reorder applicant"
-                            >
-                              <HamburgerIcon color={useColorModeValue("gray.500", "gray.300")} />
-                            </Box>
-                          </Tooltip>
-
-                          <Box flex="1">
-                            <ApplicantCard
-                              applicationDetails={applicantDetail}
-                              courseId={course.id}
-                            />
-                          </Box>
-
-                          {!isFilteredView && (
-                            <Badge
-                              colorScheme="purple"
-                              variant="solid"
-                              fontSize="md"
-                              px={3}
-                              py={1}
-                              borderRadius="full"
-                              ml={2}
-                            >
-                              #{index + 1}
-                            </Badge>
-                          )}
-                        </Flex>
-
-                        {/* Inline “Private Note” Textarea (client‐only, localStorage) */}
-                        <Box p={2} pt={0}>
-                          <Textarea
-                            placeholder="Add a private note…"
-                            size="sm"
-                            bg={useColorModeValue("gray.50", "gray.600")}
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            onBlur={handleBlur}
-                          />
-                        </Box>
-                      </Box>
-                    )}
-                  </SortableItem>
-                );
-              })}
+              {course.applicants.map((applicantDetail, index) => (
+                <ApplicantNote
+                  key={applicantDetail.applicationId}
+                  courseId={course.id}
+                  applicationId={applicantDetail.applicationId}
+                  applicantDetail={applicantDetail}
+                  index={index}
+                  isFilteredView={isFilteredView}
+                />
+              ))}
             </VStack>
           </SortableContext>
         )}
