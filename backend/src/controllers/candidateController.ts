@@ -226,6 +226,7 @@ export const applyToCourse = async (
         accepted: null,
         ranking: null,
         lecturer_comment: null,
+        is_withdrawn: false,
       });
 
       console.log("[CANDIDATE] applyToCourse: saving new application:", application);

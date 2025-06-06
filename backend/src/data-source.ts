@@ -7,6 +7,7 @@ import { PastRole } from "./entities/PastRole";
 import { Course } from "./entities/Course";
 import { Application } from "./entities/Application";
 import { AppliedSkill } from "./entities/AppliedSkill";
+import { UserBookmark } from "./entities/UserBookmark";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -26,6 +27,7 @@ export const AppDataSource = new DataSource({
     Course,
     Application,
     AppliedSkill,
+    UserBookmark,
   ],
   migrations: ["src/migrations/**/*.ts"],
   subscribers: [],

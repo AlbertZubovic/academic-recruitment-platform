@@ -14,6 +14,7 @@ import courseRoutes from "./routes/courseRoutes";
 import candidateRoutes from "./routes/candidateRoutes";   
 import lecturerRoutes from "./routes/lecturerRoutes";     
 import metricsRoutes from "./routes/metricsRoutes";       
+import bookmarkRoutes from "./routes/bookmarkRoutes";
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use("/api/candidates", candidateRoutes);
 
 app.use("/api/lecturer", lecturerRoutes);
 app.use("/api/metrics", metricsRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
 
 app.get("/", (_req, res) => {
   res.send("API running");

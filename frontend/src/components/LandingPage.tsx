@@ -16,6 +16,7 @@ import {
   IconButton,
   Tooltip,
   useColorModeValue,
+  useToast,
 } from "@chakra-ui/react";
 import { StarIcon } from "@chakra-ui/icons";
 import { FaRegStar } from "react-icons/fa";
@@ -26,6 +27,7 @@ import { useApplications } from "@/context/ApplicationContext";
 import ProfileModal from "@/components/modals/ProfileModal";
 import ApplicationDetailsModal from "@/components/modals/ApplicationDetailsModal";
 import { Course as CourseType } from "@/types/course";
+import { bookmarkService } from "@/services/bookmarkService";
 
 interface SelectedApp {
   course: any;
@@ -57,22 +59,84 @@ const LandingPage: React.FC = () => {
   // ─────────────── Favorite/Bookmark Logic ───────────────
   const [availableCourses, setAvailableCourses] = useState<CourseType[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const toast = useToast();
 
-  // On mount, read the same "bookmarkedCourses" object that CandidatePage writes
+  // Load bookmarks from database API on mount
   useEffect(() => {
-    const stored = localStorage.getItem("bookmarkedCourses");
-    if (stored) {
+    const loadBookmarks = async () => {
+      if (!user || !user.isCandidate) return;
+      
       try {
-        const bookmarkMap: Record<string, boolean> = JSON.parse(stored);
-        const ids = Object.entries(bookmarkMap)
-          .filter(([_, isBookmarked]) => isBookmarked)
-          .map(([courseId]) => courseId);
-        setFavoriteIds(new Set(ids));
-      } catch {
-        setFavoriteIds(new Set());
+        const bookmarkedCourseIds = await bookmarkService.getBookmarks();
+        setFavoriteIds(new Set(bookmarkedCourseIds));
+      } catch (error) {
+        console.error("Failed to load bookmarks:", error);
+        // Fallback to localStorage for backward compatibility
+        const stored = localStorage.getItem("bookmarkedCourses");
+        if (stored) {
+          try {
+            const bookmarkMap: Record<string, boolean> = JSON.parse(stored);
+            const ids = Object.entries(bookmarkMap)
+              .filter(([_, isBookmarked]) => isBookmarked)
+              .map(([courseId]) => courseId);
+            setFavoriteIds(new Set(ids));
+          } catch {
+            setFavoriteIds(new Set());
+          }
+        }
       }
+    };
+
+    loadBookmarks();
+  }, [user]);
+
+  // Toggle bookmark function
+  const toggleBookmark = async (courseId: string) => {
+    const isCurrentlyBookmarked = favoriteIds.has(courseId);
+    
+    // Optimistic update
+    setFavoriteIds(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyBookmarked) {
+        newSet.delete(courseId);
+      } else {
+        newSet.add(courseId);
+      }
+      return newSet;
+    });
+
+    try {
+      await bookmarkService.toggleBookmark(courseId, isCurrentlyBookmarked);
+      
+      toast({
+        title: isCurrentlyBookmarked ? "Bookmark Removed" : "Bookmark Added",
+        description: `Course ${isCurrentlyBookmarked ? "removed from" : "added to"} your bookmarks.`,
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error) {
+      // Revert optimistic update on error
+      setFavoriteIds(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyBookmarked) {
+          newSet.add(courseId);
+        } else {
+          newSet.delete(courseId);
+        }
+        return newSet;
+      });
+      
+      toast({
+        title: "Error",
+        description: "Failed to update bookmark. Please try again.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      console.error("Failed to toggle bookmark:", error);
     }
-  }, []);
+  };
 
   // Fetch "all courses" for candidates whenever a candidate logs in
   useEffect(() => {
@@ -249,6 +313,7 @@ const LandingPage: React.FC = () => {
                                 }
                                 size="sm"
                                 variant="ghost"
+                                onClick={() => toggleBookmark(course.id)}
                               />
                             </Tooltip>
                           </HStack>
@@ -322,6 +387,7 @@ const LandingPage: React.FC = () => {
                                       }
                                       size="sm"
                                       variant="ghost"
+                                      onClick={() => toggleBookmark(course.id)}
                                     />
                                   </Tooltip>
                                 </HStack>
