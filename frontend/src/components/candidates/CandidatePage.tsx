@@ -19,11 +19,9 @@ import {
   AccordionIcon,
   Box,
   Button,
-  Wrap,
   Tag,
   HStack,
   Tooltip,
-  Progress,
   Badge,
   IconButton,
   Flex,
@@ -42,7 +40,7 @@ interface BookmarkMap {
 
 const CandidatePage: React.FC = () => {
   const router = useRouter();
-  const { courses, deleteApplication } = useCourses();
+  const { courses, deleteApplication, reapplyApplication } = useCourses();
   const { user } = useAuth();
 
   // Candidate's own skills for matching
@@ -53,33 +51,56 @@ const CandidatePage: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedRole, setSelectedRole] = useState<ApplicationRole | "">("");
 
-  // Compute “Available” vs. “My” courses
+  // Update the available courses calculation to only consider active applications
   const availableCourses = useMemo(
-    () => courses.filter((c) => c.appliedRoles.length === 0),
-    [courses]
-  );
-  const myCourses = useMemo(
-    () => courses.filter((c) => c.appliedRoles.length > 0),
+    () => courses.filter((c) => {
+      // Only consider active applications when determining availability
+      const activeRoles = c.applicationDetails
+        ?.filter(app => app.status === "Pending" || app.status === "Approved")
+        ?.map(app => app.role) || [];
+      return activeRoles.length === 0;
+    }),
     [courses]
   );
 
-  // FEATURE #3: Application Stats
+  // Get ALL applications from ALL courses (including withdrawn/rejected)
   const myApps = useMemo(
     () =>
-      myCourses.flatMap((c) =>
+      courses.flatMap((c) =>
         (c.applicationDetails || []).map((app) => ({ course: c, application: app }))
       ),
-    [myCourses]
+    [courses]
   );
-  const totalApplied = myApps.length;
-  const approvedCount = myApps.filter(({ application }) => application.status === "Approved")
-    .length;
-  const rejectedCount = myApps.filter(({ application }) => application.status === "Rejected")
-    .length;
-  const pendingCount = myApps.filter(({ application }) => application.status === "Pending")
-    .length;
 
-  // FEATURE #2: Save‐for‐Later (Bookmarks)
+  // Categorize applications into Active vs Past
+  const { activeApplications, pastApplications } = useMemo(() => {
+    const active: typeof myApps = [];
+    const past: typeof myApps = [];
+    
+    myApps.forEach(({ course, application }) => {
+      // Check withdrawn first
+      if (application.isWithdrawn) {
+        past.push({ course, application });
+      } else if (application.status === "Pending" || application.status === "Approved") {
+        active.push({ course, application });
+      } else if (application.status === "Rejected") {
+        past.push({ course, application });
+      }
+    });
+    
+    return { activeApplications: active, pastApplications: past };
+  }, [myApps]);
+
+  // Calculate statistics
+  const totalApplied = myApps.length;
+  const activeCount = activeApplications.length;
+  const pastCount = pastApplications.length;
+  const approvedCount = activeApplications.filter(({ application }) => application.status === "Approved").length;
+  const pendingCount = activeApplications.filter(({ application }) => application.status === "Pending").length;
+  const rejectedCount = pastApplications.filter(({ application }) => application.status === "Rejected").length;
+  const withdrawnCount = pastApplications.filter(({ application }) => application.isWithdrawn === true).length;
+
+  // FEATURE #2: Save-for-Later (Bookmarks)
   const localKey = "bookmarkedCourses";
   const [bookmarks, setBookmarks] = useState<BookmarkMap>({});
 
@@ -102,7 +123,7 @@ const CandidatePage: React.FC = () => {
     });
   };
 
-  // FEATURE #1: Compute “Matching %” & “Missing Skills”
+  // FEATURE #1: Compute "Matching %" & "Missing Skills"
   const computeMatchPercent = (required: string[], owned: string[]) => {
     if (required.length === 0) return 100;
     const lowerOwned = new Set(owned.map((s) => s.toLowerCase()));
@@ -130,7 +151,7 @@ const CandidatePage: React.FC = () => {
 
   // FEATURE #5: Withdraw All Pending
   const handleWithdrawAll = async () => {
-    for (const { course, application } of myApps.filter(
+    for (const { course } of activeApplications.filter(
       ({ application }) => application.status === "Pending"
     )) {
       await deleteApplication(course.id, "Pending");
@@ -393,7 +414,7 @@ const CandidatePage: React.FC = () => {
           </>
         )}
 
-        {/* Available Courses (where you haven’t applied yet) */}
+        {/* Available Courses (where you haven't applied yet) */}
         <Heading size="md">Available Courses</Heading>
         {availableCourses.length === 0 ? (
           <Text>No available courses left to apply.</Text>
@@ -493,30 +514,49 @@ const CandidatePage: React.FC = () => {
 
         <Divider />
 
-        {/* FEATURE #3: Application Statistics & Buttons */}
+        {/* Updated Application Statistics */}
         <StatGroup>
           <Stat>
-            <StatLabel>Total Applied</StatLabel>
-            <StatNumber>{totalApplied}</StatNumber>
+            <StatLabel>Active Applications</StatLabel>
+            <StatNumber color="blue.500">{activeCount}</StatNumber>
           </Stat>
           <Stat>
             <StatLabel>Approved</StatLabel>
             <StatNumber color="green.500">{approvedCount}</StatNumber>
           </Stat>
           <Stat>
+            <StatLabel>Pending</StatLabel>
+            <StatNumber color="orange.500">{pendingCount}</StatNumber>
+          </Stat>
+          <Stat>
+            <StatLabel>Past Applications</StatLabel>
+            <StatNumber color="gray.500">{pastCount}</StatNumber>
+          </Stat>
+        </StatGroup>
+
+        <StatGroup mt={2}>
+          <Stat>
             <StatLabel>Rejected</StatLabel>
             <StatNumber color="red.500">{rejectedCount}</StatNumber>
           </Stat>
           <Stat>
-            <StatLabel>Pending</StatLabel>
-            <StatNumber color="orange.500">{pendingCount}</StatNumber>
+            <StatLabel>Withdrawn</StatLabel>
+            <StatNumber color="purple.500">{withdrawnCount}</StatNumber>
+          </Stat>
+          <Stat>
+            <StatLabel>Total Applied</StatLabel>
+            <StatNumber>{totalApplied}</StatNumber>
+          </Stat>
+          <Stat>
+            <StatLabel></StatLabel>
+            <StatNumber></StatNumber>
           </Stat>
         </StatGroup>
 
         <HStack spacing={4} mt={4}>
           {pendingCount > 0 && (
             <Button colorScheme="red" onClick={handleWithdrawAll}>
-              Withdraw All Pending
+              Withdraw All Pending ({pendingCount})
             </Button>
           )}
           {totalApplied > 0 && (
@@ -525,103 +565,166 @@ const CandidatePage: React.FC = () => {
               colorScheme="blue"
               onClick={downloadCSV}
             >
-              Download My Applications (CSV)
+              Download All Applications (CSV)
             </Button>
           )}
         </HStack>
 
         <Divider />
 
-        {/* My Applications List */}
-        <Heading size="md">My Applications</Heading>
-        {myCourses.length === 0 ? (
-          <Text>No applications yet.</Text>
+        {/* MY ACTIVE APPLICATIONS SECTION */}
+        <Heading size="md" color="blue.600">My Active Applications</Heading>
+        {activeApplications.length === 0 ? (
+          <Text color="gray.500">No active applications.</Text>
         ) : (
           <Accordion allowToggle>
-            {myCourses.map((course) => (
-              <AccordionItem key={course.id}>
+            {activeApplications.map(({ course, application }, index) => (
+              <AccordionItem key={`active-${course.id}-${application.role}-${index}`}>
                 <AccordionButton>
                   <Box flex="1" textAlign="left">
                     <Text fontWeight="bold" display="flex" alignItems="center">
                       {course.name}
-                      {(course.applicationDetails || []).map((app, idx) => {
-                        const badgeColor =
-                          app.status === "Approved"
-                            ? "green"
-                            : app.status === "Rejected"
-                            ? "red"
-                            : "yellow";
-                        return (
-                          <Badge key={idx} ml={2} colorScheme={badgeColor}>
-                            {app.role}: {app.status}
-                          </Badge>
-                        );
-                      })}
+                      <Badge 
+                        ml={2} 
+                        colorScheme={application.status === "Approved" ? "green" : "yellow"}
+                      >
+                        {application.role}: {application.status}
+                      </Badge>
                     </Text>
                   </Box>
                   <AccordionIcon />
                 </AccordionButton>
 
                 <AccordionPanel>
-                  <VStack align="start" spacing={3}>
-                    {(course.applicationDetails || []).map((app, idx) => (
-                      <Box
-                        key={idx}
-                        p={2}
-                        borderWidth="1px"
-                        borderRadius="md"
-                        w="100%"
-                      >
-                        <Text>
-                          <strong>Role:</strong> {app.role}
-                        </Text>
-                        <Text>
-                          <strong>Availability:</strong> {app.appliedAvailability}
-                        </Text>
-                        <Text>
-                          <strong>Skills:</strong> {app.appliedSkills.join(", ")}
-                        </Text>
-                        <Text>
-                          <strong>Status:</strong> {app.status}
-                        </Text>
-                        {app.lecturerComment && (
-                          <Text>
-                            <strong>Comment:</strong> {app.lecturerComment}
-                          </Text>
-                        )}
-                        <HStack mt={2} spacing={2}>
-                          {app.status === "Pending" ? (
-                            <Button
-                              size="xs"
-                              colorScheme="blue"
-                              onClick={() =>
-                                openApplyModal(course, app.role)
-                              }
-                            >
-                              Edit {app.role}
+                  <Box p={2} borderWidth="1px" borderRadius="md" borderColor="blue.200" bg="blue.50">
+                    <VStack align="start" spacing={2}>
+                      <Text><strong>Course:</strong> {course.courseCode}</Text>
+                      <Text><strong>Role:</strong> {application.role}</Text>
+                      <Text><strong>Availability:</strong> {application.appliedAvailability}</Text>
+                      <Text><strong>Skills:</strong> {application.appliedSkills.join(", ")}</Text>
+                      <Text><strong>Status:</strong> 
+                        <Badge ml={1} colorScheme={application.status === "Approved" ? "green" : "yellow"}>
+                          {application.status}
+                        </Badge>
+                      </Text>
+                      {application.lecturerComment && (
+                        <Text><strong>Comment:</strong> {application.lecturerComment}</Text>
+                      )}
+                      
+                      <HStack mt={2} spacing={2}>
+                        {application.status === "Pending" ? (
+                          <Button
+                            size="xs"
+                            colorScheme="blue"
+                            onClick={() => openApplyModal(course, application.role)}
+                          >
+                            Edit {application.role}
+                          </Button>
+                        ) : (
+                          <Tooltip label="You can only edit pending applications">
+                            <Button size="xs" colorScheme="gray" disabled>
+                              Edit {application.role}
                             </Button>
-                          ) : (
-                            <Tooltip label="You can only edit pending applications">
-                              <Button size="xs" colorScheme="gray" disabled>
-                                Edit {app.role}
-                              </Button>
-                            </Tooltip>
-                          )}
+                          </Tooltip>
+                        )}
 
+                        {application.status === "Pending" && (
                           <Button
                             size="xs"
                             colorScheme="red"
                             leftIcon={<FaTrashAlt />}
-                            onClick={() =>
-                              deleteApplication(course.id, app.status)
-                            }
+                            onClick={() => deleteApplication(course.id, application.status)}
                           >
-                            Withdraw {app.role}
+                            Withdraw {application.role}
                           </Button>
-                        </HStack>
-                      </Box>
-                    ))}
-                  </VStack>
+                        )}
+                      </HStack>
+                    </VStack>
+                  </Box>
+                </AccordionPanel>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+
+        <Divider mt={6} />
+
+        {/* MY PAST APPLICATIONS SECTION */}
+        <Heading size="md" color="gray.600">My Past Applications</Heading>
+        <Text fontSize="sm" color="gray.500" mb={3}>
+          Includes withdrawn and rejected applications
+        </Text>
+        {pastApplications.length === 0 ? (
+          <Text color="gray.500">No past applications.</Text>
+        ) : (
+          <Accordion allowToggle>
+            {pastApplications.map(({ course, application }, index) => (
+              <AccordionItem key={`past-${course.id}-${application.role}-${index}`}>
+                <AccordionButton>
+                  <Box flex="1" textAlign="left">
+                    <Text fontWeight="bold" display="flex" alignItems="center">
+                      {course.name}
+                      <Badge 
+                        ml={2} 
+                        colorScheme={application.isWithdrawn ? "purple" : (application.status === "Rejected" ? "red" : "gray")}
+                        variant="subtle"
+                      >
+                        {application.role}: {application.isWithdrawn ? `${application.status} (Withdrawn)` : application.status}
+                      </Badge>
+                    </Text>
+                  </Box>
+                  <AccordionIcon />
+                </AccordionButton>
+
+                <AccordionPanel>
+                  <Box p={2} borderWidth="1px" borderRadius="md" borderColor="gray.200" bg="gray.50">
+                    <VStack align="start" spacing={2}>
+                      <Text><strong>Course:</strong> {course.courseCode}</Text>
+                      <Text><strong>Role:</strong> {application.role}</Text>
+                      <Text><strong>Availability:</strong> {application.appliedAvailability}</Text>
+                      <Text><strong>Skills:</strong> {application.appliedSkills.join(", ")}</Text>
+                      <Text><strong>Status:</strong> 
+                        <Badge 
+                          ml={1} 
+                          colorScheme={application.isWithdrawn ? "purple" : (application.status === "Rejected" ? "red" : "gray")}
+                          variant="subtle"
+                        >
+                          {application.isWithdrawn ? `${application.status} (Withdrawn)` : application.status}
+                        </Badge>
+                      </Text>
+                      {application.lecturerComment && (
+                        <Text><strong>Comment:</strong> {application.lecturerComment}</Text>
+                      )}
+                      
+                      <HStack mt={2} spacing={2}>
+                        {application.isWithdrawn ? (
+                          <Button
+                            size="xs"
+                            colorScheme="green"
+                            onClick={async () => {
+                              const success = await reapplyApplication(course.id);
+                              if (success) {
+                                // Optional: Show success toast
+                                console.log("Application reactivated successfully");
+                              }
+                            }}
+                          >
+                            Reapply
+                          </Button>
+                        ) : (
+                          <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                            This application was rejected and cannot be reactivated.
+                          </Text>
+                        )}
+                        
+                        <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                          {application.isWithdrawn 
+                            ? "This application was withdrawn but can be reactivated." 
+                            : "This application is no longer active and cannot be modified."}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Box>
                 </AccordionPanel>
               </AccordionItem>
             ))}

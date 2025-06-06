@@ -31,5 +31,7 @@ export interface Course {
     appliedSkills: string[];
     status: ApplicationStatus;
     lecturerComment?: string | null;
+    isWithdrawn?: boolean;
+    withdrawnAt?: Date | null;
   }[];
 }

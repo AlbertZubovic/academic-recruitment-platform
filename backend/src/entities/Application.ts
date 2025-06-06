@@ -14,7 +14,7 @@ import {
   IsBoolean,
   IsInt,
   IsString,
-  MaxLength,
+  MaxLength
 } from "class-validator";
 import { User } from "./User";
 import { Course } from "./Course";
@@ -85,4 +85,11 @@ export class Application {
     eager: true,
   })
   appliedSkills!: AppliedSkill[];
+
+  @Column({ default: false })
+  @IsBoolean()
+  is_withdrawn!: boolean;
+
+  @Column({ type: "datetime", nullable: true })
+  withdrawn_at!: Date | null;
 }

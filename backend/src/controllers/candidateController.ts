@@ -13,6 +13,7 @@ import {
 import { Course } from "../entities/Course";
 import { Skill } from "../entities/Skill";
 import { AppliedSkill } from "../entities/AppliedSkill";
+import { UserSkill } from "../entities/UserSkill";
 
 /**
  * GET /api/candidates/courses
@@ -32,10 +33,12 @@ export const getCandidateCourses = async (
       relations: ["skills", "lecturer"],
     });
     const applications = await applicationRepo.find({
-      where: { user: { user_ID: candidateId } },
+      where: { 
+        user: { user_ID: candidateId }
+      },
       relations: ["course", "appliedSkills", "appliedSkills.skill"],
     });
-
+    
     const transformed = courses.map((course) => {
       const myApps = applications.filter(
         (a) => a.course.course_ID === course.course_ID
@@ -53,6 +56,8 @@ export const getCandidateCourses = async (
             : "Rejected",
         lecturerComment: a.lecturer_comment,
         ranking: a.ranking,
+        isWithdrawn: a.is_withdrawn,
+        withdrawnAt: a.withdrawn_at,
       }));
       return {
         id: course.course_ID,
@@ -188,6 +193,29 @@ export const applyToCourse = async (
 
     const allSkillEntities = [...existingSkills, ...newSkillEntities];
 
+    // Add this section: Update UserSkills for the candidate
+    const userSkillRepo = AppDataSource.getRepository(UserSkill);
+    
+    // Get current user skills
+    const existingUserSkills = await userSkillRepo.find({
+      where: { user: { user_ID: candidateId } },
+      relations: ["skill"]
+    });
+    const existingUserSkillNames = new Set(existingUserSkills.map(us => us.skill.name));
+    
+    // Add new skills to user's profile if they don't already have them
+    const newUserSkills = allSkillEntities
+      .filter(skill => !existingUserSkillNames.has(skill.name))
+      .map(skill => userSkillRepo.create({ 
+        user: { user_ID: candidateId }, 
+        skill 
+      }));
+    
+    if (newUserSkills.length > 0) {
+      console.log("[CANDIDATE] applyToCourse: adding new user skills:", newUserSkills.map(us => us.skill.name));
+      await userSkillRepo.save(newUserSkills);
+    }
+
     await AppDataSource.manager.transaction(async (txMgr) => {
       const application = txMgr.create(Application, {
         application_ID: uuidv4(),
@@ -209,8 +237,6 @@ export const applyToCourse = async (
         appliedSkillRepo.create({
           application_ID: application.application_ID,
           skill_ID: skill.skill_ID,
-          application,
-          skill,
         })
       );
       console.log(
@@ -310,91 +336,118 @@ export const updateApplicationDetails = async (
       return;
     }
 
-    if (appliedAvailability !== undefined) {
-      if (
-        !Object.values(ApplicationAvailability).includes(
+    // Use a transaction to handle all updates atomically
+    await AppDataSource.manager.transaction(async (txMgr) => {
+      // Handle availability update
+      if (appliedAvailability !== undefined) {
+        if (
+          !Object.values(ApplicationAvailability).includes(
+            appliedAvailability
+          )
+        ) {
+          console.log(
+            "[CANDIDATE] updateApplicationDetails: invalid availability:",
+            appliedAvailability
+          );
+          throw new Error("Invalid availability—must be 'Full-Time' or 'Part-Time'.");
+        }
+        
+        // Update availability using raw query to avoid relationship conflicts
+        await txMgr.query(
+          `UPDATE application SET applied_availability = ? WHERE application_ID = ?`,
+          [appliedAvailability, application.application_ID]
+        );
+        
+        console.log(
+          "[CANDIDATE] updateApplicationDetails: updated applied_availability:",
           appliedAvailability
-        )
-      ) {
-        console.log(
-          "[CANDIDATE] updateApplicationDetails: invalid availability:",
-          appliedAvailability
         );
-        res.status(400).json({
-          message: "Invalid availability—must be 'Full-Time' or 'Part-Time'.",
+      }
+
+      // Handle skills update
+      if (Array.isArray(appliedSkills)) {
+        if (
+          appliedSkills.some(
+            (s: any) => typeof s !== "string" || s.trim().length === 0
+          )
+        ) {
+          console.log(
+            "[CANDIDATE] updateApplicationDetails: invalid skills array:",
+            appliedSkills
+          );
+          throw new Error("appliedSkills must be an array of non-empty strings.");
+        }
+
+        const existingSkills = await skillRepo.find({
+          where: { name: In(appliedSkills as string[]) },
         });
-        return;
-      }
-      application.applied_availability = appliedAvailability as ApplicationAvailability;
-      console.log(
-        "[CANDIDATE] updateApplicationDetails: set applied_availability:",
-        application.applied_availability
-      );
-    }
-
-    if (Array.isArray(appliedSkills)) {
-      if (
-        appliedSkills.some(
-          (s: any) => typeof s !== "string" || s.trim().length === 0
-        )
-      ) {
-        console.log(
-          "[CANDIDATE] updateApplicationDetails: invalid skills array:",
-          appliedSkills
+        const existingNames = new Set(existingSkills.map((s) => s.name));
+        const newNames = (appliedSkills as string[]).filter(
+          (n) => !existingNames.has(n)
         );
-        res.status(400).json({
-          message: "appliedSkills must be an array of non-empty strings.",
+        const newSkillEntities = newNames.map((n) =>
+          skillRepo.create({ skill_ID: uuidv4(), name: n })
+        );
+        if (newSkillEntities.length > 0) {
+          console.log(
+            "[CANDIDATE] updateApplicationDetails: creating new skills:",
+            newNames
+          );
+          await skillRepo.save(newSkillEntities);
+        }
+        const allSkillEntities = [...existingSkills, ...newSkillEntities];
+
+        // Update UserSkills for the candidate
+        const userSkillRepo = AppDataSource.getRepository(UserSkill);
+        
+        // Get current user skills
+        const existingUserSkills = await userSkillRepo.find({
+          where: { user: { user_ID: candidateId } },
+          relations: ["skill"]
         });
-        return;
-      }
+        const existingUserSkillNames = new Set(existingUserSkills.map(us => us.skill.name));
+        
+        // Add new skills to user's profile if they don't already have them
+        const newUserSkills = allSkillEntities
+          .filter(skill => !existingUserSkillNames.has(skill.name))
+          .map(skill => userSkillRepo.create({ 
+            user: { user_ID: candidateId }, 
+            skill 
+          }));
+        
+        if (newUserSkills.length > 0) {
+          console.log("[CANDIDATE] updateApplicationDetails: adding new user skills:", newUserSkills.map(us => us.skill.name));
+          await userSkillRepo.save(newUserSkills);
+        }
 
-      const existingSkills = await skillRepo.find({
-        where: { name: In(appliedSkills as string[]) },
-      });
-      const existingNames = new Set(existingSkills.map((s) => s.name));
-      const newNames = (appliedSkills as string[]).filter(
-        (n) => !existingNames.has(n)
-      );
-      const newSkillEntities = newNames.map((n) =>
-        skillRepo.create({ skill_ID: uuidv4(), name: n })
-      );
-      if (newSkillEntities.length > 0) {
         console.log(
-          "[CANDIDATE] updateApplicationDetails: creating new skills:",
-          newNames
+          "[CANDIDATE] updateApplicationDetails: deleting old AppliedSkill rows"
         );
-        await skillRepo.save(newSkillEntities);
+        await txMgr.query(
+          `DELETE FROM applied_skill WHERE application_ID = ?`,
+          [application.application_ID]
+        );
+
+        console.log(
+          "[CANDIDATE] updateApplicationDetails: inserting new AppliedSkill rows"
+        );
+        
+        if (allSkillEntities.length > 0) {
+          const values = allSkillEntities.map(skill => 
+            `('${skill.skill_ID}', '${application.application_ID}')`
+          ).join(', ');
+          
+          await txMgr.query(
+            `INSERT INTO applied_skill (skill_ID, application_ID) VALUES ${values}`
+          );
+          
+          console.log(
+            "[CANDIDATE] updateApplicationDetails: inserted skills:",
+            allSkillEntities.map(s => s.name)
+          );
+        }
       }
-      const allSkillEntities = [...existingSkills, ...newSkillEntities];
-
-      console.log(
-        "[CANDIDATE] updateApplicationDetails: deleting old AppliedSkill rows"
-      );
-      await AppDataSource.createQueryBuilder()
-        .delete()
-        .from(AppliedSkill)
-        .where("application_ID = :appId", { appId: application.application_ID })
-        .execute();
-
-      const appliedSkillRepo = AppDataSource.getRepository(AppliedSkill);
-      const newAppliedSkills = allSkillEntities.map((skill) =>
-        appliedSkillRepo.create({
-          application_ID: application.application_ID,
-          skill_ID: skill.skill_ID,
-          application,
-          skill,
-        })
-      );
-      console.log(
-        "[CANDIDATE] updateApplicationDetails: saving new AppliedSkill rows:",
-        newAppliedSkills
-      );
-      await appliedSkillRepo.save(newAppliedSkills);
-    }
-
-    await validateOrReject(application);
-    console.log("[CANDIDATE] updateApplicationDetails: saving application");
-    await appRepo.save(application);
+    });
 
     res.json({ message: "Application updated successfully." });
     return;
@@ -425,17 +478,31 @@ export const withdrawApplication = async (
     const { id: courseId } = req.params;
     console.log("[CANDIDATE] withdrawApplication: candidateId, courseId =", candidateId, courseId);
 
-    const deleteResult = await AppDataSource.createQueryBuilder()
-      .delete()
-      .from(Application)
-      .where("user_ID = :uid AND course_ID = :cid", {
-        uid: candidateId,
-        cid: courseId,
-      })
-      .execute();
+    const applicationRepo = AppDataSource.getRepository(Application);
+    
+    // Find the application that's not already withdrawn
+    const application = await applicationRepo.findOne({
+      where: { 
+        user: { user_ID: candidateId }, 
+        course: { course_ID: courseId },
+        is_withdrawn: false  // Only find non-withdrawn applications
+      }
+    });
 
-    console.log("[CANDIDATE] withdrawApplication: deleteResult =", deleteResult);
-    res.status(200).json({ message: "Application(s) withdrawn successfully." });
+    if (!application) {
+      console.log("[CANDIDATE] withdrawApplication: application not found or already withdrawn");
+      res.status(404).json({ message: "Application not found or already withdrawn." });
+      return;
+    }
+
+    // Mark as withdrawn instead of deleting
+    application.is_withdrawn = true;
+    application.withdrawn_at = new Date();
+    
+    await applicationRepo.save(application);
+
+    console.log("[CANDIDATE] withdrawApplication: application marked as withdrawn:", application.application_ID);
+    res.status(200).json({ message: "Application withdrawn successfully." });
     return;
   } catch (err) {
     console.error("[CANDIDATE] withdrawApplication error:", err);
@@ -456,8 +523,11 @@ export const getMyApplications = async (
     console.log("[CANDIDATE] getMyApplications: candidateId =", candidateId);
 
     const appRepo = AppDataSource.getRepository(Application);
+    // In getMyApplications function, update the query:
     const applications = await appRepo.find({
-      where: { user: { user_ID: candidateId } },
+      where: { 
+        user: { user_ID: candidateId }
+      },
       relations: ["course", "appliedSkills", "appliedSkills.skill"],
     });
 
@@ -476,6 +546,8 @@ export const getMyApplications = async (
           ? "Approved"
           : "Rejected",
       lecturerComment: app.lecturer_comment,
+      isWithdrawn: app.is_withdrawn,  // Add this line
+      withdrawnAt: app.withdrawn_at,  // Add this line (optional)
     }));
 
     console.log("[CANDIDATE] getMyApplications: response =", response);
@@ -484,6 +556,52 @@ export const getMyApplications = async (
   } catch (err) {
     console.error("[CANDIDATE] getMyApplications error:", err);
     res.status(500).json({ message: "Server error." });
+    return;
+  }
+};
+
+
+/**
+ * PATCH /api/candidates/courses/:id/applications/me/reapply
+ */
+export const reapplyWithdrawnApplication = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const candidateId = (req as any).user.userId;
+    const { id: courseId } = req.params;
+    console.log("[CANDIDATE] reapplyWithdrawnApplication: candidateId, courseId =", candidateId, courseId);
+
+    const applicationRepo = AppDataSource.getRepository(Application);
+    
+    // Find the withdrawn application
+    const application = await applicationRepo.findOne({
+      where: { 
+        user: { user_ID: candidateId }, 
+        course: { course_ID: courseId },
+        is_withdrawn: true  // Only find withdrawn applications
+      }
+    });
+
+    if (!application) {
+      console.log("[CANDIDATE] reapplyWithdrawnApplication: no withdrawn application found");
+      res.status(404).json({ message: "No withdrawn application found to reapply." });
+      return;
+    }
+
+    // Reactivate the application
+    application.is_withdrawn = false;
+    application.withdrawn_at = null;
+    
+    await applicationRepo.save(application);
+
+    console.log("[CANDIDATE] reapplyWithdrawnApplication: application reactivated:", application.application_ID);
+    res.status(200).json({ message: "Application reactivated successfully." });
+    return;
+  } catch (err) {
+    console.error("[CANDIDATE] reapplyWithdrawnApplication error:", err);
+    res.status(500).json({ message: "Internal server error." });
     return;
   }
 };

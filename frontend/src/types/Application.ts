@@ -20,6 +20,8 @@ export interface CandidateApplication {
   status: ApplicationStatus;
   lecturerComment?: string | null;
   ranking?: number | null;
+  isWithdrawn?: boolean;
+  withdrawnAt?: Date | null;
 }
 
 /**
@@ -35,4 +37,6 @@ export interface LecturerApplication {
   status: ApplicationStatus;
   lecturerComment?: string | null;
   ranking?: number | null;
+  isWithdrawn?: boolean;
+  withdrawnAt?: Date | null;
 }

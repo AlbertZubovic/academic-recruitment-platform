@@ -9,6 +9,7 @@ import {
   updateApplicationDetails,
   getMyApplications,
   withdrawApplication,
+  reapplyWithdrawnApplication,
 } from "../controllers/candidateController";
 
 const router = Router();
@@ -46,7 +47,15 @@ router.delete(
   withdrawApplication
 );
 
-// GET /api/candidates/applications – list candidate’s applications
+// Add this route after the existing DELETE route
+router.patch(
+  "/courses/:id/applications/me/reapply",
+  authenticate,
+  authorizeCandidate,
+  reapplyWithdrawnApplication
+);
+
+// GET /api/candidates/applications – list candidate's applications
 router.get(
   "/applications",
   authenticate,

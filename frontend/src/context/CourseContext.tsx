@@ -39,6 +39,8 @@ interface CourseContextValue {
     courseId: string,
     currentStatus: "Pending" | "Approved" | "Rejected"
   ) => Promise<boolean>;
+
+  reapplyApplication: (courseId: string) => Promise<boolean>;
 }
 
 const CourseContext = createContext<CourseContextValue | undefined>(
@@ -237,6 +239,32 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Add this function inside CourseProvider
+  const reapplyApplication = async (courseId: string) => {
+    console.log(`[CourseContext] PATCH /candidates/courses/${courseId}/applications/me/reapply`);
+    try {
+      const res = await fetch(
+        `${API_BASE}/candidates/courses/${courseId}/applications/me/reapply`,
+        {
+          method: "PATCH",
+          credentials: "include",
+        }
+      );
+      
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("[CourseContext] REAPPLY failed:", data);
+        return false;
+      }
+
+      await fetchCourses();
+      return true;
+    } catch (err: any) {
+      console.error("[CourseContext] Error in reapplyApplication:", err);
+      return false;
+    }
+  };
+
   return (
     <CourseContext.Provider
       value={{
@@ -247,6 +275,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
         applyToCourse,
         updateApplicationDetails,
         deleteApplication,
+        reapplyApplication,
       }}
     >
       {children}
