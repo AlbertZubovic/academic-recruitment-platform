@@ -41,9 +41,9 @@ export class Course {
   @MaxLength(255, { message: "semester cannot exceed 255 characters" })
   semester!: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: "lecturer" })
-  lecturer!: User;
+  lecturer!: User | null;
 
   @Column("simple-array", { nullable: false })
   @IsArray({ message: "roles_available must be an array" })

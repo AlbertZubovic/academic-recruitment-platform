@@ -38,7 +38,6 @@ export class User {
 
   @OneToMany(() => UserSkill, (userSkill) => userSkill.user, {
     cascade: true,
-    eager: true,
   })
   userSkills!: UserSkill[];
 
@@ -87,7 +86,6 @@ export class User {
 
   @OneToMany(() => PastRole, (pr) => pr.user, {
     cascade: true,
-    eager: true,
   })
   pastRoles!: PastRole[];
 } 

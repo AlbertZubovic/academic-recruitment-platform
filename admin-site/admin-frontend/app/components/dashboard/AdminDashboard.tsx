@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { GET_DASHBOARD_STATS, GET_ALL_USERS, GET_ALL_COURSES } from '../../graphql/queries';
+import { GET_DASHBOARD_STATS } from '../../graphql/queries';
+import CourseManagement from '../CourseManagement';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -13,8 +14,6 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   // Fetch dashboard statistics
   const { data: statsData, loading: statsLoading, error: statsError } = useQuery(GET_DASHBOARD_STATS);
-  const { data: usersData, loading: usersLoading } = useQuery(GET_ALL_USERS);
-  const { data: coursesData, loading: coursesLoading } = useQuery(GET_ALL_COURSES);
 
   const handleLogout = () => {
     localStorage.removeItem('admin-token');
@@ -116,17 +115,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           )}
 
           {activeTab === 'courses' && (
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Course Management
-                </h3>
-                <p className="text-gray-600">
-                  Course management functionality will be implemented here.
-                  This will include adding, editing, and deleting courses.
-                </p>
-              </div>
-            </div>
+            <CourseManagement />
           )}
 
           {activeTab === 'users' && (

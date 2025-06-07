@@ -4,6 +4,7 @@ import { Skill } from "./entities/Skill";
 import { UserSkill } from "./entities/UserSkill";
 import { PastRole } from "./entities/PastRole";
 import { Course } from "./entities/Course";
+import { Application } from "./entities/Application";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -21,6 +22,7 @@ export const AppDataSource = new DataSource({
     UserSkill,
     PastRole,
     Course,
+    Application,
   ],
   subscribers: [],
 }); 

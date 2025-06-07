@@ -167,4 +167,124 @@ export const UNBLOCK_USER = gql`
       message
     }
   }
+`;
+
+// Course management queries
+export const GET_COURSE_WITH_APPLICATIONS = gql`
+  query GetCourseWithApplications($course_ID: ID!) {
+    courseWithApplications(course_ID: $course_ID) {
+      course_ID
+      course_code
+      display_name
+      semester
+      lecturer {
+        user_ID
+        firstname
+        lastname
+        email
+      }
+      roles_available
+      is_disabled
+      applications {
+        application_ID
+        user {
+          user_ID
+          firstname
+          lastname
+          email
+        }
+        applied_availability
+        accepted
+        ranking
+        role
+        lecturer_comment
+        is_withdrawn
+        withdrawn_at
+      }
+    }
+  }
+`;
+
+export const GET_ALL_APPLICATIONS = gql`
+  query GetAllApplications {
+    applications {
+      application_ID
+      user {
+        user_ID
+        firstname
+        lastname
+        email
+      }
+      course {
+        course_ID
+        course_code
+        display_name
+        semester
+      }
+      applied_availability
+      accepted
+      ranking
+      role
+      lecturer_comment
+      is_withdrawn
+      withdrawn_at
+    }
+  }
+`;
+
+// Course management mutations
+export const ASSIGN_LECTURER_TO_COURSE = gql`
+  mutation AssignLecturerToCourse($course_ID: ID!, $lecturer_ID: ID!) {
+    assignLecturerToCourse(course_ID: $course_ID, lecturer_ID: $lecturer_ID) {
+      success
+      message
+    }
+  }
+`;
+
+export const UNASSIGN_LECTURER_FROM_COURSE = gql`
+  mutation UnassignLecturerFromCourse($course_ID: ID!) {
+    unassignLecturerFromCourse(course_ID: $course_ID) {
+      success
+      message
+    }
+  }
+`;
+
+export const CREATE_COURSE = gql`
+  mutation CreateCourse(
+    $course_code: String!
+    $display_name: String!
+    $semester: String!
+    $lecturer_ID: ID
+    $roles_available: [String!]!
+  ) {
+    createCourse(
+      course_code: $course_code
+      display_name: $display_name
+      semester: $semester
+      lecturer_ID: $lecturer_ID
+      roles_available: $roles_available
+    ) {
+      success
+      message
+    }
+  }
+`;
+
+export const UPDATE_APPLICATION_STATUS = gql`
+  mutation UpdateApplicationStatus(
+    $application_ID: ID!
+    $accepted: Boolean!
+    $lecturer_comment: String
+  ) {
+    updateApplicationStatus(
+      application_ID: $application_ID
+      accepted: $accepted
+      lecturer_comment: $lecturer_comment
+    ) {
+      success
+      message
+    }
+  }
 `; 

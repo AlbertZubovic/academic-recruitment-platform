@@ -11,6 +11,7 @@ import { config } from './config';
 import { AppDataSource } from './data-source';
 import { User } from './entities/User';
 import { Course } from './entities/Course';
+import { Application } from './entities/Application';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,20 @@ const typeDefs = `#graphql
     lecturer: User
     roles_available: [String!]!
     is_disabled: Boolean!
+    applications: [Application!]
+  }
+
+  type Application {
+    application_ID: ID!
+    user: User!
+    course: Course!
+    applied_availability: String!
+    accepted: Boolean
+    ranking: Int
+    role: String!
+    lecturer_comment: String
+    is_withdrawn: Boolean!
+    withdrawn_at: String
   }
 
   type DashboardStats {
@@ -85,6 +100,11 @@ const typeDefs = `#graphql
     courses: [Course!]!
     activeCourses: [Course!]!
     disabledCourses: [Course!]!
+    courseWithApplications(course_ID: ID!): Course
+    
+    # Application queries  
+    applications: [Application!]!
+    applicationsByCourse(course_ID: ID!): [Application!]!
   }
 
   type Mutation {
@@ -95,6 +115,20 @@ const typeDefs = `#graphql
     # User management
     blockUser(user_ID: ID!): MutationResponse!
     unblockUser(user_ID: ID!): MutationResponse!
+    
+    # Course management
+    assignLecturerToCourse(course_ID: ID!, lecturer_ID: ID!): MutationResponse!
+    unassignLecturerFromCourse(course_ID: ID!): MutationResponse!
+    createCourse(
+      course_code: String!
+      display_name: String!
+      semester: String!
+      lecturer_ID: ID
+      roles_available: [String!]!
+    ): MutationResponse!
+    
+    # Application management
+    updateApplicationStatus(application_ID: ID!, accepted: Boolean!, lecturer_comment: String): MutationResponse!
   }
 `;
 
@@ -191,6 +225,57 @@ const resolvers = {
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching courses:', error);
+        return [];
+      }
+    },
+
+    courseWithApplications: async (_: any, { course_ID }: { course_ID: string }) => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        const course = await courseRepository.findOne({
+          where: { course_ID },
+          relations: ['lecturer']
+        });
+
+        if (!course) return null;
+
+        const applicationRepository = AppDataSource.getRepository(Application);
+        const applications = await applicationRepository.find({
+          where: { course: { course_ID } },
+          relations: ['user', 'course'],
+          order: { ranking: 'ASC' }
+        });
+
+        return { ...course, applications };
+      } catch (error) {
+        console.error('[ADMIN] Error fetching course with applications:', error);
+        return null;
+      }
+    },
+
+    applications: async () => {
+      try {
+        const applicationRepository = AppDataSource.getRepository(Application);
+        return await applicationRepository.find({
+          relations: ['user', 'course'],
+          order: { ranking: 'ASC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching applications:', error);
+        return [];
+      }
+    },
+
+    applicationsByCourse: async (_: any, { course_ID }: { course_ID: string }) => {
+      try {
+        const applicationRepository = AppDataSource.getRepository(Application);
+        return await applicationRepository.find({
+          where: { course: { course_ID } },
+          relations: ['user', 'course'],
+          order: { ranking: 'ASC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching applications by course:', error);
         return [];
       }
     },
@@ -318,6 +403,113 @@ const resolvers = {
       } catch (error) {
         console.error('[ADMIN] Error unblocking user:', error);
         return { success: false, message: 'Failed to unblock user' };
+      }
+    },
+
+    assignLecturerToCourse: async (_: any, { course_ID, lecturer_ID }: { course_ID: string; lecturer_ID: string }) => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        const userRepository = AppDataSource.getRepository(User);
+
+        const course = await courseRepository.findOne({ where: { course_ID } });
+        if (!course) {
+          return { success: false, message: 'Course not found' };
+        }
+
+        const lecturer = await userRepository.findOne({ where: { user_ID: lecturer_ID, is_lecturer: true } });
+        if (!lecturer) {
+          return { success: false, message: 'Lecturer not found or user is not a lecturer' };
+        }
+
+        await courseRepository.update(course_ID, { lecturer: lecturer });
+        return { success: true, message: 'Lecturer assigned successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error assigning lecturer:', error);
+        return { success: false, message: 'Failed to assign lecturer' };
+      }
+    },
+
+    unassignLecturerFromCourse: async (_: any, { course_ID }: { course_ID: string }) => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        const course = await courseRepository.findOne({ where: { course_ID } });
+        
+        if (!course) {
+          return { success: false, message: 'Course not found' };
+        }
+
+        await courseRepository.update(course_ID, { lecturer: null });
+        return { success: true, message: 'Lecturer unassigned successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error unassigning lecturer:', error);
+        return { success: false, message: 'Failed to unassign lecturer' };
+      }
+    },
+
+    createCourse: async (_: any, { course_code, display_name, semester, lecturer_ID, roles_available }: {
+      course_code: string;
+      display_name: string;
+      semester: string;
+      lecturer_ID?: string;
+      roles_available: string[];
+    }) => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        const userRepository = AppDataSource.getRepository(User);
+
+        // Check if course code already exists
+        const existingCourse = await courseRepository.findOne({ where: { course_code } });
+        if (existingCourse) {
+          return { success: false, message: 'Course with this code already exists' };
+        }
+
+        let lecturer = null;
+        if (lecturer_ID) {
+          lecturer = await userRepository.findOne({ where: { user_ID: lecturer_ID, is_lecturer: true } });
+          if (!lecturer) {
+            return { success: false, message: 'Lecturer not found or user is not a lecturer' };
+          }
+        }
+
+        const course = new Course();
+        course.course_ID = require('crypto').randomUUID();
+        course.course_code = course_code;
+        course.display_name = display_name;
+        course.semester = semester;
+        course.lecturer = lecturer;
+        course.roles_available = roles_available as ("Lab-Assistant" | "Tutor")[];
+        course.is_disabled = false;
+
+        await courseRepository.save(course);
+        return { success: true, message: 'Course created successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error creating course:', error);
+        return { success: false, message: 'Failed to create course' };
+      }
+    },
+
+    updateApplicationStatus: async (_: any, { application_ID, accepted, lecturer_comment }: {
+      application_ID: string;
+      accepted: boolean;
+      lecturer_comment?: string;
+    }) => {
+      try {
+        const applicationRepository = AppDataSource.getRepository(Application);
+        const application = await applicationRepository.findOne({ where: { application_ID } });
+        
+        if (!application) {
+          return { success: false, message: 'Application not found' };
+        }
+
+        await applicationRepository.update(application_ID, {
+          accepted,
+          lecturer_comment: lecturer_comment || null
+        });
+
+        return { success: true, message: 'Application status updated successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error updating application status:', error);
+        return { success: false, message: 'Failed to update application status' };
       }
     }
   }
