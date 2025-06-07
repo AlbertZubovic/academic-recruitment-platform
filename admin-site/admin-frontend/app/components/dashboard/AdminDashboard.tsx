@@ -1,0 +1,156 @@
+'use client';
+
+import { useState } from 'react';
+
+interface AdminDashboardProps {
+  onLogout: () => void;
+}
+
+export function AdminDashboard({ onLogout }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin-token');
+    onLogout();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <h1 className="text-3xl font-bold text-gray-900">TT Admin Dashboard</h1>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'courses', label: 'Course Management' },
+              { id: 'users', label: 'User Management' },
+              { id: 'assignments', label: 'Lecturer Assignments' },
+              { id: 'reports', label: 'Reports' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-indigo-500 text-white'
+                    : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {activeTab === 'overview' && (
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  Dashboard Overview
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-900">Total Courses</h4>
+                    <p className="text-2xl font-bold text-blue-600">--</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-green-900">Total Students</h4>
+                    <p className="text-2xl font-bold text-green-600">--</p>
+                  </div>
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-yellow-900">Total Lecturers</h4>
+                    <p className="text-2xl font-bold text-yellow-600">--</p>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-red-900">Blocked Users</h4>
+                    <p className="text-2xl font-bold text-red-600">--</p>
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <p className="text-gray-600">
+                    Welcome to the TT Admin Dashboard. Use the navigation above to manage courses, users, and view reports.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'courses' && (
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  Course Management
+                </h3>
+                <p className="text-gray-600">
+                  Course management functionality will be implemented here.
+                  This will include adding, editing, and deleting courses.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'users' && (
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  User Management
+                </h3>
+                <p className="text-gray-600">
+                  User management functionality will be implemented here.
+                  This will include blocking/unblocking users.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'assignments' && (
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  Lecturer Assignments
+                </h3>
+                <p className="text-gray-600">
+                  Lecturer assignment functionality will be implemented here.
+                  This will allow assigning lecturers to courses.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  Reports
+                </h3>
+                <p className="text-gray-600">
+                  Reporting functionality will be implemented here.
+                  This will include candidate reports and analytics.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+} 
