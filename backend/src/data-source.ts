@@ -8,6 +8,8 @@ import { Course } from "./entities/Course";
 import { Application } from "./entities/Application";
 import { AppliedSkill } from "./entities/AppliedSkill";
 import { UserBookmark } from "./entities/UserBookmark";
+import { CourseRole } from "./entities/CourseRole";
+import { CourseSkill } from "./entities/CourseSkill";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -28,6 +30,8 @@ export const AppDataSource = new DataSource({
     Application,
     AppliedSkill,
     UserBookmark,
+    CourseRole,
+    CourseSkill,
   ],
   migrations: ["src/migrations/**/*.ts"],
   subscribers: [],

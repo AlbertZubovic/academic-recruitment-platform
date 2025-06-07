@@ -1,7 +1,7 @@
 // src/components/applications/Applicant/ApproveRejectCheckbox.tsx
 
 import React, { useState, useEffect } from "react";
-import { HStack, Checkbox, useToast, Spinner, useColorModeValue } from "@chakra-ui/react";
+import { VStack, Button, useToast, Spinner } from "@chakra-ui/react";
 import { useApplications } from "@/context/ApplicationContext";
 import { LecturerApplication } from "@/types/Application";
 
@@ -17,24 +17,22 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
   const toast = useToast();
   const { updateApplicationStatus } = useApplications();
 
-  // Local state to reflect “Approved” / “Rejected” / “Pending”
+  // Local state to reflect "Approved" / "Rejected" / "Pending"
   const [approvedChecked, setApprovedChecked] = useState(false);
   const [rejectedChecked, setRejectedChecked] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Sync checkboxes when `status` changes on applicationDetails
+  // Sync state when `status` changes on applicationDetails
   useEffect(() => {
     const status = applicationDetails.status; // "Pending" | "Approved" | "Rejected"
     setApprovedChecked(status === "Approved");
     setRejectedChecked(status === "Rejected");
   }, [applicationDetails.status]);
 
-  // Handler for “Approve” checkbox
-  const handleApproveChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-
-    if (!checked) {
-      // Unchecking “Approve” → revert to Pending
+  // Handler for "Approve" button
+  const handleApprove = async () => {
+    if (approvedChecked) {
+      // Already approved → revert to Pending
       setIsUpdating(true);
       try {
         // Step 1: set accepted = true
@@ -43,7 +41,7 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         });
         // Step 2: revert back to null
         await updateApplicationStatus(courseId, applicationDetails.applicationId, {
-          accepted: null as any,
+          accepted: null,
         });
         toast({
           title: "Reverted to Pending",
@@ -54,10 +52,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         });
         setApprovedChecked(false);
         setRejectedChecked(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast({
           title: "Error",
-          description: err.message || "Failed to revert status",
+          description: (err instanceof Error) ? err.message : "Failed to revert status",
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -68,7 +66,7 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
       return;
     }
 
-    // Checking “Approve”
+    // Not approved → Approve
     setIsUpdating(true);
     try {
       await updateApplicationStatus(courseId, applicationDetails.applicationId, {
@@ -83,10 +81,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         duration: 2000,
         isClosable: true,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err.message || "Failed to approve",
+        description: (err instanceof Error) ? err.message : "Failed to approve",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -96,12 +94,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
     }
   };
 
-  // Handler for “Reject” checkbox
-  const handleRejectChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-
-    if (!checked) {
-      // Unchecking “Reject” → revert to Pending
+  // Handler for "Reject" button
+  const handleReject = async () => {
+    if (rejectedChecked) {
+      // Already rejected → revert to Pending
       setIsUpdating(true);
       try {
         // Step 1: set accepted = false
@@ -110,7 +106,7 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         });
         // Step 2: revert to null
         await updateApplicationStatus(courseId, applicationDetails.applicationId, {
-          accepted: null as any,
+          accepted: null,
         });
         toast({
           title: "Reverted to Pending",
@@ -121,10 +117,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         });
         setApprovedChecked(false);
         setRejectedChecked(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast({
           title: "Error",
-          description: err.message || "Failed to revert status",
+          description: (err instanceof Error) ? err.message : "Failed to revert status",
           status: "error",
           duration: 3000,
           isClosable: true,
@@ -135,7 +131,7 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
       return;
     }
 
-    // Checking “Reject”
+    // Not rejected → Reject
     setIsUpdating(true);
     try {
       await updateApplicationStatus(courseId, applicationDetails.applicationId, {
@@ -150,10 +146,10 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
         duration: 2000,
         isClosable: true,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Error",
-        description: err.message || "Failed to reject",
+        description: (err instanceof Error) ? err.message : "Failed to reject",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -168,22 +164,26 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
       {isUpdating ? (
         <Spinner size="sm" />
       ) : (
-        <HStack spacing={4}>
-          <Checkbox
-            isChecked={approvedChecked}
-            onChange={handleApproveChange}
-            colorScheme="green"
+        <VStack spacing={2}>
+          <Button
+            onClick={handleApprove}
+            colorScheme={approvedChecked ? "green" : "gray"}
+            variant={approvedChecked ? "solid" : "outline"}
+            size="sm"
+            width="80px"
           >
-            Approve
-          </Checkbox>
-          <Checkbox
-            isChecked={rejectedChecked}
-            onChange={handleRejectChange}
-            colorScheme="red"
+            Approved
+          </Button>
+          <Button
+            onClick={handleReject}
+            colorScheme={rejectedChecked ? "red" : "gray"}
+            variant={rejectedChecked ? "solid" : "outline"}
+            size="sm"
+            width="80px"
           >
-            Reject
-          </Checkbox>
-        </HStack>
+            Rejected 
+          </Button>
+        </VStack>
       )}
     </>
   );

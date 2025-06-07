@@ -19,6 +19,9 @@ const ApplicantCardHeader: React.FC<Props> = ({
   const credColor = useColorModeValue("gray.600", "gray.400");
   const badgeBg = useColorModeValue("green.100", "green.800");
   const badgeText = useColorModeValue("green.800", "green.200");
+  const skillBadgeBg = useColorModeValue("blue.100", "blue.800");
+  const skillBadgeText = useColorModeValue("blue.800", "blue.200");
+  const noSkillsTextColor = useColorModeValue("gray.500", "gray.400");
 
   return (
     <VStack align="start" spacing={1}>
@@ -51,8 +54,8 @@ const ApplicantCardHeader: React.FC<Props> = ({
         {applicationDetails.appliedSkills?.map((skillName, i) => (
           <Badge
             key={i}
-            bg={useColorModeValue("blue.100", "blue.800")}
-            color={useColorModeValue("blue.800", "blue.200")}
+            bg={skillBadgeBg}
+            color={skillBadgeText}
           >
             {skillName}
           </Badge>
@@ -60,7 +63,7 @@ const ApplicantCardHeader: React.FC<Props> = ({
 
         {(!applicationDetails.appliedAvailability ||
           applicationDetails.appliedSkills.length === 0) && (
-          <Text fontSize="xs" color={useColorModeValue("gray.500", "gray.400")}>
+          <Text fontSize="xs" color={noSkillsTextColor}>
             No specific skills
           </Text>
         )}

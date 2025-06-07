@@ -4,20 +4,16 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  ManyToMany,
-  JoinTable,
+  OneToMany,
 } from "typeorm";
 import {
-  ArrayNotEmpty,
-  IsArray,
   IsBoolean,
-  IsIn,
   IsString,
   Matches,
   MaxLength,
 } from "class-validator";
 import { User } from "./User";
-import { Skill } from "./Skill";
+import { CourseRole } from "./CourseRole";
 
 @Entity()
 export class Course {
@@ -45,24 +41,12 @@ export class Course {
   @JoinColumn({ name: "lecturer" })
   lecturer!: User;
 
-  @Column("simple-array", { nullable: false })
-  @IsArray({ message: "roles_available must be an array" })
-  @ArrayNotEmpty({ message: "roles_available cannot be empty" })
-  @IsIn(["Tutor", "Lab-Assistant"], {
-    each: true,
-    message: "roles_available may only contain 'Tutor' or 'Lab-Assistant'",
-  })
-  roles_available!: ("Lab-Assistant" | "Tutor")[];
-
   @Column()
   @IsBoolean()
   is_disabled!: boolean;
 
-  @ManyToMany(() => Skill)
-  @JoinTable({
-    name: "course_skill",
-    joinColumn: { name: "course_ID", referencedColumnName: "course_ID" },
-    inverseJoinColumn: { name: "skill_ID", referencedColumnName: "skill_ID" },
+  @OneToMany(() => CourseRole, (courseRole) => courseRole.course, {
+    cascade: true,
   })
-  skills!: Skill[];
+  courseRoles!: CourseRole[];
 }

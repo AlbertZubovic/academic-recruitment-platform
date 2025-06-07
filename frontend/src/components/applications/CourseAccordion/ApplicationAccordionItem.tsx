@@ -1,6 +1,6 @@
 // src/components/applications/CourseAccordion/ApplicationAccordionItem.tsx
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   AccordionItem,
   AccordionButton,
@@ -13,9 +13,8 @@ import {
   Flex,
   Tooltip,
   IconButton,
-  Textarea,
-  useToast,
   useColorModeValue,
+  useToast,
 } from "@chakra-ui/react";
 import { HamburgerIcon, CopyIcon } from "@chakra-ui/icons";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -47,47 +46,10 @@ const ApplicantNote: React.FC<ApplicantNoteProps> = ({
   index,
   isFilteredView,
 }) => {
-  const toast = useToast();
-  const { updateApplicationStatus } = useApplications();
-  
   // Color theme hooks at component level
   const cardBg = useColorModeValue("white", "gray.800");
   const cardBorderColor = useColorModeValue("gray.200", "gray.600");
   const dragIconColor = useColorModeValue("gray.500", "gray.300");
-  const textareaColor = useColorModeValue("gray.50", "gray.600");
-
-  // Local state for the textarea's value - initialize from database
-  const [note, setNote] = useState<string>("");
-
-  // On mount, load from applicantDetail (database)
-  useEffect(() => {
-    setNote(applicantDetail.lecturerComment || "");
-  }, [applicantDetail.lecturerComment]);
-
-  // Save to database on blur
-  const handleBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    const newVal = e.target.value;
-    setNote(newVal);
-    
-    try {
-      await updateApplicationStatus(courseId, applicationId, {
-        lecturerComment: newVal,
-      });
-      toast({
-        title: "Comment saved",
-        status: "success",
-        duration: 1500,
-        isClosable: true,
-      });
-    } catch {
-      toast({
-        title: "Failed to save comment",
-        status: "error",
-        duration: 2000,
-        isClosable: true,
-      });
-    }
-  };
 
   return (
     <SortableItem
@@ -148,18 +110,6 @@ const ApplicantNote: React.FC<ApplicantNoteProps> = ({
               </Badge>
             )}
           </Flex>
-
-          {/* Lecturer Comment Textarea (saved to database) */}
-          <Box p={2} pt={0}>
-            <Textarea
-              placeholder="Add a comment…"
-              size="sm"
-              bg={textareaColor}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              onBlur={handleBlur}
-            />
-          </Box>
         </Box>
       )}
     </SortableItem>
@@ -176,6 +126,8 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
   const headerBgExpanded = useColorModeValue("blue.50", "blue.900");
   const panelBg = useColorModeValue("gray.50", "gray.700");
   const noApplicantsTextColor = useColorModeValue("gray.500", "gray.400");
+  const roleHeaderColor = useColorModeValue("purple.600", "purple.300");
+  const courseNameColor = useColorModeValue("blue.600", "blue.300");
 
   const { isFilteredView } = useApplications();
 
@@ -209,7 +161,7 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
       {/* Accordion Header */}
       <AccordionButton _expanded={{ bg: headerBgExpanded }}>
         <Box flex="1" textAlign="left">
-          <Text fontWeight="bold" fontSize="lg" color={useColorModeValue("blue.600", "blue.300")}>
+          <Text fontWeight="bold" fontSize="lg" color={courseNameColor}>
             {course.name} ({course.courseCode}){" "}
             <Badge ml={2} colorScheme="gray" variant="solid" borderRadius="full" px={2}>
               {course.applicants.length} applicant
@@ -259,25 +211,52 @@ const ApplicationAccordionItem: React.FC<ApplicationAccordionItemProps> = ({
             No applicants for this course.
           </Text>
         ) : (
-          <SortableContext
-            items={course.applicants.map(
-              (app: LecturerApplication) => app.applicationId
-            )}
-            strategy={verticalListSortingStrategy}
-          >
-            <VStack spacing={4} align="stretch">
-              {course.applicants.map((applicantDetail, index) => (
-                <ApplicantNote
-                  key={applicantDetail.applicationId}
-                  courseId={course.id}
-                  applicationId={applicantDetail.applicationId}
-                  applicantDetail={applicantDetail}
-                  index={index}
-                  isFilteredView={isFilteredView}
-                />
-              ))}
-            </VStack>
-          </SortableContext>
+          <VStack spacing={6} align="stretch">
+            {/* Group applications by role */}
+            {["Tutor", "Lab-Assistant"].map((roleType) => {
+              const roleApplications = course.applicants.filter(
+                (app) => app.role === roleType
+              );
+
+              if (roleApplications.length === 0) return null;
+
+              return (
+                <Box key={roleType}>
+                                     {/* Role Header */}
+                   <Text
+                     fontSize="lg"
+                     fontWeight="bold"
+                     mb={3}
+                     color={roleHeaderColor}
+                   >
+                    {roleType} Applications
+                    <Badge ml={2} colorScheme="gray" variant="solid" borderRadius="full" px={2}>
+                      {roleApplications.length}
+                    </Badge>
+                  </Text>
+
+                  {/* Sortable list for this role */}
+                  <SortableContext
+                    items={roleApplications.map((app) => app.applicationId)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <VStack spacing={4} align="stretch">
+                      {roleApplications.map((applicantDetail, index) => (
+                        <ApplicantNote
+                          key={applicantDetail.applicationId}
+                          courseId={course.id}
+                          applicationId={applicantDetail.applicationId}
+                          applicantDetail={applicantDetail}
+                          index={index} // This will be the rank within this role
+                          isFilteredView={isFilteredView}
+                        />
+                      ))}
+                    </VStack>
+                  </SortableContext>
+                </Box>
+              );
+            })}
+          </VStack>
         )}
       </AccordionPanel>
     </AccordionItem>
