@@ -16,9 +16,16 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user.userId;
 
-    // 1) Fetch all courses
+    // 1) Fetch all courses with courseRoles and their skills
     const courses = await courseRepo.find({
-      relations: ["lecturer", "lecturer.userSkills", "lecturer.userSkills.skill"],
+      relations: [
+        "lecturer", 
+        "lecturer.userSkills", 
+        "lecturer.userSkills.skill",
+        "courseRoles",
+        "courseRoles.courseSkills",
+        "courseRoles.courseSkills.skill"
+      ],
     });
 
     // 2) Fetch all applications, but ORDER BY ranking
@@ -84,7 +91,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         courseCode: course.course_code,
         name: course.display_name,
         semester: course.semester,
-        rolesAvailable: course.roles_available,
+        rolesAvailable: course.courseRoles?.map(cr => cr.role) || [],
         isDisabled: course.is_disabled,
         lecturer: course.lecturer
           ? {

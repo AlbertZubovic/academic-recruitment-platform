@@ -54,6 +54,22 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const { signIn, signUp, loading } = useAuth();
   const router = useRouter();
 
+  // ─────────────── Color values for light/dark ───────────────
+  // ALL useColorModeValue calls MUST be at the top level to prevent hook order violations
+  const outerBg = useColorModeValue(
+    "linear(to-r, blue.50, blue.100)",
+    "linear(to-r, gray.800, gray.900)"
+  );
+  const formBg = useColorModeValue("white", "gray.700");
+  const headingColor = useColorModeValue("blue.600", "blue.300");
+  const subTextColor = useColorModeValue("gray.500", "gray.400");
+  const skillBoxBg = useColorModeValue("gray.100", "gray.600");
+  const linkColor = useColorModeValue("blue.500", "blue.200");
+  const inputBg = useColorModeValue("white", "gray.800");
+  const checkboxColorScheme = useColorModeValue("blue", "teal");
+  const buttonColorScheme = useColorModeValue("blue", "teal");
+  const skillTextColor = useColorModeValue("gray.800", "whiteAlpha.900");
+
   const isStrongPassword = (pwd: string) =>
     /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/.test(pwd);
 
@@ -105,6 +121,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     if (!validateForm()) return;
 
     let success = false;
+    let errorMessage = "";
 
     if (type === "signin") {
       try {
@@ -126,7 +143,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           localStorage.removeItem("rememberedPassword");
           localStorage.removeItem("rememberMe");
         }
-      } catch {
+      } catch (error: unknown) {
+        console.error('[AUTH] Sign in error:', error);
+        errorMessage = (error instanceof Error) ? error.message : "Incorrect email or password.";
         success = false;
       }
     } else {
@@ -144,7 +163,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         };
         await signUp(payload);
         success = true;
-      } catch {
+      } catch (error: unknown) {
+        console.error('[AUTH] Sign up error:', error);
+        errorMessage = (error instanceof Error) ? error.message : "Signup failed. Please try again.";
         success = false;
       }
     }
@@ -168,10 +189,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     } else {
       toast({
         title: "Authentication Error",
-        description:
+        description: errorMessage || (
           type === "signin"
             ? "Incorrect email or password."
-            : "Signup failed. Email already in use.",
+            : "Signup failed. Please try again."
+        ),
         status: "error",
         duration: 4000,
         isClosable: true,
@@ -179,17 +201,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       });
     }
   };
-
-  // ─────────────── Color values for light/dark ───────────────
-  const outerBg = useColorModeValue(
-    "linear(to-r, blue.50, blue.100)",
-    "linear(to-r, gray.800, gray.900)"
-  );
-  const formBg = useColorModeValue("white", "gray.700");
-  const headingColor = useColorModeValue("blue.600", "blue.300");
-  const subTextColor = useColorModeValue("gray.500", "gray.400");
-  const skillBoxBg = useColorModeValue("gray.100", "gray.600");
-  const linkColor = useColorModeValue("blue.500", "blue.200");
 
   return (
     <Box
@@ -230,7 +241,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                     onChange={(e) => setFirstname(e.target.value)}
                     placeholder="First name"
                     autoComplete="off"
-                    bg={useColorModeValue("white", "gray.800")}
+                    bg={inputBg}
                   />
                   <FormErrorMessage>{errors.firstname}</FormErrorMessage>
                 </FormControl>
@@ -242,7 +253,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                     onChange={(e) => setLastname(e.target.value)}
                     placeholder="Last name"
                     autoComplete="off"
-                    bg={useColorModeValue("white", "gray.800")}
+                    bg={inputBg}
                   />
                   <FormErrorMessage>{errors.lastname}</FormErrorMessage>
                 </FormControl>
@@ -256,7 +267,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         setIsCandidate(e.target.checked);
                         if (e.target.checked) setIsLecturer(false);
                       }}
-                      colorScheme={useColorModeValue("blue", "teal")}
+                      colorScheme={checkboxColorScheme}
                     >
                       Candidate
                     </Checkbox>
@@ -266,7 +277,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         setIsLecturer(e.target.checked);
                         if (e.target.checked) setIsCandidate(false);
                       }}
-                      colorScheme={useColorModeValue("blue", "teal")}
+                      colorScheme={checkboxColorScheme}
                     >
                       Lecturer
                     </Checkbox>
@@ -283,7 +294,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                         e.target.value as ApplicationAvailability
                       )
                     }
-                    bg={useColorModeValue("white", "gray.800")}
+                    bg={inputBg}
                   >
                     <option value="Full-Time">Full-Time</option>
                     <option value="Part-Time">Part-Time</option>
@@ -305,13 +316,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                             handleAddSkill();
                           }
                         }}
-                        bg={useColorModeValue("white", "gray.800")}
+                        bg={inputBg}
                       />
                       <Button
                         size="sm"
                         onClick={handleAddSkill}
                         isDisabled={!currentSkill.trim()}
-                        colorScheme={useColorModeValue("blue", "teal")}
+                        colorScheme={buttonColorScheme}
                       >
                         Add Skill
                       </Button>
@@ -326,7 +337,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                           justifyContent="space-between"
                           alignItems="center"
                         >
-                          <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+                          <Text color={skillTextColor}>
                             {skill}
                           </Text>
                           <Button
@@ -354,7 +365,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 autoComplete="off"
-                bg={useColorModeValue("white", "gray.800")}
+                bg={inputBg}
               />
               <FormErrorMessage>{errors.email}</FormErrorMessage>
             </FormControl>
@@ -367,7 +378,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 autoComplete="off"
-                bg={useColorModeValue("white", "gray.800")}
+                bg={inputBg}
               />
               <FormErrorMessage>{errors.password}</FormErrorMessage>
             </FormControl>
@@ -381,7 +392,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
                   autoComplete="off"
-                  bg={useColorModeValue("white", "gray.800")}
+                  bg={inputBg}
                 />
                 <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
               </FormControl>
@@ -392,14 +403,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 <Checkbox
                   isChecked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  colorScheme={useColorModeValue("blue", "teal")}
+                  colorScheme={checkboxColorScheme}
                 >
                   Remember me
                 </Checkbox>
                 <Checkbox
                   isChecked={stayLoggedIn}
                   onChange={(e) => setStayLoggedIn(e.target.checked)}
-                  colorScheme={useColorModeValue("blue", "teal")}
+                  colorScheme={checkboxColorScheme}
                 >
                   Stay logged in
                 </Checkbox>
@@ -409,7 +420,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             <Button
               type="submit"
               isLoading={loading}
-              colorScheme={useColorModeValue("blue", "teal")}
+              colorScheme={buttonColorScheme}
               width="100%"
               borderRadius="md"
               fontWeight="bold"

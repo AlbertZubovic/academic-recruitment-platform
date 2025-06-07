@@ -62,12 +62,23 @@ const ApplicationPage: React.FC = () => {
     );
   }, 0);
 
+  // Color mode values - must be called before any early returns
+  const unauthorizedTextColor = useColorModeValue("gray.800", "whiteAlpha.900");
+  const containerBg = useColorModeValue("gray.50", "gray.800");
+  const headingColor = useColorModeValue("blue.600", "blue.300");
+  const textColor = useColorModeValue("gray.600", "gray.400");
+  const inputBg = useColorModeValue("white", "gray.700");
+  const placeholderColor = useColorModeValue("gray.500", "gray.400");
+  const warningBg = useColorModeValue("yellow.100", "yellow.900");
+  const warningBorder = useColorModeValue("yellow.300", "yellow.700");
+  const warningText = useColorModeValue("yellow.800", "yellow.200");
+
   // Only lecturers can access this page
   if (!user || !user.isLecturer) {
     return (
       <Text
         textAlign="center"
-        color={useColorModeValue("gray.800", "whiteAlpha.900")}
+        color={unauthorizedTextColor}
       >
         You are not authorized to view this page.
       </Text>
@@ -81,14 +92,6 @@ const ApplicationPage: React.FC = () => {
     setAllExpanded(false);
     setExpandedIndices([]);
   };
-
-  const containerBg = useColorModeValue("gray.50", "gray.800");
-  const headingColor = useColorModeValue("blue.600", "blue.300");
-  const textColor = useColorModeValue("gray.600", "gray.400");
-  const inputBg = useColorModeValue("white", "gray.700");
-  const warningBg = useColorModeValue("yellow.100", "yellow.900");
-  const warningBorder = useColorModeValue("yellow.300", "yellow.700");
-  const warningText = useColorModeValue("yellow.800", "yellow.200");
 
   return (
     <Container
@@ -123,7 +126,7 @@ const ApplicationPage: React.FC = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           width="60%"
           bg={inputBg}
-          _placeholder={{ color: useColorModeValue("gray.500", "gray.400") }}
+          _placeholder={{ color: placeholderColor }}
         />
         <SortDropdown onSort={handleSort} />
         <IconButton

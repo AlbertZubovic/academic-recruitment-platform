@@ -103,12 +103,22 @@ export const GET_ALL_COURSES = gql`
       display_name
       semester
       is_disabled
-      roles_available
       lecturer {
         user_ID
         firstname
         lastname
         email
+      }
+      courseRoles {
+        course_role_ID
+        role
+        description
+        is_active
+        positions_available
+        skills {
+          skill_ID
+          name
+        }
       }
     }
   }
@@ -121,12 +131,22 @@ export const GET_ACTIVE_COURSES = gql`
       course_code
       display_name
       semester
-      roles_available
       lecturer {
         user_ID
         firstname
         lastname
         email
+      }
+      courseRoles {
+        course_role_ID
+        role
+        description
+        is_active
+        positions_available
+        skills {
+          skill_ID
+          name
+        }
       }
     }
   }
@@ -139,12 +159,22 @@ export const GET_DISABLED_COURSES = gql`
       course_code
       display_name
       semester
-      roles_available
       lecturer {
         user_ID
         firstname
         lastname
         email
+      }
+      courseRoles {
+        course_role_ID
+        role
+        description
+        is_active
+        positions_available
+        skills {
+          skill_ID
+          name
+        }
       }
     }
   }
@@ -183,8 +213,18 @@ export const GET_COURSE_WITH_APPLICATIONS = gql`
         lastname
         email
       }
-      roles_available
       is_disabled
+      courseRoles {
+        course_role_ID
+        role
+        description
+        is_active
+        positions_available
+        skills {
+          skill_ID
+          name
+        }
+      }
       applications {
         application_ID
         user {
@@ -257,17 +297,16 @@ export const CREATE_COURSE = gql`
     $display_name: String!
     $semester: String!
     $lecturer_ID: ID
-    $roles_available: [String!]!
   ) {
     createCourse(
       course_code: $course_code
       display_name: $display_name
       semester: $semester
       lecturer_ID: $lecturer_ID
-      roles_available: $roles_available
     ) {
       success
       message
+      course_ID
     }
   }
 `;
@@ -283,6 +322,115 @@ export const UPDATE_APPLICATION_STATUS = gql`
       accepted: $accepted
       lecturer_comment: $lecturer_comment
     ) {
+      success
+      message
+    }
+  }
+`;
+
+export const DELETE_COURSE = gql`
+  mutation DeleteCourse($course_ID: ID!) {
+    deleteCourse(course_ID: $course_ID) {
+      success
+      message
+    }
+  }
+`;
+
+// Skill queries and mutations
+export const GET_ALL_SKILLS = gql`
+  query GetAllSkills {
+    skills {
+      skill_ID
+      name
+    }
+  }
+`;
+
+export const SEARCH_SKILLS = gql`
+  query SearchSkills($search: String!) {
+    searchSkills(search: $search) {
+      skill_ID
+      name
+    }
+  }
+`;
+
+export const CREATE_SKILL = gql`
+  mutation CreateSkill($name: String!) {
+    createSkill(name: $name) {
+      skill_ID
+      name
+    }
+  }
+`;
+
+// The old ADD_SKILL_TO_COURSE and REMOVE_SKILL_FROM_COURSE mutations have been replaced
+// with ADD_SKILL_TO_COURSE_ROLE and REMOVE_SKILL_FROM_COURSE_ROLE mutations above
+
+// CourseRole management mutations
+export const CREATE_COURSE_ROLE = gql`
+  mutation CreateCourseRole(
+    $course_ID: ID!
+    $role: String!
+    $description: String
+    $positions_available: Int
+  ) {
+    createCourseRole(
+      course_ID: $course_ID
+      role: $role
+      description: $description
+      positions_available: $positions_available
+    ) {
+      course_role_ID
+      role
+      description
+      is_active
+      positions_available
+    }
+  }
+`;
+
+export const UPDATE_COURSE_ROLE = gql`
+  mutation UpdateCourseRole(
+    $course_role_ID: ID!
+    $description: String
+    $is_active: Boolean
+    $positions_available: Int
+  ) {
+    updateCourseRole(
+      course_role_ID: $course_role_ID
+      description: $description
+      is_active: $is_active
+      positions_available: $positions_available
+    ) {
+      success
+      message
+    }
+  }
+`;
+
+export const DELETE_COURSE_ROLE = gql`
+  mutation DeleteCourseRole($course_role_ID: ID!) {
+    deleteCourseRole(course_role_ID: $course_role_ID) {
+      success
+      message
+    }
+  }
+`;
+
+export const ADD_SKILL_TO_COURSE_ROLE = gql`
+  mutation AddSkillToCourseRole($course_role_ID: ID!, $skill_ID: ID!) {
+    addSkillToCourseRole(course_role_ID: $course_role_ID, skill_ID: $skill_ID) {
+      success
+      message
+    }
+  }
+`;
+
+export const REMOVE_SKILL_FROM_COURSE_ROLE = gql`
+  mutation RemoveSkillFromCourseRole($course_role_ID: ID!, $skill_ID: ID!) {
+    removeSkillFromCourseRole(course_role_ID: $course_role_ID, skill_ID: $skill_ID) {
       success
       message
     }

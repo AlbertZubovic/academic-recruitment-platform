@@ -30,7 +30,12 @@ export const getCandidateCourses = async (
     const applicationRepo = AppDataSource.getRepository(Application);
 
     const courses = await courseRepo.find({
-      relations: ["skills", "lecturer"],
+      relations: [
+        "lecturer",
+        "courseRoles",
+        "courseRoles.courseSkills",
+        "courseRoles.courseSkills.skill"
+      ],
     });
     const applications = await applicationRepo.find({
       where: { 
@@ -64,8 +69,10 @@ export const getCandidateCourses = async (
         name: course.display_name,
         courseCode: course.course_code,
         semester: course.semester,
-        rolesAvailable: course.roles_available,
-        skills: course.skills.map((s) => s.name),
+        rolesAvailable: course.courseRoles?.map(cr => cr.role) || [],
+        skills: [...new Set(course.courseRoles?.flatMap(cr => 
+          cr.courseSkills?.map(cs => cs.skill.name) || []
+        ) || [])],
         appliedRoles,
         applicationDetails,
       };
@@ -143,6 +150,7 @@ export const applyToCourse = async (
 
     const course = await courseRepo.findOne({
       where: { course_ID: courseId },
+      relations: ["courseRoles"],
     });
     if (!course) {
       console.log("[CANDIDATE] applyToCourse: course not found:", courseId);
@@ -150,7 +158,8 @@ export const applyToCourse = async (
       return;
     }
 
-    if (!course.roles_available.includes(role as ApplicationRole)) {
+    const availableRoles = course.courseRoles?.map(cr => cr.role) || [];
+    if (!availableRoles.includes(role as any)) {
       console.log(
         "[CANDIDATE] applyToCourse: role not offered by course:",
         role

@@ -27,11 +27,23 @@ import { useApplications } from "@/context/ApplicationContext";
 import ProfileModal from "@/components/modals/ProfileModal";
 import ApplicationDetailsModal from "@/components/modals/ApplicationDetailsModal";
 import { Course as CourseType } from "@/types/course";
+import { LecturerApplication } from "@/types/Application";
+import { ApplicationRole, ApplicationAvailability, ApplicationStatus } from "@/types/enums";
 import { bookmarkService } from "@/services/bookmarkService";
 
+type ApplicationDetail = {
+  role: ApplicationRole;
+  appliedAvailability: ApplicationAvailability;
+  appliedSkills: string[];
+  status: ApplicationStatus;
+  lecturerComment?: string | null;
+  isWithdrawn?: boolean;
+  withdrawnAt?: Date | null;
+};
+
 interface SelectedApp {
-  course: any;
-  appDetail: any;
+  course: CourseType;
+  appDetail: LecturerApplication | ApplicationDetail;
 }
 
 const LandingPage: React.FC = () => {
@@ -77,7 +89,7 @@ const LandingPage: React.FC = () => {
           try {
             const bookmarkMap: Record<string, boolean> = JSON.parse(stored);
             const ids = Object.entries(bookmarkMap)
-              .filter(([_, isBookmarked]) => isBookmarked)
+              .filter(([, isBookmarked]) => isBookmarked)
               .map(([courseId]) => courseId);
             setFavoriteIds(new Set(ids));
           } catch {
@@ -164,11 +176,11 @@ const LandingPage: React.FC = () => {
   }, [availableCourses, favoriteIds]);
 
   // ─────────────── Candidate/Application Modal Logic ───────────────
-  const handleApplicationClick = (course: any, appDetail: any) => {
+  const handleApplicationClick = (course: CourseType, appDetail: LecturerApplication | ApplicationDetail) => {
     const detailForModal = {
       ...appDetail,
-      appliedAvailability: appDetail.appliedAvailability ?? appDetail.availability,
-      appliedSkills: appDetail.appliedSkills ?? appDetail.skills ?? [],
+      appliedAvailability: appDetail.appliedAvailability,
+      appliedSkills: appDetail.appliedSkills ?? [],
     };
     setSelectedApp({ course, appDetail: detailForModal });
     onAppDetailsOpen();
@@ -182,11 +194,11 @@ const LandingPage: React.FC = () => {
 
   const pendingApplications = useMemo(() => {
     if (!user || !user.isLecturer) return [];
-    const pendings: Array<{ course: any; appDetail: any }> = [];
+    const pendings: Array<{ course: CourseType; appDetail: LecturerApplication }> = [];
     myTaughtCourses.forEach((course) => {
       (course.applicants || [])
-        .filter((app: any) => app.status === "Pending")
-        .forEach((app: any) => pendings.push({ course, appDetail: app }));
+        .filter((app) => app.status === "Pending")
+        .forEach((app) => pendings.push({ course, appDetail: app }));
     });
     return pendings;
   }, [myTaughtCourses, user]);

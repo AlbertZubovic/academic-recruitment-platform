@@ -355,24 +355,22 @@ async function seed() {
     },
   ];
 
-  const courseEntities = courseData.map((c) =>
-    courseRepo.create({
-      course_ID: c.id,
-      course_code: c.code,
-      display_name: c.name,
-      semester: c.semester,
-      roles_available: c.roles,
-      is_disabled: false,
-      skills: c.skills.map((sn) => skillMap[sn]),
-      lecturer: { user_ID: c.lecturerId },
-    })
-  );
-  await courseRepo.save(courseEntities);
+  // Note: Course creation is now handled by admin backend with CourseRole structure
+  // This seed file is kept for reference but courses should be created via admin interface
+  console.log("Skipping course creation - use admin interface to create courses with CourseRole structure");
+  
+  const courseEntities: Course[] = [];
+  // await courseRepo.save(courseEntities);
+  // Since we're not creating courses here, skip application creation too
+  // Applications should be created through the frontend interface
+  console.log("Skipping application creation - courses should be created via admin interface first");
+  
+  /*
   const courseMap = Object.fromEntries(
     courseEntities.map((c) => [c.course_code, c])
   );
 
-  // 8) Create applications (candidates apply to courses)
+  // 8) Create applications (candidates apply to courses) - DISABLED
   const applicationData = [
     // Charlie applies to COSC101 as Tutor, full-time (accepted)
     {
@@ -478,6 +476,7 @@ async function seed() {
       await appliedSkillRepo.save(asEntity);
     }
   }
+  */
 
   console.log("Seeding complete!");
   process.exit(0);

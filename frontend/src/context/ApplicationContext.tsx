@@ -54,7 +54,7 @@ interface ApplicationContextValue {
     payload: UpdateApplicationStatusRequest
   ) => Promise<void>;
 
-  // 3) “Search/filter/sort/drag”
+  // 3) "Search/filter/sort/drag"
   courses: CourseWithApplicants[];
   allUsers: User[];
 
@@ -263,7 +263,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // 2d) Update an application’s status, then re-fetch
+  // 2d) Update an application's status, then re-fetch
   const updateApplicationStatus = async (
     courseId: string,
     applicationId: string,
@@ -285,7 +285,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(data.message || "Failed to update status");
       }
 
-      // (1) Re-fetch that course’s applicant list
+      // (1) Re-fetch that course's applicant list
       await fetchLecturerApplications(courseId);
 
       // (2) Re-fetch all courses
@@ -313,7 +313,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Build filteredApplicants from `courses` + `allUsers`
   const filteredApplicants = courses
     .map((course) => {
-      // Filter each course’s applicants according to search/availability
+      // Filter each course's applicants according to search/availability
       let filteredApps = (course.applicants || []).filter((app) => {
         // a) searchTerm
         if (searchTerm) {
@@ -344,7 +344,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       return { ...course, applicants: filteredApps };
     })
-    // Drop courses with no matching applicants AND course name/code doesn’t match searchTerm
+    // Drop courses with no matching applicants AND course name/code doesn't match searchTerm
     .filter((course) => {
       if (course.applicants.length > 0) return true;
       if (searchTerm) {
@@ -387,7 +387,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     setSortCriteria(criteria);
   };
 
-  // When dragging ends, reorder locally and persist new rankings
+  // When dragging ends, reorder locally and persist new rankings (role-based)
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (!active || !over) return;
@@ -395,46 +395,71 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
     const activeAppId = active.id as string;
     const overAppId = over.id as string;
 
-    // 1) Figure out which course contains that applicationId
+    // 1) Find the course and the active application details
     let courseIndex = -1;
-    let oldIndex = -1;
+    let activeApp: LecturerApplication | undefined;
+    let overApp: LecturerApplication | undefined;
+
     for (let i = 0; i < courses.length; i++) {
-      const idxInCourse = courses[i].applicants.findIndex(
-        (a) => a.applicationId === activeAppId
-      );
-      if (idxInCourse > -1) {
+      const course = courses[i];
+      const active = course.applicants.find((a) => a.applicationId === activeAppId);
+      const over = course.applicants.find((a) => a.applicationId === overAppId);
+      
+      if (active && over) {
         courseIndex = i;
-        oldIndex = idxInCourse;
+        activeApp = active;
+        overApp = over;
         break;
       }
     }
-    if (courseIndex === -1) return;
+
+    if (courseIndex === -1 || !activeApp || !overApp) return;
+
+    // 2) Ensure both applications are for the same role
+    if (activeApp.role !== overApp.role) {
+      console.warn("Cannot drag between different roles");
+      return;
+    }
+
     const course = courses[courseIndex];
+    const role = activeApp.role;
 
-    // 2) Find newIndex within that same course by matching applicationId
-    const newIndex = course.applicants.findIndex(
-      (a) => a.applicationId === overAppId
-    );
-    if (newIndex === -1) return;
+    // 3) Get all applicants for this role, in order
+    const roleApplicants = course.applicants.filter((a) => a.role === role);
+    
+    // 4) Find old and new indices within the role-specific list
+    const oldIndex = roleApplicants.findIndex((a) => a.applicationId === activeAppId);
+    const newIndex = roleApplicants.findIndex((a) => a.applicationId === overAppId);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
 
-    // 3) Reorder locally
-    const newList = arrayMove(course.applicants, oldIndex, newIndex);
-    const updatedCourse = { ...course, applicants: newList };
+    // 5) Reorder within the role list
+    const newRoleList = arrayMove(roleApplicants, oldIndex, newIndex);
+
+    // 6) Rebuild the full applicants list, maintaining other roles' order
+    const otherRoleApplicants = course.applicants.filter((a) => a.role !== role);
+    const newFullList = [
+      ...newRoleList,
+      ...otherRoleApplicants
+    ];
+
+    // 7) Update local state
+    const updatedCourse = { ...course, applicants: newFullList };
     const newCourses = [...courses];
     newCourses[courseIndex] = updatedCourse;
     setCourses(newCourses);
 
-    // 4) Persist each applicant’s updated ranking
-    for (let i = 0; i < newList.length; i++) {
-      const lectApp = newList[i];
-      const newRank = i + 1;
+    // 8) Persist rankings only for the moved role
+    for (let i = 0; i < newRoleList.length; i++) {
+      const lectApp = newRoleList[i];
+      const newRank = i + 1; // Rank within this role
       try {
         await updateApplicationStatus(course.id, lectApp.applicationId, {
           ranking: newRank,
         });
       } catch (err) {
         console.warn(
-          `Failed to update ranking=${newRank} for ${lectApp.applicationId}`,
+          `Failed to update ranking=${newRank} for ${lectApp.applicationId} (${role})`,
           err
         );
       }
