@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files - INCLUDED per assignment requirements
+# .env files are tracked in this project
+# .env*
 
 # vercel
 .vercel
