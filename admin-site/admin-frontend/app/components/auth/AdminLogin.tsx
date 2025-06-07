@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@apollo/client';
-import { ADMIN_LOGIN } from '../../graphql/mutations/admin-mutations';
+import { ADMIN_LOGIN } from '../../graphql/queries';
 import { AdminLoginInput } from '../../types/admin';
 
 interface AdminLoginProps {

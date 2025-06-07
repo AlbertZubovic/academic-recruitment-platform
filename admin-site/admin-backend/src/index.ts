@@ -1,5 +1,6 @@
+import 'reflect-metadata';
 import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express4';
+import { expressMiddleware } from '@as-integrations/express5';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import express from 'express';
 import http from 'http';
@@ -7,6 +8,9 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { config } from './config';
+import { AppDataSource } from './data-source';
+import { User } from './entities/User';
+import { Course } from './entities/Course';
 
 // Load environment variables
 dotenv.config();
@@ -33,15 +37,64 @@ const typeDefs = `#graphql
     message: String
   }
 
+  type User {
+    user_ID: ID!
+    email: String!
+    firstname: String!
+    lastname: String!
+    is_lecturer: Boolean!
+    is_candidate: Boolean!
+    is_admin: Boolean!
+    is_blocked: Boolean!
+    default_availability: String
+    academic_credentials: String
+    created: String!
+  }
+
+  type Course {
+    course_ID: ID!
+    course_code: String!
+    display_name: String!
+    semester: String!
+    lecturer: User
+    roles_available: [String!]!
+    is_disabled: Boolean!
+  }
+
+  type DashboardStats {
+    totalCourses: Int!
+    totalStudents: Int!
+    totalLecturers: Int!
+    blockedUsers: Int!
+  }
+
   type Query {
     # Health check query
     hello: String!
+    
+    # Dashboard stats
+    dashboardStats: DashboardStats!
+    
+    # User queries
+    users: [User!]!
+    students: [User!]!
+    lecturers: [User!]!
+    blockedUsers: [User!]!
+    
+    # Course queries
+    courses: [Course!]!
+    activeCourses: [Course!]!
+    disabledCourses: [Course!]!
   }
 
   type Mutation {
     # Admin authentication
     adminLogin(username: String!, password: String!): AdminLoginResponse!
     adminLogout: MutationResponse!
+    
+    # User management
+    blockUser(user_ID: ID!): MutationResponse!
+    unblockUser(user_ID: ID!): MutationResponse!
   }
 `;
 
@@ -49,6 +102,126 @@ const typeDefs = `#graphql
 const resolvers = {
   Query: {
     hello: () => 'Admin GraphQL server is running!',
+
+    dashboardStats: async () => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        const courseRepository = AppDataSource.getRepository(Course);
+
+        const totalUsers = await userRepository.count();
+        const totalStudents = await userRepository.count({ where: { is_candidate: true } });
+        const totalLecturers = await userRepository.count({ where: { is_lecturer: true } });
+        const blockedUsers = await userRepository.count({ where: { is_blocked: true } });
+        const totalCourses = await courseRepository.count();
+
+        return {
+          totalCourses,
+          totalStudents,
+          totalLecturers,
+          blockedUsers,
+        };
+      } catch (error) {
+        console.error('[ADMIN] Error fetching dashboard stats:', error);
+        return {
+          totalCourses: 0,
+          totalStudents: 0,
+          totalLecturers: 0,
+          blockedUsers: 0,
+        };
+      }
+    },
+
+    users: async () => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        return await userRepository.find({
+          order: { created: 'DESC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching users:', error);
+        return [];
+      }
+    },
+
+    students: async () => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        return await userRepository.find({
+          where: { is_candidate: true },
+          order: { created: 'DESC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching students:', error);
+        return [];
+      }
+    },
+
+    lecturers: async () => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        return await userRepository.find({
+          where: { is_lecturer: true },
+          order: { created: 'DESC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching lecturers:', error);
+        return [];
+      }
+    },
+
+    blockedUsers: async () => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        return await userRepository.find({
+          where: { is_blocked: true },
+          order: { created: 'DESC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching blocked users:', error);
+        return [];
+      }
+    },
+
+    courses: async () => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        return await courseRepository.find({
+          relations: ['lecturer'],
+          order: { course_code: 'ASC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching courses:', error);
+        return [];
+      }
+    },
+
+    activeCourses: async () => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        return await courseRepository.find({
+          where: { is_disabled: false },
+          relations: ['lecturer'],
+          order: { course_code: 'ASC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching active courses:', error);
+        return [];
+      }
+    },
+
+    disabledCourses: async () => {
+      try {
+        const courseRepository = AppDataSource.getRepository(Course);
+        return await courseRepository.find({
+          where: { is_disabled: true },
+          relations: ['lecturer'],
+          order: { course_code: 'ASC' }
+        });
+      } catch (error) {
+        console.error('[ADMIN] Error fetching disabled courses:', error);
+        return [];
+      }
+    },
   },
 
   Mutation: {
@@ -104,6 +277,48 @@ const resolvers = {
         success: true,
         message: 'Admin logout successful'
       };
+    },
+
+    blockUser: async (_: any, { user_ID }: { user_ID: string }) => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        const user = await userRepository.findOne({ where: { user_ID } });
+        
+        if (!user) {
+          return { success: false, message: 'User not found' };
+        }
+
+        if (user.is_blocked) {
+          return { success: false, message: 'User is already blocked' };
+        }
+
+        await userRepository.update(user_ID, { is_blocked: true });
+        return { success: true, message: 'User blocked successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error blocking user:', error);
+        return { success: false, message: 'Failed to block user' };
+      }
+    },
+
+    unblockUser: async (_: any, { user_ID }: { user_ID: string }) => {
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        const user = await userRepository.findOne({ where: { user_ID } });
+        
+        if (!user) {
+          return { success: false, message: 'User not found' };
+        }
+
+        if (!user.is_blocked) {
+          return { success: false, message: 'User is not blocked' };
+        }
+
+        await userRepository.update(user_ID, { is_blocked: false });
+        return { success: true, message: 'User unblocked successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error unblocking user:', error);
+        return { success: false, message: 'Failed to unblock user' };
+      }
     }
   }
 };
@@ -122,36 +337,40 @@ const server = new ApolloServer({
 // Start the server
 async function startServer() {
   try {
+    // Initialize database connection
+    console.log('🗄️ Initializing database connection...');
+    await AppDataSource.initialize();
+    console.log('✅ Database connection established');
+
     await server.start();
 
-    // Set up CORS
-    app.use(cors({
-      origin: [...config.corsOrigins],
-      credentials: true,
-    }));
-
-    // Set up Express middleware
-    app.use(express.json());
-
-    // Apply GraphQL middleware
-    app.use('/graphql', expressMiddleware(server, {
-      context: async ({ req }) => {
-        // Extract token from Authorization header for future use
-        const token = req.headers.authorization?.replace('Bearer ', '') || '';
-        
-        // For admin endpoints, we can verify the token here
-        let user = null;
-        if (token) {
-          try {
-            user = jwt.verify(token, JWT_SECRET);
-          } catch (error) {
-            console.log('[AUTH] Invalid token provided');
+ 
+    // Apply GraphQL middleware with proper configuration
+    app.use('/graphql', 
+      cors({
+        origin: [...config.corsOrigins],
+        credentials: true,
+      }),
+      express.json(),
+      expressMiddleware(server, {
+        context: async ({ req }) => {
+          // Extract token from Authorization header for future use
+          const token = req.headers.authorization?.replace('Bearer ', '') || '';
+          
+          // For admin endpoints, we can verify the token here
+          let user = null;
+          if (token) {
+            try {
+              user = jwt.verify(token, JWT_SECRET);
+            } catch (error) {
+              console.log('[AUTH] Invalid token provided');
+            }
           }
-        }
 
-        return { user, token };
-      },
-    }));
+          return { user, token };
+        },
+      })
+    );
 
     // Start HTTP server
     const port = config.port;
@@ -160,9 +379,8 @@ async function startServer() {
     console.log(`🚀 Admin GraphQL server ready at http://localhost:${port}/graphql`);
     console.log(`🌐 CORS enabled for: ${config.corsOrigins.join(', ')}`);
     console.log(`📋 Available operations:`);
-    console.log(`   • Query: hello`);
-    console.log(`   • Mutation: adminLogin(username, password)`);
-    console.log(`   • Mutation: adminLogout`);
+    console.log(`   • Query: hello, dashboardStats, users, students, lecturers, blockedUsers, courses`);
+    console.log(`   • Mutation: adminLogin, adminLogout, blockUser, unblockUser`);
     console.log(`🔐 Admin credentials: admin / admin`);
     
   } catch (error) {

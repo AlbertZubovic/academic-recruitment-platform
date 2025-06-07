@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@apollo/client';
+import { GET_DASHBOARD_STATS, GET_ALL_USERS, GET_ALL_COURSES } from '../../graphql/queries';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -8,6 +10,11 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Fetch dashboard statistics
+  const { data: statsData, loading: statsLoading, error: statsError } = useQuery(GET_DASHBOARD_STATS);
+  const { data: usersData, loading: usersLoading } = useQuery(GET_ALL_USERS);
+  const { data: coursesData, loading: coursesLoading } = useQuery(GET_ALL_COURSES);
 
   const handleLogout = () => {
     localStorage.removeItem('admin-token');
@@ -70,21 +77,35 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="text-sm font-medium text-blue-900">Total Courses</h4>
-                    <p className="text-2xl font-bold text-blue-600">--</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {statsLoading ? '...' : (statsData?.dashboardStats?.totalCourses ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <h4 className="text-sm font-medium text-green-900">Total Students</h4>
-                    <p className="text-2xl font-bold text-green-600">--</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {statsLoading ? '...' : (statsData?.dashboardStats?.totalStudents ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-yellow-50 p-4 rounded-lg">
                     <h4 className="text-sm font-medium text-yellow-900">Total Lecturers</h4>
-                    <p className="text-2xl font-bold text-yellow-600">--</p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {statsLoading ? '...' : (statsData?.dashboardStats?.totalLecturers ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-red-50 p-4 rounded-lg">
                     <h4 className="text-sm font-medium text-red-900">Blocked Users</h4>
-                    <p className="text-2xl font-bold text-red-600">--</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {statsLoading ? '...' : (statsData?.dashboardStats?.blockedUsers ?? 0)}
+                    </p>
                   </div>
                 </div>
+
+                {statsError && (
+                  <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    Error loading dashboard stats: {statsError.message}
+                  </div>
+                )}
                 <div className="mt-6">
                   <p className="text-gray-600">
                     Welcome to the TT Admin Dashboard. Use the navigation above to manage courses, users, and view reports.
