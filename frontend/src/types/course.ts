@@ -13,14 +13,19 @@ import {
  *   - appliedRoles: string[]          // which roles the candidate has already applied for
  *   - applicationDetails?: { ... }[]   // (optional) detailed info per application
  */
+export interface CourseRole {
+  role: ApplicationRole;
+  skills: string[];
+}
+
 export interface Course {
   id: string;                          // course_ID (UUID)
   courseCode: string;                  // e.g. "COSC101"
   name: string;                        // display_name
   semester: string;                    // e.g. "Fall 2025"
-  rolesAvailable: ApplicationRole[];   // e.g. ["Tutor", "Lab-Assistant"]
+  rolesAvailable: CourseRole[];        // array of roles with their specific skills
   isDisabled: boolean;
-  skills: string[];                    // array of skill names
+  skills: string[];                    // array of all skill names (flattened)
   lecturer: UserSummary | null;        // summary of the lecturer
 
   // NEW FIELDS returned by GET /api/candidates/courses:

@@ -69,7 +69,10 @@ export const getCandidateCourses = async (
         name: course.display_name,
         courseCode: course.course_code,
         semester: course.semester,
-        rolesAvailable: course.courseRoles?.map(cr => cr.role) || [],
+        rolesAvailable: course.courseRoles?.map(cr => ({
+          role: cr.role,
+          skills: cr.courseSkills?.map(cs => cs.skill.name) || []
+        })) || [],
         skills: [...new Set(course.courseRoles?.flatMap(cr => 
           cr.courseSkills?.map(cs => cs.skill.name) || []
         ) || [])],
