@@ -9,10 +9,21 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CourseProvider } from "@/context/CourseContext";
 import { ApplicationProvider } from "@/context/ApplicationContext";
 import { SelectedApplicantsProvider } from "@/context/SelectedApplicantsContext";
+import { BlockedCandidatesProvider } from "@/context/BlockedCandidatesContext";
 import { useEffect } from "react";
+import { ApolloProvider } from "@apollo/client";
+import { apolloClient } from "@/lib/apollo-client";
 
 const { ToastContainer, toast: globalToast } = createStandaloneToast();
 export { globalToast };
+
+// Load Apollo Client error messages in development
+if (process.env.NODE_ENV !== "production") {
+  import("@apollo/client/dev").then(({ loadErrorMessages, loadDevMessages }) => {
+    loadDevMessages();
+    loadErrorMessages();
+  });
+}
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -35,18 +46,22 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <ChakraProvider>
-        <AuthProvider>
-          <CourseProvider>
-            <ApplicationProvider>
-              <SelectedApplicantsProvider>
-                <Layout Component={Component} pageProps={pageProps} />
-                <ToastContainer />
-              </SelectedApplicantsProvider>
-            </ApplicationProvider>
-          </CourseProvider>
-        </AuthProvider>
-      </ChakraProvider>
+      <ApolloProvider client={apolloClient}>
+        <ChakraProvider>
+          <AuthProvider>
+            <CourseProvider>
+              <BlockedCandidatesProvider>
+                <ApplicationProvider>
+                  <SelectedApplicantsProvider>
+                    <Layout Component={Component} pageProps={pageProps} />
+                    <ToastContainer />
+                  </SelectedApplicantsProvider>
+                </ApplicationProvider>
+              </BlockedCandidatesProvider>
+            </CourseProvider>
+          </AuthProvider>
+        </ChakraProvider>
+      </ApolloProvider>
     </>
   );
 }

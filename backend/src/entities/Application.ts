@@ -46,7 +46,7 @@ export class Application {
 
   @Column({
     type: "enum",
-    enum: ApplicationAvailability,
+    "enum": ApplicationAvailability,
   })
   @IsEnum(ApplicationAvailability, {
     message: "applied_availability must be 'Full-Time' or 'Part-Time'",
@@ -65,7 +65,7 @@ export class Application {
 
   @Column({
     type: "enum",
-    enum: ApplicationRole,
+    "enum": ApplicationRole,
   })
   @IsEnum(ApplicationRole, {
     message: "role must be 'Tutor' or 'Lab-Assistant'",

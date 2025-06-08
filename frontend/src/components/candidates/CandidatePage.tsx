@@ -1,12 +1,13 @@
 // src/components/candidates/CandidatePage.tsx
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useCourses } from "@/context/CourseContext";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course";
 import { ApplicationRole } from "@/types/enums";
 import { bookmarkService } from "@/services/bookmarkService";
+import { useColorModeValue } from "@chakra-ui/react";
 
 import {
   Container,
@@ -29,9 +30,9 @@ const CandidatePage: React.FC = () => {
   const { courses, deleteApplication, reapplyApplication } = useCourses();
   const { user } = useAuth();
   const toast = useToast();
+  const textColor = useColorModeValue("gray.900", "gray.200");
 
-  // Candidate's own skills for matching
-  const userSkills = useMemo(() => user?.defaultSkills || [], [user?.defaultSkills]);
+
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,7 +150,7 @@ const CandidatePage: React.FC = () => {
           Course Dashboard
         </Heading>
 
-        <Text fontSize="lg" textAlign="center" color="gray.600">
+        <Text fontSize="lg" textAlign="center" color={textColor}>
           Welcome, {user.firstName} {user.lastName}!
         </Text>
 
@@ -160,7 +161,6 @@ const CandidatePage: React.FC = () => {
         {/* Unified Course Dashboard */}
         <UnifiedCourseDashboard
           courses={courses}
-          userSkills={userSkills}
           bookmarks={bookmarks}
           onToggleBookmark={toggleBookmark}
           onApply={handleApply}

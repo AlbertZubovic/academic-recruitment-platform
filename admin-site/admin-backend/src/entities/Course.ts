@@ -18,28 +18,28 @@ import { CourseSkill } from "./CourseSkill";
 
 @Entity()
 export class Course {
-  @PrimaryColumn("char", { length: 36 })
+  @PrimaryColumn("char", { "length": 36 })
   @IsString()
   course_ID!: string;
 
-  @Column({ length: 7 })
+  @Column({ "length": 7 })
   @Matches(/^[A-Z]{4}\d{3}$/, {
     message: "course_code must be 4 uppercase letters followed by 3 digits, e.g. COSC120",
   })
   course_code!: string;
 
-  @Column({ length: 255 })
+  @Column({ "length": 255 })
   @IsString()
   @MaxLength(255, { message: "display_name cannot exceed 255 characters" })
   display_name!: string;
 
-  @Column({ length: 255 })
+  @Column({ "length": 255 })
   @IsString()
   @MaxLength(255, { message: "semester cannot exceed 255 characters" })
   semester!: string;
 
-  @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: "lecturer" })
+  @ManyToOne(() => User, { "nullable": true })
+  @JoinColumn({ "name": "lecturer" })
   lecturer!: User | null;
 
   @Column()
@@ -47,12 +47,12 @@ export class Course {
   is_disabled!: boolean;
 
   @OneToMany(() => CourseRole, (courseRole) => courseRole.course, {
-    cascade: true,
+    "cascade": true,
   })
   courseRoles!: CourseRole[];
 
   @OneToMany(() => CourseSkill, (courseSkill) => courseSkill.course, {
-    cascade: true,
+    "cascade": true,
   })
   courseSkills!: CourseSkill[];
 } 

@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
     "start": "ts-node src/index.ts",
+    "start:compiled": "node dist/index.js",
+    "start:dev": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "typeorm": "cross-env TS_NODE_PROJECT=./tsconfig.json typeorm"
   },
@@ -16,6 +19,7 @@
     "@types/node": "^22.15.2",
     "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
+    "build": "^0.1.4",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

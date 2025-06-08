@@ -51,7 +51,7 @@ const ApplicantDetailsModal: React.FC<Props> = ({
     }
   }, [isOpen, applicationDetails.lecturerComment]);
 
-  // When “Save Comment” is clicked, send to backend
+  // When "Save Comment" is clicked, send to backend
   const saveComment = async () => {
     try {
       await updateApplicationStatus(courseId, applicationDetails.applicationId, {
@@ -82,6 +82,7 @@ const ApplicantDetailsModal: React.FC<Props> = ({
   const pastRoleBg = useColorModeValue("gray.100", "gray.600");
   const pastRoleText = useColorModeValue("gray.800", "whiteAlpha.900");
   const inputBg = useColorModeValue("white", "gray.600");
+  const noSkillsTextColor = useColorModeValue("gray.500", "gray.400");
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
@@ -134,7 +135,7 @@ const ApplicantDetailsModal: React.FC<Props> = ({
                   </WrapItem>
                 ))
               ) : (
-                <Text fontSize="sm" color={useColorModeValue("gray.500", "gray.400")}>
+                <Text fontSize="sm" color={noSkillsTextColor}>
                   No specific skills listed.
                 </Text>
               )}

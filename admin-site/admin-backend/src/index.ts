@@ -1,12 +1,16 @@
 import 'reflect-metadata';
 import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@as-integrations/express5';
+import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { WebSocketServer } from 'ws';
+import { useServer } from 'graphql-ws/lib/use/ws';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { PubSub } from 'graphql-subscriptions';
 import { config } from './config';
 import { AppDataSource } from './data-source';
 import { User } from './entities/User';
@@ -21,6 +25,9 @@ dotenv.config();
 
 // JWT secret (use environment variable in production)
 const JWT_SECRET = process.env.JWT_SECRET || 'admin-secret-key-2024';
+
+// Create PubSub instance for GraphQL subscriptions
+const pubsub = new PubSub();
 
 // Admin credentials (hardcoded as per requirement)
 const ADMIN_CREDENTIALS = {
@@ -152,6 +159,12 @@ const typeDefs = `#graphql
       semester: String!
       lecturer_ID: ID
     ): CourseCreationResponse!
+    updateCourse(
+      course_ID: ID!
+      course_code: String
+      display_name: String
+      semester: String
+    ): MutationResponse!
     deleteCourse(course_ID: ID!): MutationResponse!
     
     # Skill management
@@ -168,6 +181,34 @@ const typeDefs = `#graphql
     
     # Application management
     updateApplicationStatus(application_ID: ID!, accepted: Boolean!, lecturer_comment: String): MutationResponse!
+    
+    # Candidate blocking (for subscriptions)
+    blockCandidate(user_ID: ID!, reason: String): CandidateBlockedResponse!
+  }
+
+  type CandidateBlockedResponse {
+    success: Boolean!
+    message: String!
+    blockedCandidate: CandidateBlockedPayload
+  }
+
+  type CandidateBlockedPayload {
+    userId: ID!
+    firstName: String!
+    lastName: String!
+    blockedAt: String!
+    reason: String
+    affectedCourses: [CourseInfo!]!
+  }
+
+  type CourseInfo {
+    courseId: ID!
+    courseName: String!
+    courseCode: String!
+  }
+
+  type Subscription {
+    candidateBlocked: CandidateBlockedPayload!
   }
 `;
 
@@ -182,9 +223,9 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
 
         const totalUsers = await userRepository.count();
-        const totalStudents = await userRepository.count({ where: { is_candidate: true } });
-        const totalLecturers = await userRepository.count({ where: { is_lecturer: true } });
-        const blockedUsers = await userRepository.count({ where: { is_blocked: true } });
+        const totalStudents = await userRepository.count({ "where": { is_candidate: true } });
+        const totalLecturers = await userRepository.count({ "where": { is_lecturer: true } });
+        const blockedUsers = await userRepository.count({ "where": { is_blocked: true } });
         const totalCourses = await courseRepository.count();
 
         return {
@@ -208,7 +249,7 @@ const resolvers = {
       try {
         const userRepository = AppDataSource.getRepository(User);
         return await userRepository.find({
-          order: { created: 'DESC' }
+          "order": { created: 'DESC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching users:', error);
@@ -220,8 +261,8 @@ const resolvers = {
       try {
         const userRepository = AppDataSource.getRepository(User);
         return await userRepository.find({
-          where: { is_candidate: true },
-          order: { created: 'DESC' }
+          "where": { is_candidate: true },
+          "order": { created: 'DESC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching students:', error);
@@ -233,8 +274,8 @@ const resolvers = {
       try {
         const userRepository = AppDataSource.getRepository(User);
         return await userRepository.find({
-          where: { is_lecturer: true },
-          order: { created: 'DESC' }
+          "where": { is_lecturer: true },
+          "order": { created: 'DESC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching lecturers:', error);
@@ -246,8 +287,8 @@ const resolvers = {
       try {
         const userRepository = AppDataSource.getRepository(User);
         return await userRepository.find({
-          where: { is_blocked: true },
-          order: { created: 'DESC' }
+          "where": { is_blocked: true },
+          "order": { created: 'DESC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching blocked users:', error);
@@ -259,8 +300,8 @@ const resolvers = {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
-          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
-          order: { course_code: 'ASC' }
+          "relations": ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
+          "order": { course_code: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching courses:', error);
@@ -272,17 +313,17 @@ const resolvers = {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
         const course = await courseRepository.findOne({
-          where: { course_ID },
-          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill']
+          "where": { course_ID },
+          "relations": ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill']
         });
 
         if (!course) return null;
 
         const applicationRepository = AppDataSource.getRepository(Application);
         const applications = await applicationRepository.find({
-          where: { course: { course_ID } },
-          relations: ['user', 'course'],
-          order: { ranking: 'ASC' }
+          "where": { course: { course_ID } },
+          "relations": ['user', 'course'],
+          "order": { ranking: 'ASC' }
         });
 
         return { ...course, applications };
@@ -296,8 +337,8 @@ const resolvers = {
       try {
         const applicationRepository = AppDataSource.getRepository(Application);
         return await applicationRepository.find({
-          relations: ['user', 'course'],
-          order: { ranking: 'ASC' }
+          "relations": ['user', 'course'],
+          "order": { ranking: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching applications:', error);
@@ -309,9 +350,9 @@ const resolvers = {
       try {
         const applicationRepository = AppDataSource.getRepository(Application);
         return await applicationRepository.find({
-          where: { course: { course_ID } },
-          relations: ['user', 'course'],
-          order: { ranking: 'ASC' }
+          "where": { course: { course_ID } },
+          "relations": ['user', 'course'],
+          "order": { ranking: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching applications by course:', error);
@@ -323,9 +364,9 @@ const resolvers = {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
-          where: { is_disabled: false },
-          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
-          order: { course_code: 'ASC' }
+          "where": { is_disabled: false },
+          "relations": ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
+          "order": { course_code: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching active courses:', error);
@@ -337,9 +378,9 @@ const resolvers = {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
-          where: { is_disabled: true },
-          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
-          order: { course_code: 'ASC' }
+          "where": { is_disabled: true },
+          "relations": ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
+          "order": { course_code: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching disabled courses:', error);
@@ -351,7 +392,7 @@ const resolvers = {
       try {
         const skillRepository = AppDataSource.getRepository(Skill);
         return await skillRepository.find({
-          order: { name: 'ASC' }
+          "order": { name: 'ASC' }
         });
       } catch (error) {
         console.error('[ADMIN] Error fetching skills:', error);
@@ -466,7 +507,7 @@ const resolvers = {
     blockUser: async (_: any, { user_ID }: { user_ID: string }) => {
       try {
         const userRepository = AppDataSource.getRepository(User);
-        const user = await userRepository.findOne({ where: { user_ID } });
+        const user = await userRepository.findOne({ "where": { user_ID } });
         
         if (!user) {
           return { success: false, message: 'User not found' };
@@ -487,7 +528,7 @@ const resolvers = {
     unblockUser: async (_: any, { user_ID }: { user_ID: string }) => {
       try {
         const userRepository = AppDataSource.getRepository(User);
-        const user = await userRepository.findOne({ where: { user_ID } });
+        const user = await userRepository.findOne({ "where": { user_ID } });
         
         if (!user) {
           return { success: false, message: 'User not found' };
@@ -510,12 +551,12 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
         const userRepository = AppDataSource.getRepository(User);
 
-        const course = await courseRepository.findOne({ where: { course_ID } });
+        const course = await courseRepository.findOne({ "where": { course_ID } });
         if (!course) {
           return { success: false, message: 'Course not found' };
         }
 
-        const lecturer = await userRepository.findOne({ where: { user_ID: lecturer_ID, is_lecturer: true } });
+        const lecturer = await userRepository.findOne({ "where": { user_ID: lecturer_ID, is_lecturer: true } });
         if (!lecturer) {
           return { success: false, message: 'Lecturer not found or user is not a lecturer' };
         }
@@ -531,7 +572,7 @@ const resolvers = {
     unassignLecturerFromCourse: async (_: any, { course_ID }: { course_ID: string }) => {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
-        const course = await courseRepository.findOne({ where: { course_ID } });
+        const course = await courseRepository.findOne({ "where": { course_ID } });
         
         if (!course) {
           return { success: false, message: 'Course not found' };
@@ -556,14 +597,14 @@ const resolvers = {
         const userRepository = AppDataSource.getRepository(User);
 
         // Check if course code already exists
-        const existingCourse = await courseRepository.findOne({ where: { course_code } });
+        const existingCourse = await courseRepository.findOne({ "where": { course_code } });
         if (existingCourse) {
           return { success: false, message: 'Course with this code already exists', course_ID: null };
         }
 
         let lecturer = null;
         if (lecturer_ID) {
-          lecturer = await userRepository.findOne({ where: { user_ID: lecturer_ID, is_lecturer: true } });
+          lecturer = await userRepository.findOne({ "where": { user_ID: lecturer_ID, is_lecturer: true } });
           if (!lecturer) {
             return { success: false, message: 'Lecturer not found or user is not a lecturer', course_ID: null };
           }
@@ -585,6 +626,53 @@ const resolvers = {
       }
     },
 
+    updateCourse: async (_: any, { course_ID, course_code, display_name, semester }: {
+      course_ID: string;
+      course_code?: string;
+      display_name?: string;
+      semester?: string;
+    }) => {
+      try {
+        console.log(`[ADMIN] updateCourse called with:`, { course_ID, course_code, display_name, semester });
+        
+        const courseRepository = AppDataSource.getRepository(Course);
+        const course = await courseRepository.findOne({ "where": { course_ID } });
+        
+        if (!course) {
+          return { success: false, message: 'Course not found' };
+        }
+
+        // Check if course code already exists (if being updated)
+        if (course_code && course_code !== course.course_code) {
+          const existingCourse = await courseRepository.findOne({ 
+            "where": { course_code },
+            "select": ["course_ID"]
+          });
+          if (existingCourse && existingCourse.course_ID !== course_ID) {
+            return { success: false, message: 'Course with this code already exists' };
+          }
+        }
+
+        // Build update object with only provided fields
+        const updateData: any = {};
+        if (course_code !== undefined) updateData.course_code = course_code;
+        if (display_name !== undefined) updateData.display_name = display_name;
+        if (semester !== undefined) updateData.semester = semester;
+
+        if (Object.keys(updateData).length === 0) {
+          return { success: false, message: 'No fields provided to update' };
+        }
+
+        await courseRepository.update(course_ID, updateData);
+        
+        console.log(`[ADMIN] Course ${course_ID} updated successfully`);
+        return { success: true, message: 'Course updated successfully' };
+      } catch (error) {
+        console.error('[ADMIN] Error updating course:', error);
+        return { success: false, message: 'Failed to update course' };
+      }
+    },
+
     updateApplicationStatus: async (_: any, { application_ID, accepted, lecturer_comment }: {
       application_ID: string;
       accepted: boolean;
@@ -592,7 +680,7 @@ const resolvers = {
     }) => {
       try {
         const applicationRepository = AppDataSource.getRepository(Application);
-        const application = await applicationRepository.findOne({ where: { application_ID } });
+        const application = await applicationRepository.findOne({ "where": { application_ID } });
         
         if (!application) {
           return { success: false, message: 'Application not found' };
@@ -616,13 +704,13 @@ const resolvers = {
         const applicationRepository = AppDataSource.getRepository(Application);
 
         // Check if course exists
-        const course = await courseRepository.findOne({ where: { course_ID } });
+        const course = await courseRepository.findOne({ "where": { course_ID } });
         if (!course) {
           return { success: false, message: 'Course not found' };
         }
 
         // Check if there are any applications for this course
-        const applications = await applicationRepository.find({ where: { course: { course_ID } } });
+        const applications = await applicationRepository.find({ "where": { course: { course_ID } } });
         if (applications.length > 0) {
           return { success: false, message: 'Cannot delete course with existing applications. Please handle applications first.' };
         }
@@ -641,7 +729,7 @@ const resolvers = {
         const skillRepository = AppDataSource.getRepository(Skill);
         
         // Check if skill already exists
-        const existingSkill = await skillRepository.findOne({ where: { name } });
+        const existingSkill = await skillRepository.findOne({ "where": { name } });
         if (existingSkill) {
           return existingSkill;
         }
@@ -668,14 +756,14 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
         const courseRoleRepository = AppDataSource.getRepository(CourseRole);
 
-        const course = await courseRepository.findOne({ where: { course_ID } });
+        const course = await courseRepository.findOne({ "where": { course_ID } });
         if (!course) {
           throw new Error('Course not found');
         }
 
         // Check if this role already exists for this course
         const existingRole = await courseRoleRepository.findOne({
-          where: { course: { course_ID }, role: role as any }
+          "where": { course: { course_ID }, role: role as any }
         });
         if (existingRole) {
           throw new Error(`${role} role already exists for this course`);
@@ -706,7 +794,7 @@ const resolvers = {
       try {
         const courseRoleRepository = AppDataSource.getRepository(CourseRole);
         
-        const courseRole = await courseRoleRepository.findOne({ where: { course_role_ID } });
+        const courseRole = await courseRoleRepository.findOne({ "where": { course_role_ID } });
         if (!courseRole) {
           return { success: false, message: 'Course role not found' };
         }
@@ -728,7 +816,7 @@ const resolvers = {
       try {
         const courseRoleRepository = AppDataSource.getRepository(CourseRole);
         
-        const courseRole = await courseRoleRepository.findOne({ where: { course_role_ID } });
+        const courseRole = await courseRoleRepository.findOne({ "where": { course_role_ID } });
         if (!courseRole) {
           return { success: false, message: 'Course role not found' };
         }
@@ -747,19 +835,19 @@ const resolvers = {
         const skillRepository = AppDataSource.getRepository(Skill);
         const courseSkillRepository = AppDataSource.getRepository(CourseSkill);
 
-        const course = await courseRepository.findOne({ where: { course_ID } });
+        const course = await courseRepository.findOne({ "where": { course_ID } });
         if (!course) {
           return { success: false, message: 'Course not found' };
         }
 
-        const skill = await skillRepository.findOne({ where: { skill_ID } });
+        const skill = await skillRepository.findOne({ "where": { skill_ID } });
         if (!skill) {
           return { success: false, message: 'Skill not found' };
         }
 
         // Check if skill is already associated with this course
         const existingCourseSkill = await courseSkillRepository.findOne({
-          where: { course_ID, skill_ID }
+          "where": { course_ID, skill_ID }
         });
         if (existingCourseSkill) {
           return { success: false, message: 'Skill is already associated with this course' };
@@ -784,7 +872,7 @@ const resolvers = {
         const courseSkillRepository = AppDataSource.getRepository(CourseSkill);
 
         const courseSkill = await courseSkillRepository.findOne({
-          where: { course_ID, skill_ID }
+          "where": { course_ID, skill_ID }
         });
         if (!courseSkill) {
           return { success: false, message: 'Skill is not associated with this course' };
@@ -796,19 +884,140 @@ const resolvers = {
         console.error('[ADMIN] Error removing skill from course:', error);
         return { success: false, message: 'Failed to remove skill from course' };
       }
+    },
+
+    blockCandidate: async (_: any, { user_ID, reason }: { user_ID: string; reason?: string }) => {
+      console.log(`[ADMIN] blockCandidate mutation called with user_ID: ${user_ID}, reason: ${reason}`);
+      try {
+        const userRepository = AppDataSource.getRepository(User);
+        const applicationRepository = AppDataSource.getRepository(Application);
+        const courseRepository = AppDataSource.getRepository(Course);
+
+        // Find the user to block
+        const user = await userRepository.findOne({ "where": { user_ID } });
+        if (!user) {
+          return { success: false, message: 'User not found' };
+        }
+
+        if (user.is_blocked) {
+          return { success: false, message: 'User is already blocked' };
+        }
+
+        // Block the user
+        await userRepository.update(user_ID, { is_blocked: true });
+
+        // Find all applications for this user to get affected courses
+        const applications = await applicationRepository.find({
+          "where": { user: { user_ID } },
+          "relations": ['course']
+        });
+
+        // Find and un-accept all currently accepted applications
+        const acceptedApplications = applications.filter(app => app.accepted === true);
+        let unacceptedCount = 0;
+
+        if (acceptedApplications.length > 0) {
+          console.log(`[ADMIN] Found ${acceptedApplications.length} accepted applications for blocked candidate. Un-accepting them...`);
+          
+          for (const application of acceptedApplications) {
+            try {
+              await applicationRepository.update(application.application_ID, {
+                accepted: null, // Revert to pending/unaccepted
+              });
+              unacceptedCount++;
+              console.log(`[ADMIN] Un-accepted application ${application.application_ID} for course ${application.course.course_code}`);
+            } catch (updateError) {
+              console.error(`[ADMIN] Error un-accepting application ${application.application_ID}:`, updateError);
+            }
+          }
+        }
+
+        const affectedCourses = applications.map(app => ({
+          courseId: app.course.course_ID,
+          courseName: app.course.display_name,
+          courseCode: app.course.course_code
+        }));
+
+        // Create the payload for the subscription
+        const candidateBlockedPayload = {
+          userId: user_ID,
+          firstName: user.firstname,
+          lastName: user.lastname,
+          blockedAt: new Date().toISOString(),
+          reason: reason || 'No reason provided',
+          affectedCourses
+        };
+
+        // Publish the event to subscribers
+        await pubsub.publish('CANDIDATE_BLOCKED', {
+          candidateBlocked: candidateBlockedPayload
+        });
+
+        const successMessage = unacceptedCount > 0 
+          ? `Candidate ${user.firstname} ${user.lastname} has been blocked successfully. ${unacceptedCount} accepted application(s) have been automatically revoked.`
+          : `Candidate ${user.firstname} ${user.lastname} has been blocked successfully`;
+
+        console.log(`[ADMIN] ${successMessage}`);
+
+        return {
+          success: true,
+          message: successMessage,
+          blockedCandidate: candidateBlockedPayload
+        };
+      } catch (error) {
+        console.error('[ADMIN] Error blocking candidate:', error);
+        return { success: false, message: 'Failed to block candidate' };
+      }
     }
+  },
+
+  Subscription: {
+    candidateBlocked: {
+      subscribe: () => pubsub.asyncIterableIterator('CANDIDATE_BLOCKED'),
+    },
   }
 };
+
+// Create executable schema
+const schema = makeExecutableSchema({ typeDefs, resolvers });
 
 // Create Express app
 const app = express();
 const httpServer = http.createServer(app);
 
+// Create WebSocket server for subscriptions
+const wsServer = new WebSocketServer({
+  server: httpServer,
+  path: '/graphql',
+});
+
+// Use the schema with the WebSocket server
+const serverCleanup = useServer(
+  {
+    schema,
+    context: async (ctx) => {
+      // Add authentication context for WebSocket connections if needed
+      return { pubsub };
+    },
+  },
+  wsServer
+);
+
 // Create Apollo Server
 const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  schema,
+  plugins: [
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+    {
+      async serverWillStart() {
+        return {
+          async drainServer() {
+            await serverCleanup.dispose();
+          },
+        };
+      },
+    },
+  ],
 });
 
 // Start the server
@@ -816,7 +1025,14 @@ async function startServer() {
   try {
     // Initialize database connection
     console.log('🗄️ Initializing database connection...');
-    await AppDataSource.initialize();
+    await AppDataSource.initialize()
+    .then(() => {
+      console.log('✅ Database connection established');
+    })
+    .catch((error) => {
+      console.error('❌ Error initializing database connection:', error);
+      process.exit(1);
+    });
     console.log('✅ Database connection established');
 
     await server.start();
@@ -854,10 +1070,12 @@ async function startServer() {
     await new Promise<void>((resolve) => httpServer.listen({ port }, resolve));
     
     console.log(`🚀 Admin GraphQL server ready at http://localhost:${port}/graphql`);
+    console.log(`🔌 WebSocket subscriptions ready at ws://localhost:${port}/graphql`);
     console.log(`🌐 CORS enabled for: ${config.corsOrigins.join(', ')}`);
     console.log(`📋 Available operations:`);
     console.log(`   • Query: hello, dashboardStats, users, students, lecturers, blockedUsers, courses`);
-    console.log(`   • Mutation: adminLogin, adminLogout, blockUser, unblockUser`);
+    console.log(`   • Mutation: adminLogin, adminLogout, blockUser, unblockUser, blockCandidate`);
+    console.log(`   • Subscription: candidateBlocked`);
     console.log(`🔐 Admin credentials: admin / admin`);
     
   } catch (error) {

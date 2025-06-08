@@ -8,12 +8,14 @@ import {
   ASSIGN_LECTURER_TO_COURSE,
   UNASSIGN_LECTURER_FROM_COURSE,
   CREATE_COURSE,
+  UPDATE_COURSE,
   DELETE_COURSE,
   GET_ALL_APPLICATIONS,
   SEARCH_SKILLS,
   CREATE_SKILL,
   CREATE_COURSE_ROLE,
-  ADD_SKILL_TO_COURSE
+  ADD_SKILL_TO_COURSE,
+  REMOVE_SKILL_FROM_COURSE
 } from '../graphql/queries';
 
 interface User {
@@ -64,6 +66,7 @@ interface Application {
 const CourseManagement: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState<string | null>(null);
   const [showAssignForm, setShowAssignForm] = useState<string | null>(null);
   
   // Enhanced course creation state
@@ -71,6 +74,12 @@ const CourseManagement: React.FC = () => {
   const [courseSkills, setCourseSkills] = useState<Skill[]>([]);
   const [skillSearchTerm, setSkillSearchTerm] = useState<string>('');
   const [showSkillDropdown, setShowSkillDropdown] = useState<boolean>(false);
+  
+  // Edit form state
+  const [editSelectedRoles, setEditSelectedRoles] = useState<string[]>([]);
+  const [editCourseSkills, setEditCourseSkills] = useState<Skill[]>([]);
+  const [editSkillSearchTerm, setEditSkillSearchTerm] = useState<string>('');
+  const [editShowSkillDropdown, setEditShowSkillDropdown] = useState<boolean>(false);
 
   // Queries
   const { data: coursesData, loading: coursesLoading, error: coursesError, refetch: refetchCourses } = useQuery(GET_ALL_COURSES);
@@ -83,14 +92,22 @@ const CourseManagement: React.FC = () => {
     skip: skillSearchTerm.length < 2
   });
 
+  // Skill search query for editing
+  const editSkillSearch = useQuery(SEARCH_SKILLS, {
+    variables: { search: editSkillSearchTerm },
+    skip: editSkillSearchTerm.length < 2
+  });
+
   // Mutations
   const [assignLecturerToCourse] = useMutation(ASSIGN_LECTURER_TO_COURSE);
   const [unassignLecturerFromCourse] = useMutation(UNASSIGN_LECTURER_FROM_COURSE);
   const [createCourse] = useMutation(CREATE_COURSE);
+  const [updateCourse] = useMutation(UPDATE_COURSE);
   const [deleteCourse] = useMutation(DELETE_COURSE);
   const [createSkill] = useMutation(CREATE_SKILL);
   const [createCourseRole] = useMutation(CREATE_COURSE_ROLE);
   const [addSkillToCourse] = useMutation(ADD_SKILL_TO_COURSE);
+  const [removeSkillFromCourse] = useMutation(REMOVE_SKILL_FROM_COURSE);
 
   const courses: Course[] = coursesData?.courses || [];
   const lecturers: User[] = lecturersData?.lecturers || [];
@@ -98,7 +115,7 @@ const CourseManagement: React.FC = () => {
 
   // Lock body scroll when modal is open
   useEffect(() => {
-    if (showCreateForm) {
+    if (showCreateForm || showEditForm) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -108,7 +125,7 @@ const CourseManagement: React.FC = () => {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [showCreateForm]);
+  }, [showCreateForm, showEditForm]);
 
   // Debug logging
   console.log('CourseManagement Debug:', {
@@ -171,6 +188,47 @@ const CourseManagement: React.FC = () => {
     setSkillSearchTerm('');
     setShowSkillDropdown(false);
     setShowCreateForm(false);
+  };
+
+  // Reset edit form state
+  const resetEditFormState = () => {
+    setEditSelectedRoles([]);
+    setEditCourseSkills([]);
+    setEditSkillSearchTerm('');
+    setEditShowSkillDropdown(false);
+    setShowEditForm(null);
+  };
+
+  // Initialize edit form with course data
+  const initializeEditForm = (course: Course) => {
+    setEditSelectedRoles(getRolesForCourse(course));
+    setEditCourseSkills(getAllSkillsForCourse(course));
+    setEditSkillSearchTerm('');
+    setEditShowSkillDropdown(false);
+    setShowEditForm(course.course_ID);
+  };
+
+  // Handle edit role selection
+  const handleEditRoleToggle = (role: string) => {
+    if (editSelectedRoles.includes(role)) {
+      setEditSelectedRoles(editSelectedRoles.filter(r => r !== role));
+    } else {
+      setEditSelectedRoles([...editSelectedRoles, role]);
+    }
+  };
+
+  // Handle edit skill selection
+  const handleEditSkillSelect = (skill: Skill) => {
+    if (!editCourseSkills.find(s => s.skill_ID === skill.skill_ID)) {
+      setEditCourseSkills([...editCourseSkills, skill]);
+    }
+    setEditSkillSearchTerm('');
+    setEditShowSkillDropdown(false);
+  };
+
+  // Handle edit skill removal
+  const handleEditSkillRemove = (skillId: string) => {
+    setEditCourseSkills(editCourseSkills.filter(s => s.skill_ID !== skillId));
   };
 
   // Handle course creation
@@ -244,6 +302,110 @@ const CourseManagement: React.FC = () => {
     } catch (error) {
       console.error('Error creating course:', error);
       alert('Failed to create course');
+    }
+  };
+
+  // Handle course update
+  const handleUpdateCourse = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!showEditForm) return;
+    
+    const course = courses.find(c => c.course_ID === showEditForm);
+    if (!course) return;
+    
+    // Validate that at least one skill is selected
+    if (editCourseSkills.length === 0) {
+      alert('Please select at least one skill for the course.');
+      return;
+    }
+    
+    // Validate that at least one role is selected
+    if (editSelectedRoles.length === 0) {
+      alert('Please select at least one role for the course.');
+      return;
+    }
+    
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      // Update basic course information
+      const { data } = await updateCourse({
+        variables: {
+          course_ID: showEditForm,
+          course_code: formData.get('course_code'),
+          display_name: formData.get('display_name'),
+          semester: formData.get('semester'),
+        }
+      });
+      
+      if (data.updateCourse.success) {
+        // Handle skill changes
+        const currentSkills = getAllSkillsForCourse(course);
+        const skillsToAdd = editCourseSkills.filter(skill => 
+          !currentSkills.find(cs => cs.skill_ID === skill.skill_ID)
+        );
+        const skillsToRemove = currentSkills.filter(skill => 
+          !editCourseSkills.find(es => es.skill_ID === skill.skill_ID)
+        );
+
+        // Add new skills
+        for (const skill of skillsToAdd) {
+          try {
+            await addSkillToCourse({
+              variables: { course_ID: showEditForm, skill_ID: skill.skill_ID }
+            });
+          } catch (error) {
+            console.error('Error adding skill:', error);
+          }
+        }
+
+        // Remove old skills
+        for (const skill of skillsToRemove) {
+          try {
+            await removeSkillFromCourse({
+              variables: { course_ID: showEditForm, skill_ID: skill.skill_ID }
+            });
+          } catch (error) {
+            console.error('Error removing skill:', error);
+          }
+        }
+
+        // Handle role changes
+        const currentRoles = getRolesForCourse(course);
+        const rolesToAdd = editSelectedRoles.filter(role => !currentRoles.includes(role));
+        const rolesToRemove = currentRoles.filter(role => !editSelectedRoles.includes(role));
+
+        // Add new roles
+        for (const role of rolesToAdd) {
+          try {
+            await createCourseRole({
+              variables: { 
+                course_ID: showEditForm, 
+                role, 
+                positions_available: 1 
+              }
+            });
+          } catch (error) {
+            console.error('Error adding role:', error);
+          }
+        }
+
+        // Remove old roles (Note: This would require a delete mutation for roles)
+        // For now, we'll just log them
+        if (rolesToRemove.length > 0) {
+          console.log('Roles to remove (manual process required):', rolesToRemove);
+        }
+
+        alert('Course updated successfully!');
+        resetEditFormState();
+        refetchCourses();
+      } else {
+        alert(`Failed to update course: ${data.updateCourse.message}`);
+      }
+    } catch (error) {
+      console.error('Error updating course:', error);
+      alert('Failed to update course');
     }
   };
 
@@ -458,6 +620,7 @@ const CourseManagement: React.FC = () => {
                         setSkillSearchTerm(e.target.value);
                         setShowSkillDropdown(e.target.value.length >= 2);
                       }}
+                      onBlur={() => setTimeout(() => setShowSkillDropdown(false), 200)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                       placeholder="Search or type to create skills..."
                     />
@@ -548,6 +711,176 @@ const CourseManagement: React.FC = () => {
         </div>
       )}
 
+      {/* Edit Course Modal */}
+      {showEditForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">Edit Course</h2>
+            
+            <form onSubmit={handleUpdateCourse} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-course-code" className="block text-sm font-medium text-gray-700 mb-1">
+                    Course Code*
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-course-code"
+                    name="course_code"
+                    defaultValue={courses.find(c => c.course_ID === showEditForm)?.course_code || ''}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    placeholder="e.g., CITS3200"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="edit-semester" className="block text-sm font-medium text-gray-700 mb-1">
+                    Semester*
+                  </label>
+                  <input
+                    type="text"
+                    id="edit-semester"
+                    name="semester"
+                    defaultValue={courses.find(c => c.course_ID === showEditForm)?.semester || ''}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    placeholder="e.g., Semester 2, 2024"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="edit-display-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Name*
+                </label>
+                <input
+                  type="text"
+                  id="edit-display-name"
+                  name="display_name"
+                  defaultValue={courses.find(c => c.course_ID === showEditForm)?.display_name || ''}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  placeholder="e.g., Professional Computing"
+                />
+              </div>
+
+              {/* Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Roles*
+                </label>
+                <div className="space-y-2">
+                  {['Tutor', 'Lab-Assistant'].map((role) => (
+                    <label key={role} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={editSelectedRoles.includes(role)}
+                        onChange={() => handleEditRoleToggle(role)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-900">{role}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Skills Management */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Required Skills*
+                </label>
+                
+                {/* Selected Skills */}
+                {editCourseSkills.length > 0 && (
+                  <div className="mb-3 p-3 bg-gray-50 rounded-md">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Skills:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {editCourseSkills.map((skill) => (
+                        <span
+                          key={skill.skill_ID}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                        >
+                          {skill.name}
+                          <button
+                            type="button"
+                            onClick={() => handleEditSkillRemove(skill.skill_ID)}
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                                 {/* Skill Search */}
+                 <div className="relative">
+                   <input
+                     type="text"
+                     value={editSkillSearchTerm}
+                     onChange={(e) => setEditSkillSearchTerm(e.target.value)}
+                     onFocus={() => setEditShowSkillDropdown(true)}
+                     onBlur={() => setTimeout(() => setEditShowSkillDropdown(false), 200)}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                     placeholder="Search for skills to add..."
+                   />
+                  
+                  {editShowSkillDropdown && editSkillSearchTerm.length >= 2 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {editSkillSearch.loading && (
+                        <div className="p-3 text-gray-500">Searching...</div>
+                      )}
+                      
+                      {editSkillSearch.data?.searchSkills?.length === 0 && (
+                        <div className="p-3">
+                                                     <div className="text-gray-500 mb-2">No skills found matching &quot;{editSkillSearchTerm}&quot;</div>
+                           <button
+                             type="button"
+                             onClick={() => handleCreateNewSkill(editSkillSearchTerm)}
+                             className="text-blue-600 hover:text-blue-800 text-sm"
+                           >
+                             Create &quot;{editSkillSearchTerm}&quot; as a new skill
+                           </button>
+                        </div>
+                      )}
+                      
+                      {editSkillSearch.data?.searchSkills?.map((skill: Skill) => (
+                        <button
+                          key={skill.skill_ID}
+                          type="button"
+                          onClick={() => handleEditSkillSelect(skill)}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-100 text-gray-900"
+                        >
+                          {skill.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetEditFormState}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Update Course
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Courses Grid */}
       <div className="grid gap-6">
         {courses.length === 0 ? (
@@ -627,13 +960,23 @@ const CourseManagement: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <div className="mt-2">
-                      <button
-                        onClick={() => handleDeleteCourse(course.course_ID, `${course.course_code} - ${course.display_name}`)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      >
-                        Delete Course
-                      </button>
+                    <div className="mt-2 space-y-1">
+                      <div>
+                        <button
+                          onClick={() => initializeEditForm(course)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Edit Course
+                        </button>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => handleDeleteCourse(course.course_ID, `${course.course_code} - ${course.display_name}`)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Delete Course
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

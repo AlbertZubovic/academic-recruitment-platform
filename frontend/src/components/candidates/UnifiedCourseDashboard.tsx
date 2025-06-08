@@ -27,7 +27,6 @@ import { ApplicationRole } from "@/types/enums";
 
 interface UnifiedCourseDashboardProps {
   courses: Course[];
-  userSkills: string[];
   bookmarks: Record<string, boolean>;
   onToggleBookmark: (courseId: string) => void;
   onApply: (course: Course, role: ApplicationRole) => void;
@@ -40,7 +39,6 @@ type FilterType = "all" | "accepted" | "applied" | "saved" | "rejected";
 
 const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
   courses,
-  userSkills,
   bookmarks,
   onToggleBookmark,
   onApply,
@@ -95,7 +93,7 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
           return true;
       }
     });
-  }, [courses, activeFilter, userSkills, bookmarks]);
+  }, [courses, activeFilter, bookmarks]);
 
   // Get filter counts
   const filterCounts = useMemo(() => {
@@ -124,7 +122,7 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
     });
 
     return counts;
-  }, [courses, userSkills, bookmarks]);
+  }, [courses, bookmarks]);
 
   const renderCourseCard = (course: Course) => {
     const isBookmarked = bookmarks[course.id];

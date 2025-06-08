@@ -32,7 +32,7 @@ export class CourseRole {
 
   @Column({
     type: "enum",
-    enum: CourseRoleType,
+    "enum": CourseRoleType,
   })
   @IsEnum(CourseRoleType, {
     message: "role must be 'Tutor' or 'Lab-Assistant'",

@@ -6,11 +6,15 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import { useToast } from "@chakra-ui/react";
-import { arrayMove } from "@dnd-kit/sortable";
-
+import { Course as CourseType } from "@/types/course";
+import { User } from "@/types/user";
 import { useAuth } from "./AuthContext";
+import { useBlockedCandidates } from "./BlockedCandidatesContext";
+import { DragEndEvent } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 
 import {
   CandidateApplication,
@@ -24,9 +28,7 @@ import {
   ApplyToCourseRequest,
   UpdateApplicationRequest,
   UpdateApplicationStatusRequest,
-} from "@/types/apiRequests";
-import { Course as CourseType } from "@/types/course";
-import { User } from "@/types/user";
+  } from "@/types/apiRequests";
 
 
 type CourseWithApplicants = CourseType & {
@@ -72,13 +74,14 @@ interface ApplicationContextValue {
   isFilteredView: boolean;
   openPanels: number[];
 
-  handleDragEnd: (event: any) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
 }
 
 const ApplicationContext = createContext<ApplicationContextValue | undefined>(undefined);
 
 export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { onCandidateBlocked, removeCandidateBlockedCallback } = useBlockedCandidates();
   const toast = useToast();
   const BASE_URL = "http://localhost:5000/api";
 
@@ -99,8 +102,8 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       const data: MyApplicationsResponse = await res.json();
       setMyApplications(data);
-    } catch (err: any) {
-      setErrorMy(err.message);
+    } catch (err: unknown) {
+      setErrorMy(err instanceof Error ? err.message : "Unknown error");
       setMyApplications([]);
     } finally {
       setLoadingMyApps(false);
@@ -127,8 +130,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(data.message || "Failed to apply");
       }
       await fetchMyApplications();
-    } catch (err: any) {
-      setErrorMy(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setErrorMy(errorMessage);
       throw err;
     }
   };
@@ -153,8 +157,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(data.message || "Failed to update application");
       }
       await fetchMyApplications();
-    } catch (err: any) {
-      setErrorMy(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setErrorMy(errorMessage);
       throw err;
     }
   };
@@ -188,7 +193,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   // 2a) Fetch all courses that this lecturer teaches
-  const fetchCoursesWithApplicants = async () => {
+  const fetchCoursesWithApplicants = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/courses`, {
         credentials: "include",
@@ -199,19 +204,20 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       const myId = user?.id;
       const myCourses = data.filter((course) => course.lecturer?.id === myId);
       setCourses(myCourses);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load courses";
       toast({
         title: "Error loading courses",
-        description: err.message,
+        description: errorMessage,
         status: "error",
         duration: 3000,
         isClosable: true,
       });
     }
-  };
+  }, [user, toast]);
 
   // 2b) Fetch full list of candidate users
-  const fetchAllCandidateUsers = async () => {
+  const fetchAllCandidateUsers = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/users/candidates`, {
         credentials: "include",
@@ -219,16 +225,17 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (!res.ok) throw new Error("Failed to fetch candidates");
       const data: User[] = await res.json();
       setAllUsers(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load users";
       toast({
         title: "Error loading users",
-        description: err.message,
+        description: errorMessage,
         status: "error",
         duration: 3000,
         isClosable: true,
       });
     }
-  };
+  }, [toast]);
 
   // 2c) Fetch applications for a single course
   const fetchLecturerApplications = async (courseId: string) => {
@@ -252,8 +259,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
         ...prev,
         [courseId]: data,
       }));
-    } catch (err: any) {
-      setErrorLect(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch applications";
+      setErrorLect(errorMessage);
       setLecturerApplications((prev) => ({
         ...prev,
         [courseId]: [],
@@ -290,8 +298,9 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // (2) Re-fetch all courses
       await fetchCoursesWithApplicants();
-    } catch (err: any) {
-      setErrorLect(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update status";
+      setErrorLect(errorMessage);
       throw err;
     }
   };
@@ -314,7 +323,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   const filteredApplicants = courses
     .map((course) => {
       // Filter each course's applicants according to search/availability
-      let filteredApps = (course.applicants || []).filter((app) => {
+      const filteredApps = (course.applicants || []).filter((app) => {
         // a) searchTerm
         if (searchTerm) {
           const lower = searchTerm.toLowerCase();
@@ -388,7 +397,7 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   // When dragging ends, reorder locally and persist new rankings (role-based)
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!active || !over) return;
 
@@ -475,7 +484,26 @@ export const ApplicationProvider: React.FC<{ children: ReactNode }> = ({ childre
       setCourses([]);
       setAllUsers([]);
     }
-  }, [user]);
+  }, [user, fetchCoursesWithApplicants, fetchAllCandidateUsers]);
+
+  // Separate useEffect for registering blocked candidate callbacks
+  useEffect(() => {
+    if (user?.isLecturer) {
+      // Register callback to refetch data when a candidate is blocked
+      const handleCandidateBlocked = () => {
+        console.log('[APPLICATION_CONTEXT] Candidate blocked - refetching data...');
+        fetchCoursesWithApplicants();
+        fetchAllCandidateUsers();
+      };
+
+      onCandidateBlocked(handleCandidateBlocked);
+
+      // Cleanup callback on unmount or user change
+      return () => {
+        removeCandidateBlockedCallback(handleCandidateBlocked);
+      };
+    }
+  }, [user?.isLecturer, onCandidateBlocked, removeCandidateBlockedCallback, fetchCoursesWithApplicants, fetchAllCandidateUsers]);
 
   return (
     <ApplicationContext.Provider

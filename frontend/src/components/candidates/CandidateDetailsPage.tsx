@@ -1,6 +1,6 @@
 // src/components/candidates/CandidateDetailsPage.tsx
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Container,
   Heading,
@@ -46,7 +46,7 @@ const CandidateDetailsPage = () => {
     }
   }, [user]);
 
-  const validateAllFields = () => {
+  const validateAllFields = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
     if (!candidateDetails.firstName?.trim())
       newErrors.firstName = "First name is required.";
@@ -59,9 +59,9 @@ const CandidateDetailsPage = () => {
       newErrors.email = "Invalid email format.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [candidateDetails]);
 
-  const saveToBackend = async (showToastMessage: boolean = false) => {
+  const saveToBackend = useCallback(async (showToastMessage: boolean = false) => {
     if (!validateAllFields()) return false;
     try {
       const payload = {
@@ -89,8 +89,12 @@ const CandidateDetailsPage = () => {
         });
       }
       return true;
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Failed to update user.";
+    } catch (err: unknown) {
+      let message = "Failed to update user.";
+      if (err && typeof err === 'object' && 'response' in err) {
+        const response = (err as { response?: { data?: { message?: string } } }).response;
+        message = response?.data?.message || message;
+      }
       if (showToastMessage) {
         globalToast({
           title: "Save Error",
@@ -104,7 +108,7 @@ const CandidateDetailsPage = () => {
       }
       return false;
     }
-  };
+  }, [candidateDetails, setUser, validateAllFields]);
 
   useEffect(() => {
     const handleUnload = async () => {
@@ -115,7 +119,7 @@ const CandidateDetailsPage = () => {
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
-  }, [hasChanges, candidateDetails]);
+  }, [hasChanges, candidateDetails, saveToBackend]);
 
   const handleSaveClick = async () => {
     const success = await saveToBackend(true);

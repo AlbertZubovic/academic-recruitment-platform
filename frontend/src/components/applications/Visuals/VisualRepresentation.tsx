@@ -57,6 +57,15 @@ const VisualRepresentation: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ─────────────── Color values for light/dark ───────────────
+  const panelBg = useColorModeValue("white", "gray.700");
+  const headingColor = useColorModeValue("gray.800", "whiteAlpha.900");
+  const subTextColor = useColorModeValue("gray.500", "gray.400");
+  const errorTextColor = useColorModeValue("red.600", "red.300");
+  const alertBg = useColorModeValue("red.50", "red.900");
+  const tabListBg = useColorModeValue("gray.100", "gray.600");
+  const summaryTextColor = useColorModeValue("gray.800", "whiteAlpha.900");
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -126,18 +135,12 @@ const VisualRepresentation: React.FC = () => {
       setSelectionData(selArray);
       setSkillData(skillArray);
       setAvailabilityData(availArray);
-    } catch (err: any) {
-      setError(err.message || "Failed to build chart data.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to build chart data.");
     } finally {
       setLoading(false);
     }
   }, [courses]);
-
-  // ─────────────── Color values for light/dark ───────────────
-  const panelBg = useColorModeValue("white", "gray.700");
-  const headingColor = useColorModeValue("gray.800", "whiteAlpha.900");
-  const subTextColor = useColorModeValue("gray.500", "gray.400");
-  const errorTextColor = useColorModeValue("red.600", "red.300");
 
   if (loading) {
     return (
@@ -150,7 +153,7 @@ const VisualRepresentation: React.FC = () => {
   if (error) {
     return (
       <Box mt={8} bg={panelBg} borderRadius="md" boxShadow="md" p={4}>
-        <Alert status="error" bg={useColorModeValue("red.50", "red.900")}>
+        <Alert status="error" bg={alertBg}>
           <AlertIcon />
           <Text color={errorTextColor}>{error}</Text>
         </Alert>
@@ -168,7 +171,7 @@ const VisualRepresentation: React.FC = () => {
     ? selectedOnly.reduce((min, curr) => (curr.count < min.count ? curr : min))
     : null;
 
-  // b) “Not Approved” = applicants who appear anywhere but never got an approval
+  // b) "Not Approved" = applicants who appear anywhere but never got an approval
   const uniqueAllIds = new Set<string>();
   const uniqueApprovedIds = new Set<string>();
   courses.forEach((course) => {
@@ -186,17 +189,17 @@ const VisualRepresentation: React.FC = () => {
       <Heading as="h3" size="lg" mb={4} textAlign="center" color={headingColor}>
         Selection Overview
       </Heading>
-      <Text fontSize="sm" color={subTextColor} textAlign="center" mb={4}>
-        (Top Skills & Availability include all applicants;  
-        “Selections per Applicant” counts only approved applications.)
-      </Text>
+              <Text fontSize="sm" color={subTextColor} textAlign="center" mb={4}>
+          (Top Skills & Availability include all applicants;  
+          &quot;Selections per Applicant&quot; counts only approved applications.)
+        </Text>
 
       {/* ─── TABBED CHARTS ─── */}
       <Tabs isLazy variant="enclosed">
         <TabList
           mb={4}
           flexWrap="wrap"
-          bg={useColorModeValue("gray.100", "gray.600")}
+          bg={tabListBg}
           borderRadius="md"
         >
           <Tab>Selections per Applicant</Tab>
@@ -208,9 +211,9 @@ const VisualRepresentation: React.FC = () => {
           {/* 1) Selections per Applicant */}
           <TabPanel bg={panelBg}>
             {selectionData.length === 0 ? (
-              <Text textAlign="center" color={subTextColor}>
-                No approved applications yet, so no “Selections per Applicant” to show.
-              </Text>
+                              <Text textAlign="center" color={subTextColor}>
+                  No approved applications yet, so no &quot;Selections per Applicant&quot; to show.
+                </Text>
             ) : (
               <ApplicantSelectionChart data={selectionData} />
             )}
@@ -240,19 +243,19 @@ const VisualRepresentation: React.FC = () => {
 
       {/* ─── SUMMARY STATISTICS ─── */}
       <VStack align="start" mt={6} spacing={2}>
-        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+        <Text color={summaryTextColor}>
           <strong>Most Chosen (approved):</strong>{" "}
           {mostChosen
             ? `${mostChosen.name} (${mostChosen.count} approvals)`
             : "N/A"}
         </Text>
-        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+        <Text color={summaryTextColor}>
           <strong>Least Chosen (among approved):</strong>{" "}
           {leastChosen
             ? `${leastChosen.name} (${leastChosen.count} approvals)`
             : "N/A"}
         </Text>
-        <Text color={useColorModeValue("gray.800", "whiteAlpha.900")}>
+        <Text color={summaryTextColor}>
           <strong>Not Approved:</strong> {notApprovedCount} candidate(s)
         </Text>
       </VStack>

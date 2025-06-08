@@ -20,6 +20,7 @@ import { HamburgerIcon, CopyIcon } from "@chakra-ui/icons";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { useApplications } from "@/context/ApplicationContext";
+import { useBlockedCandidates } from "@/context/BlockedCandidatesContext";
 import SortableItem from "../Controls/SortableItem";
 import ApplicantCard from "../Applicant/ApplicantCard";
 
@@ -46,10 +47,19 @@ const ApplicantNote: React.FC<ApplicantNoteProps> = ({
   index,
   isFilteredView,
 }) => {
+  // Check if this candidate is blocked
+  const { isUserBlocked, getBlockedCandidateInfo } = useBlockedCandidates();
+  const isBlocked = isUserBlocked(applicantDetail.userId);
+  const blockedInfo = getBlockedCandidateInfo(applicantDetail.userId);
+  
   // Color theme hooks at component level
   const cardBg = useColorModeValue("white", "gray.800");
   const cardBorderColor = useColorModeValue("gray.200", "gray.600");
   const dragIconColor = useColorModeValue("gray.500", "gray.300");
+  
+  // Blocked candidate styling
+  const blockedCardBg = useColorModeValue("gray.100", "gray.700");
+  const blockedBorderColor = useColorModeValue("red.300", "red.500");
 
   return (
     <SortableItem
@@ -58,14 +68,37 @@ const ApplicantNote: React.FC<ApplicantNoteProps> = ({
     >
       {(dragHandleProps) => (
         <Box
-          bg={cardBg}
+          bg={isBlocked ? blockedCardBg : cardBg}
           borderRadius="md"
           boxShadow="sm"
           w="100%"
-          border="1px solid"
-          borderColor={cardBorderColor}
+          border="2px solid"
+          borderColor={isBlocked ? blockedBorderColor : cardBorderColor}
+          opacity={isBlocked ? 0.7 : 1}
+          position="relative"
         >
-          <Flex align="center" p={2}>
+          {/* Blocked warning banner */}
+          {isBlocked && (
+            <Box
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bg="red.500"
+              color="white"
+              px={2}
+              py={1}
+              fontSize="xs"
+              fontWeight="bold"
+              textAlign="center"
+              zIndex={1}
+            >
+              ⚠️ CANDIDATE BLOCKED - Not available for hiring
+              {blockedInfo && ` (${new Date(blockedInfo.blockedAt).toLocaleDateString()})`}
+            </Box>
+          )}
+          
+          <Flex align="center" p={2} mt={isBlocked ? 6 : 0}>
             <Tooltip
               label={
                 isFilteredView

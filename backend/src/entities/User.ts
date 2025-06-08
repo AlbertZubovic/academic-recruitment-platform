@@ -44,7 +44,7 @@ export class User {
 
   @Column({
     type: "enum",
-    enum: UserAvailability,
+    "enum": UserAvailability,
     nullable: true,
   })
   @IsOptional()

@@ -37,7 +37,7 @@ export interface SignInResponse {
 /**
  * Response from GET /api/auth/me
  */
-export interface MeResponse extends User {}
+export type MeResponse = User;
 
 /**
  * Response from GET /api/users/candidates

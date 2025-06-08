@@ -63,7 +63,7 @@ const LandingPage: React.FC = () => {
   const pageBg = useColorModeValue("white", "gray.800");
   const cardBg = useColorModeValue("gray.50", "gray.700");
   const cardHoverBg = useColorModeValue("gray.100", "gray.600");
-  const sectionHeadingColor = useColorModeValue("gray.800", "whiteAlpha.900");
+  const sectionHeadingColor = useColorModeValue("gray.900", "gray.300");
   const subheadingColor = useColorModeValue("gray.600", "gray.300");
   const mutedText = useColorModeValue("gray.600", "gray.400");
   const buttonBorder = useColorModeValue("gray.200", "gray.600");
@@ -213,7 +213,7 @@ const LandingPage: React.FC = () => {
             alt="Students collaborating on a project"
             className={styles.landingImage}
           />
-          <Text color={subheadingColor} className={styles.description}>
+          <Text color={subheadingColor}>
             TeachTeam helps lecturers hire skilled tutors and lab assistants
             through a streamlined application and review system.
           </Text>
@@ -231,12 +231,12 @@ const LandingPage: React.FC = () => {
             <Box>
               <Heading
                 color={sectionHeadingColor}
-                className={styles.heading}
+                //lassName={styles.heading}
                 whiteSpace="nowrap"
               >
                 Welcome to TeachTeam
               </Heading>
-              <Text color={subheadingColor} className={styles.subheading}>
+              <Text color={subheadingColor} >
                 A place by teachers, for teachers.
               </Text>
             </Box>

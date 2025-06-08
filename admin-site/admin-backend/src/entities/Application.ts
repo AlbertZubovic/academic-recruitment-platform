@@ -29,47 +29,47 @@ export enum ApplicationRole {
 
 @Entity()
 export class Application {
-  @PrimaryColumn("char", { length: 36 })
+  @PrimaryColumn("char", { "length": 36 })
   @IsString()
   application_ID!: string;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: "user_ID" })
+  @JoinColumn({ "name": "user_ID" })
   user!: User;
 
   @ManyToOne(() => Course)
-  @JoinColumn({ name: "course_ID" })
+  @JoinColumn({ "name": "course_ID" })
   course!: Course;
 
   @Column({
-    type: "enum",
-    enum: ApplicationAvailability,
+    "type": "enum",
+    "enum": ApplicationAvailability,
   })
   @IsEnum(ApplicationAvailability, {
     message: "applied_availability must be 'Full-Time' or 'Part-Time'",
   })
   applied_availability!: ApplicationAvailability;
 
-  @Column({ type: "boolean", nullable: true, default: null })
+  @Column({ "type": "boolean", "nullable": true, "default": null })
   @IsOptional()
   @IsBoolean({ message: "accepted must be boolean or null" })
   accepted!: boolean | null;
 
-  @Column({ type: "int", nullable: true })
+  @Column({ "type": "int", "nullable": true })
   @IsOptional()
   @IsInt({ message: "ranking must be an integer" })
   ranking!: number | null;
 
   @Column({
-    type: "enum",
-    enum: ApplicationRole,
+    "type": "enum",
+    "enum": ApplicationRole,
   })
   @IsEnum(ApplicationRole, {
     message: "role must be 'Tutor' or 'Lab-Assistant'",
   })
   role!: ApplicationRole;
 
-  @Column("varchar", { length: 255, nullable: true })
+  @Column("varchar", { "length": 255, "nullable": true })
   @IsOptional()
   @IsString()
   @MaxLength(255, {
@@ -77,10 +77,10 @@ export class Application {
   })
   lecturer_comment!: string | null;
 
-  @Column({ default: false })
+  @Column({ "default": false })
   @IsBoolean()
   is_withdrawn!: boolean;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ "type": "datetime", "nullable": true })
   withdrawn_at!: Date | null;
 } 

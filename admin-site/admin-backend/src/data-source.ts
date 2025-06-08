@@ -9,7 +9,7 @@ import { CourseRole } from "./entities/CourseRole";
 import { CourseSkill } from "./entities/CourseSkill";
 
 export const AppDataSource = new DataSource({
-  type: "mysql",
+  "type": "mysql",
   host: "209.38.26.237",
   port: 3306,
   username: "S4007755",
@@ -17,7 +17,7 @@ export const AppDataSource = new DataSource({
   database: "S4007755",
   synchronize: false,
   dropSchema: false,
-  logging: false, // Set to false for admin to reduce noise
+  logging: false,
   entities: [
     User,
     Skill,
@@ -28,6 +28,6 @@ export const AppDataSource = new DataSource({
     CourseRole,
     CourseSkill,
   ],
-  migrations: ["src/migrations/*.ts"],
+  migrations: [__dirname + "/migrations/*.js"],
   subscribers: [],
 }); 

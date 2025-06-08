@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:dev": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/data-source.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
@@ -21,18 +22,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@apollo/server": "^4.12.1",
-    "@as-integrations/express5": "^1.1.0",
+    "@apollo/server": "^4.10.0",
+    "@graphql-tools/schema": "^10.0.23",
     "@types/cors": "^2.8.19",
+    "@types/ws": "^8.18.1",
+    "build": "^0.1.4",
     "class-validator": "^0.14.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^5.1.0",
+    "express": "^4.18.2",
     "graphql": "^16.11.0",
+    "graphql-subscriptions": "^3.0.0",
+    "graphql-ws": "^5.16.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.1",
     "reflect-metadata": "^0.2.2",
-    "typeorm": "^0.3.24"
+    "typeorm": "^0.3.24",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.9",

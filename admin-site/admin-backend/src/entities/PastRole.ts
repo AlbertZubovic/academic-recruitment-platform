@@ -3,13 +3,13 @@ import { User } from "./User";
 
 @Entity()
 export class PastRole {
-  @PrimaryColumn("char", { length: 36 })
+  @PrimaryColumn("char", { "length": 36 })
   past_role_ID!: string;
 
-  @Column({ length: 255 })
+  @Column({ "length": 255 })
   role_name!: string;
 
-  @Column({ length: 255 })
+  @Column({ "length": 255 })
   company!: string;
 
   @Column()
@@ -19,6 +19,6 @@ export class PastRole {
   end_date!: Date;
 
   @ManyToOne(() => User, user => user.pastRoles)
-  @JoinColumn({ name: "user_ID" })
+  @JoinColumn({ "name": "user_ID" })
   user!: User;
 } 

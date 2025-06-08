@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_ALL_USERS, BLOCK_USER, UNBLOCK_USER } from '../graphql/queries';
+import { GET_ALL_USERS, BLOCK_CANDIDATE, UNBLOCK_USER } from '../graphql/queries';
 import { User } from '../types/admin';
 
 const UserManagement: React.FC = () => {
@@ -13,9 +13,10 @@ const UserManagement: React.FC = () => {
   const { data: usersData, loading: usersLoading, error: usersError, refetch } = useQuery(GET_ALL_USERS);
 
   // Mutations for blocking/unblocking users
-  const [blockUser] = useMutation(BLOCK_USER, {
+  const [blockCandidate] = useMutation(BLOCK_CANDIDATE, {
     onCompleted: (data) => {
-      if (data.blockUser.success) {
+      if (data.blockCandidate.success) {
+        console.log('Candidate blocked successfully, subscription should notify connected lecturers');
         refetch();
       }
     }
@@ -80,9 +81,16 @@ const UserManagement: React.FC = () => {
   const handleBlockToggle = async (userId: string, isCurrentlyBlocked: boolean) => {
     try {
       if (isCurrentlyBlocked) {
+        // Unblock user
         await unblockUser({ variables: { user_ID: userId } });
       } else {
-        await blockUser({ variables: { user_ID: userId } });
+        // Block user (no reason required)
+        await blockCandidate({ 
+          variables: { 
+            user_ID: userId, 
+            reason: 'Blocked by admin'
+          } 
+        });
       }
     } catch (error) {
       console.error('Error toggling user block status:', error);

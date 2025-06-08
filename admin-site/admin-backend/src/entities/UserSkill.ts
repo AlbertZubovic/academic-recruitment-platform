@@ -7,12 +7,12 @@ export class UserSkill {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @ManyToOne(() => User, (user) => user.userSkills, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.userSkills, { "onDelete": "CASCADE" })
   user!: User;
 
   @ManyToOne(() => Skill, (skill) => skill.userSkills, {
     eager: true,
-    onDelete: "CASCADE",
+    "onDelete": "CASCADE",
   })
   skill!: Skill;
 }

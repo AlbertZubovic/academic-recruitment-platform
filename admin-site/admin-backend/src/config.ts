@@ -15,8 +15,8 @@ export const config = {
   
   // CORS configuration
   corsOrigins: [
-    'http://localhost:3000', // Admin frontend
-    'http://localhost:3001', // Alternative port
+    'http://localhost:3001', // Admin frontend
+    'http://localhost:3000', // Alternative port (keep for compatibility)
   ],
   
   // Environment

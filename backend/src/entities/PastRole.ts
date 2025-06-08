@@ -40,7 +40,7 @@ export class PastRole {
 
   @Column({
     type: "enum",
-    enum: PastRoleType,
+    "enum": PastRoleType,
   })
   @IsEnum(PastRoleType, {
     message: "role must be either 'Tutor' or 'Lab Assistant'",

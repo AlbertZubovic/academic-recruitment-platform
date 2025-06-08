@@ -1,8 +1,9 @@
 // src/components/applications/Applicant/ApproveRejectCheckbox.tsx
 
 import React, { useState, useEffect } from "react";
-import { VStack, Button, useToast, Spinner } from "@chakra-ui/react";
+import { VStack, Button, useToast, Spinner, Tooltip } from "@chakra-ui/react";
 import { useApplications } from "@/context/ApplicationContext";
+import { useBlockedCandidates } from "@/context/BlockedCandidatesContext";
 import { LecturerApplication } from "@/types/Application";
 
 interface Props {
@@ -16,6 +17,11 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
 }) => {
   const toast = useToast();
   const { updateApplicationStatus } = useApplications();
+  const { isUserBlocked, getBlockedCandidateInfo } = useBlockedCandidates();
+
+  // Check if this candidate is blocked
+  const isBlocked = isUserBlocked(applicationDetails.userId);
+  const blockedInfo = getBlockedCandidateInfo(applicationDetails.userId);
 
   // Local state to reflect "Approved" / "Rejected" / "Pending"
   const [approvedChecked, setApprovedChecked] = useState(false);
@@ -31,6 +37,18 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
 
   // Handler for "Approve" button
   const handleApprove = async () => {
+    // Prevent approval if candidate is blocked
+    if (isBlocked) {
+      toast({
+        title: "Cannot Approve Blocked Candidate",
+        description: `${applicationDetails.name} has been blocked${blockedInfo ? ` on ${new Date(blockedInfo.blockedAt).toLocaleDateString()}` : ''} and cannot be approved for hiring.`,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+      return;
+    }
+
     if (approvedChecked) {
       // Already approved → revert to Pending
       setIsUpdating(true);
@@ -159,21 +177,33 @@ const ApproveRejectCheckbox: React.FC<Props> = ({
     }
   };
 
+  // Create tooltip content for blocked candidates
+  const approveTooltipContent = isBlocked
+    ? `This candidate has been blocked${blockedInfo ? ` on ${new Date(blockedInfo.blockedAt).toLocaleDateString()}` : ''} and cannot be approved for hiring.`
+    : approvedChecked
+    ? "Click to revert to pending"
+    : "Click to approve application";
+
   return (
     <>
       {isUpdating ? (
         <Spinner size="sm" />
       ) : (
         <VStack spacing={2}>
-          <Button
-            onClick={handleApprove}
-            colorScheme={approvedChecked ? "green" : "gray"}
-            variant={approvedChecked ? "solid" : "outline"}
-            size="sm"
-            width="80px"
-          >
-            Approved
-          </Button>
+          <Tooltip label={approveTooltipContent} placement="left" hasArrow>
+            <Button
+              onClick={handleApprove}
+              colorScheme={isBlocked ? "gray" : (approvedChecked ? "green" : "gray")}
+              variant={approvedChecked ? "solid" : "outline"}
+              size="sm"
+              width="80px"
+              isDisabled={isBlocked && !approvedChecked}
+              opacity={isBlocked ? 0.6 : 1}
+              cursor={isBlocked && !approvedChecked ? "not-allowed" : "pointer"}
+            >
+              {isBlocked ? "Blocked" : "Approved"}
+            </Button>
+          </Tooltip>
           <Button
             onClick={handleReject}
             colorScheme={rejectedChecked ? "red" : "gray"}

@@ -17,6 +17,7 @@ import { FaSortAmountDownAlt } from "react-icons/fa";
 
 import { useAuth } from "@/context/AuthContext";
 import { useApplications } from "@/context/ApplicationContext";
+import { useBlockedCandidates } from "@/context/BlockedCandidatesContext";
 
 import { DndContext, closestCenter } from "@dnd-kit/core";
 
@@ -38,6 +39,8 @@ const ApplicationPage: React.FC = () => {
     isFilteredView,
     handleDragEnd,
   } = useApplications();
+  // Blocked candidates functionality is handled in ApplicantNote component
+  useBlockedCandidates(); // Initialize the subscription
 
   // Track “flat mode” expanded indices so individual toggles work:
   const [expandedIndices, setExpandedIndices] = useState<number[]>([]);
@@ -51,6 +54,7 @@ const ApplicationPage: React.FC = () => {
       setExpandedIndices(filteredApplicants.map((_, i) => i));
     }
     // Note: We no longer clear expandedIndices on filteredApplicants update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allExpanded]);
 
   // Compute total number of approved applications across all this lecturer’s courses:

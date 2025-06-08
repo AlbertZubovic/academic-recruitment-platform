@@ -72,9 +72,10 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       const data: Course[] = await res.json();
       console.log("[CourseContext] Fetched courses:", data);
       setCourses(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[CourseContext] Error loading courses:", err);
-      setError(err.message);
+      const errorMessage = err instanceof Error ? err.message : "Failed to load courses";
+      setError(errorMessage);
       setCourses([]);
     }
   };
@@ -120,7 +121,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       console.log(
         `[CourseContext] POST apply response status: ${res.status}`
       );
-      let data: any;
+      let data: unknown;
       try {
         data = await res.json();
       } catch {
@@ -135,7 +136,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
 
       await fetchCourses();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[CourseContext] Error in applyToCourse:", err);
       return false;
     }
@@ -150,7 +151,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       appliedSkills?: string[];
     }
   ) => {
-    const bodyPayload: any = { role };
+    const bodyPayload: Record<string, unknown> = { role };
     if (payload.appliedAvailability !== undefined) {
       bodyPayload.appliedAvailability = payload.appliedAvailability;
     }
@@ -175,7 +176,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       console.log(
         `[CourseContext] PATCH response status: ${res.status}`
       );
-      let data: any;
+      let data: unknown;
       try {
         data = await res.json();
       } catch {
@@ -190,7 +191,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
 
       await fetchCourses();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(
         "[CourseContext] Error in updateApplicationDetails:",
         err
@@ -218,7 +219,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
       console.log(
         `[CourseContext] DELETE response status: ${res.status}`
       );
-      let data: any;
+      let data: unknown;
       try {
         data = await res.json();
       } catch {
@@ -233,7 +234,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
 
       await fetchCourses();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[CourseContext] Error in deleteApplication:", err);
       return false;
     }
@@ -259,7 +260,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({
 
       await fetchCourses();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[CourseContext] Error in reapplyApplication:", err);
       return false;
     }

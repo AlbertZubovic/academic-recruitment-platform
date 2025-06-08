@@ -199,6 +199,27 @@ export const UNBLOCK_USER = gql`
   }
 `;
 
+export const BLOCK_CANDIDATE = gql`
+  mutation BlockCandidate($user_ID: ID!, $reason: String) {
+    blockCandidate(user_ID: $user_ID, reason: $reason) {
+      success
+      message
+      blockedCandidate {
+        userId
+        firstName
+        lastName
+        blockedAt
+        reason
+        affectedCourses {
+          courseId
+          courseName
+          courseCode
+        }
+      }
+    }
+  }
+`;
+
 // Course management queries
 export const GET_COURSE_WITH_APPLICATIONS = gql`
   query GetCourseWithApplications($course_ID: ID!) {
@@ -307,6 +328,25 @@ export const CREATE_COURSE = gql`
       success
       message
       course_ID
+    }
+  }
+`;
+
+export const UPDATE_COURSE = gql`
+  mutation UpdateCourse(
+    $course_ID: ID!
+    $course_code: String
+    $display_name: String
+    $semester: String
+  ) {
+    updateCourse(
+      course_ID: $course_ID
+      course_code: $course_code
+      display_name: $display_name
+      semester: $semester
+    ) {
+      success
+      message
     }
   }
 `;
@@ -433,6 +473,23 @@ export const REMOVE_SKILL_FROM_COURSE = gql`
     removeSkillFromCourse(course_ID: $course_ID, skill_ID: $skill_ID) {
       success
       message
+    }
+  }
+`;
+
+export const CANDIDATE_BLOCKED_SUBSCRIPTION = gql`
+  subscription CandidateBlocked {
+    candidateBlocked {
+      userId
+      firstName
+      lastName
+      blockedAt
+      reason
+      affectedCourses {
+        courseId
+        courseName
+        courseCode
+      }
     }
   }
 `; 
