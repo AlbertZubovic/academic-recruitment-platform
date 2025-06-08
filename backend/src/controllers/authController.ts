@@ -225,7 +225,13 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 4) Create JWT with expiration based on stayLoggedIn
+    // 4) Check if user is blocked
+    if (user.is_blocked) {
+      res.status(403).json({ message: "Account has been blocked. Please contact support." });
+      return;
+    }
+
+    // 5) Create JWT with expiration based on stayLoggedIn
     //    - If stayLoggedIn === true, expires in 7 days
     //    - Otherwise expires in 15 minutes
     const token = jwt.sign(
@@ -239,7 +245,7 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
       { expiresIn: stayLoggedIn ? "7d" : "15m" }
     );
 
-    // 5) Set the cookie accordingly:
+    // 6) Set the cookie accordingly:
     if (stayLoggedIn) {
       res.cookie("token", token, {
         ...COOKIE_OPTIONS,
@@ -252,7 +258,7 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
       });
     }
 
-    // 6) Respond
+    // 7) Respond
     res.status(200).json({ message: `Welcome ${user.firstname}` });
   } catch (err) {
     console.error("Signin error:", err);

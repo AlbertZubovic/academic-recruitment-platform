@@ -25,7 +25,8 @@ const AuthButton: React.FC = () => {
         position: "bottom",
       });
       router.push("/");
-    } catch (err) {
+    } catch {
+      // Error is already handled by the signOut function
     }
   };
 

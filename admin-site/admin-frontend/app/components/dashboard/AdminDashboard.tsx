@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_DASHBOARD_STATS } from '../../graphql/queries';
 import CourseManagement from '../CourseManagement';
+import UserManagement from '../UserManagement';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -45,7 +46,6 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               { id: 'overview', label: 'Overview' },
               { id: 'courses', label: 'Course Management' },
               { id: 'users', label: 'User Management' },
-              { id: 'assignments', label: 'Lecturer Assignments' },
               { id: 'reports', label: 'Reports' },
             ].map((tab) => (
               <button
@@ -119,31 +119,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           )}
 
           {activeTab === 'users' && (
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  User Management
-                </h3>
-                <p className="text-gray-600">
-                  User management functionality will be implemented here.
-                  This will include blocking/unblocking users.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'assignments' && (
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Lecturer Assignments
-                </h3>
-                <p className="text-gray-600">
-                  Lecturer assignment functionality will be implemented here.
-                  This will allow assigning lecturers to courses.
-                </p>
-              </div>
-            </div>
+            <UserManagement />
           )}
 
           {activeTab === 'reports' && (

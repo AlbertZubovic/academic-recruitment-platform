@@ -51,7 +51,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const toast = useToast();
-  const { signIn, signUp, loading } = useAuth();
+  const { signUp, loading, refreshUser } = useAuth();
   const router = useRouter();
 
   // ─────────────── Color values for light/dark ───────────────
@@ -131,7 +131,38 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           rememberMe,
           stayLoggedIn,
         };
-        await signIn(payload);
+        
+        // Make the request directly to get the response status
+        const res = await fetch("http://localhost:5000/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          const errorMessage = data.message || "Sign-in failed";
+          
+          // Check if this is a blocked user error
+          if (res.status === 403 && errorMessage.includes("blocked")) {
+            // Show specific blocked user toast and don't attempt redirect
+            toast({
+              title: "Account Blocked",
+              description: "Your account has been blocked. Please contact support for assistance.",
+              status: "error",
+              duration: 6000,
+              isClosable: true,
+              position: "top",
+            });
+            return; // Exit early, don't show generic error
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // If successful, refresh user data
+        await refreshUser();
         success = true;
 
         if (rememberMe) {
@@ -145,7 +176,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         }
       } catch (error: unknown) {
         console.error('[AUTH] Sign in error:', error);
-        errorMessage = (error instanceof Error) ? error.message : "Incorrect email or password.";
+        const errorMsg = (error instanceof Error) ? error.message : "Sign-in failed";
+        errorMessage = errorMsg;
         success = false;
       }
     } else {

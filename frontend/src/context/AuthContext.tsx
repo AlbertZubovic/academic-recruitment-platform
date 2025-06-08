@@ -10,7 +10,6 @@ import React, {
 import { SignInPayload, SignUpPayload } from "@/types/apiRequests";
 import { MeResponse } from "@/types/apiResponses";
 import { User } from "@/types/user";
-import { useToast } from "@chakra-ui/react";
 
 interface AuthContextValue {
   user: User | null;
@@ -35,7 +34,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const toast = useToast();
 
   useEffect(() => {
     refreshUser()
@@ -54,11 +52,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Sign‐in failed");
+        const errorMessage = data.message || "Sign‐in failed";
+        
+        // For blocked users, handle gracefully without throwing an error
+        if (res.status === 403 && errorMessage.includes("blocked")) {
+          // Don't throw an error, instead return early
+          // The calling component will handle showing the toast
+          return;
+        }
+        
+        throw new Error(errorMessage);
       }
       await refreshUser();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Sign-in failed";
+      setError(errorMessage);
       throw err;
     }
   };
@@ -77,8 +85,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         throw new Error(data.message || "Sign‐up failed");
       }
       await refreshUser();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Sign-up failed";
+      setError(errorMessage);
       throw err;
     }
   };
@@ -95,8 +104,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         throw new Error(data.message || "Sign‐out failed");
       }
       setUser(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Sign-out failed";
+      setError(errorMessage);
       throw err;
     }
   };
@@ -124,6 +134,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           isBlocked: data.isBlocked,
         };
         setUser(mapped);
+      } else if (res.status === 403) {
+        // User is blocked - clear user state (toast will be shown by calling component)
+        setUser(null);
       } else {
         setUser(null);
       }
