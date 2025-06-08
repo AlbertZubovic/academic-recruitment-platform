@@ -91,7 +91,32 @@ Once the containers are running, you can access the services at the following UR
 -   **Main Backend (GraphQL)**: [http://localhost:5000/graphql](http://localhost:5000/graphql)
 -   **Admin Backend (GraphQL)**: [http://localhost:4000/graphql](http://localhost:4000/graphql)
 
-### 4. Stopping the Services
+### 4. Test User Accounts
+
+The database is seeded with test accounts. The password for all lecturers and candidates is `Password123!`.
+
+**Lecturer Logins:**
+| Email                         | Password       |
+| ----------------------------- | -------------- |
+| `alice.lecturer@example.com`  | `Password123!` |
+| `bob.lecturer@example.com`    | `Password123!` |
+| `fiona.lecturer@example.com`  | `Password123!` |
+
+**Candidate Logins:**
+| Email                           | Password       |
+| ------------------------------- | -------------- |
+| `charlie.candidate@example.com` | `Password123!` |
+| `diana.candidate@example.com`   | `Password123!` |
+| `edward.candidate@example.com`  | `Password123!` |
+| `grace.candidate@example.com`   | `Password123!` |
+| `henry.candidate@example.com`   | `Password123!` |
+
+**Admin Login (for Admin Site):**
+| Username | Password |
+| -------- | -------- |
+| `admin`  | `admin`  |
+
+### 5. Stopping the Services
 
 To stop all running containers, press `Ctrl + C` in the terminal and then run:
 
