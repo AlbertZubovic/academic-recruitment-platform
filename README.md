@@ -1,5 +1,7 @@
 # TEACH TEAM UNIVERSITY JOB APPLICATION SYSTEM
 
+The github for this project can be found here: https://github.com/rmit-fsd-2025-s1/s4007755-s3832786-a2
+
 This is teach team, a solution allowing lecturers to find candidates for roles for their courses.
 Candidates can apply for roles, update their skill set and information and withdraw applications if needed.
 
