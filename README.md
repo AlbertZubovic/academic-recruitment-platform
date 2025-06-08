@@ -13,6 +13,10 @@ If a candidate is blocked, lecturers will be notified in real time and the appli
 
 ---
 
+## ER Diagram
+
+The ER Diagram can be found in ~\backend\docs
+
 ## Tech Stack
 
 The project is built with a modern, modular architecture. Here is the technology breakdown for each service:
