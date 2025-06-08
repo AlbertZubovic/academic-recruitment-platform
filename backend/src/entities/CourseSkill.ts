@@ -6,7 +6,7 @@ import {
 } from "typeorm";
 import { IsString } from "class-validator";
 import { Skill } from "./Skill";
-import { CourseRole } from "./CourseRole";
+import { Course } from "./Course";
 
 @Entity()
 export class CourseSkill {
@@ -16,14 +16,14 @@ export class CourseSkill {
 
   @PrimaryColumn("char", { length: 36 })
   @IsString()
-  course_role_ID!: string;
+  course_ID!: string;
 
   @ManyToOne(() => Skill, { onDelete: "CASCADE" })
   @JoinColumn({ name: "skill_ID" })
   skill!: Skill;
 
-  @ManyToOne(() => CourseRole, (courseRole) => courseRole.courseSkills, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "course_role_ID" })
-  courseRole!: CourseRole;
+  @ManyToOne(() => Course, (course) => course.courseSkills, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "course_ID" })
+  course!: Course;
 }
   

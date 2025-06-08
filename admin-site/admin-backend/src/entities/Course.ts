@@ -14,6 +14,7 @@ import {
 } from "class-validator";
 import { User } from "./User";
 import { CourseRole } from "./CourseRole";
+import { CourseSkill } from "./CourseSkill";
 
 @Entity()
 export class Course {
@@ -49,4 +50,9 @@ export class Course {
     cascade: true,
   })
   courseRoles!: CourseRole[];
+
+  @OneToMany(() => CourseSkill, (courseSkill) => courseSkill.course, {
+    cascade: true,
+  })
+  courseSkills!: CourseSkill[];
 } 

@@ -36,7 +36,7 @@ interface UnifiedCourseDashboardProps {
   onReapply: (courseId: string) => Promise<boolean>;
 }
 
-type FilterType = "all" | "accepted" | "applied" | "saved" | "recommended" | "rejected";
+type FilterType = "all" | "accepted" | "applied" | "saved" | "rejected";
 
 const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
   courses,
@@ -57,17 +57,6 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
   const subtleTextColor = useColorModeValue("gray.600", "gray.300");
 
   // Helper functions
-  const computeMatchPercent = (required: string[], owned: string[]) => {
-    if (required.length === 0) return 100;
-    const lowerOwned = new Set(owned.map((s) => s.toLowerCase()));
-    const matched = required.filter((r) => lowerOwned.has(r.toLowerCase()));
-    return Math.round((matched.length / required.length) * 100);
-  };
-
-  const getMissingSkills = (required: string[], owned: string[]) => {
-    const lowerOwned = new Set(owned.map((s) => s.toLowerCase()));
-    return required.filter((r) => !lowerOwned.has(r.toLowerCase()));
-  };
 
   const getApplicationStatus = (course: Course, role: ApplicationRole) => {
     const application = course.applicationDetails?.find(
@@ -89,9 +78,7 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
       const pendingApps = applications.filter(app => !app.isWithdrawn && app.status === "Pending");
       const rejectedApps = applications.filter(app => !app.isWithdrawn && app.status === "Rejected");
 
-      // For recommended filter, check if course has 70%+ match
-      const courseMatchPercent = computeMatchPercent(course.skills || [], userSkills || []);
-      const isRecommended = courseMatchPercent >= 70;
+      // Recommended filter removed - no longer using match percentages
 
       switch (activeFilter) {
         case "accepted":
@@ -100,8 +87,7 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
           return pendingApps.length > 0;
         case "saved":
           return isBookmarked;
-        case "recommended":
-          return isRecommended;
+
         case "rejected":
           return rejectedApps.length > 0;
         case "all":
@@ -118,7 +104,6 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
       accepted: 0,
       applied: 0,
       saved: 0,
-      recommended: 0,
       rejected: 0,
     };
 
@@ -129,14 +114,12 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
       const pendingApps = applications.filter(app => !app.isWithdrawn && app.status === "Pending");
       const rejectedApps = applications.filter(app => !app.isWithdrawn && app.status === "Rejected");
 
-      // Check if course has 70%+ match for recommended count
-      const courseMatchPercent = computeMatchPercent(course.skills || [], userSkills || []);
-      const isRecommended = courseMatchPercent >= 70;
+      // Recommended filter disabled - no longer using match percentages
 
       if (acceptedApps.length > 0) counts.accepted++;
       if (pendingApps.length > 0) counts.applied++;
       if (isBookmarked) counts.saved++;
-      if (isRecommended) counts.recommended++;
+      // counts.recommended disabled - no longer using match percentages
       if (rejectedApps.length > 0) counts.rejected++;
     });
 
@@ -144,32 +127,7 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
   }, [courses, userSkills, bookmarks]);
 
   const renderCourseCard = (course: Course) => {
-    const missingSkills = getMissingSkills(course.skills || [], userSkills || []);
     const isBookmarked = bookmarks[course.id];
-    
-
-
-    // Helper function to get match percentage for a specific role
-    const getRoleMatchPercent = (role: ApplicationRole) => {
-      // Find the specific role and its skills
-      const roleItem = course.rolesAvailable?.find(item => {
-        const itemRole = typeof item === 'string' ? item : item.role;
-        return itemRole === role;
-      });
-      
-      // If we have role-specific skills, use them; otherwise use course skills
-      const roleSkills = (roleItem && typeof roleItem !== 'string') 
-        ? roleItem.skills 
-        : course.skills || [];
-      
-      return computeMatchPercent(roleSkills, userSkills || []);
-    };
-
-    // Check if any role has 100% match for perfect match badge
-    const hasAnyPerfectMatch = course.rolesAvailable?.some(roleItem => {
-      const role = typeof roleItem === 'string' ? roleItem : roleItem.role;
-      return getRoleMatchPercent(role) === 100;
-    }) || false;
 
     // Filter roles based on current filter
     const getFilteredRoles = () => {
@@ -195,7 +153,6 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
             return application && !application.isWithdrawn && application.status === "Rejected";
           case "all":
           case "saved":
-          case "recommended":
           default:
             // For general filters, hide roles if any role in the course was rejected
             if (hasRejectedRole && (!application || application.isWithdrawn)) {
@@ -228,11 +185,6 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
                 <Badge colorScheme="blue" variant="outline">
                   {course.semester}
                 </Badge>
-                {hasAnyPerfectMatch && (
-                  <Badge colorScheme="green" variant="solid">
-                    Perfect Match!
-                  </Badge>
-                )}
               </HStack>
 
               {/* Application Status Row */}
@@ -241,56 +193,40 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
                   // Support both old string format and new object format
                   const role = typeof roleItem === 'string' ? roleItem : roleItem.role;
                   const application = getApplicationStatus(course, role);
-                  const roleMatchPercent = getRoleMatchPercent(role);
                   
                   if (application && !application.isWithdrawn) {
-                    // Show current application status with match percentage
+                    // Show current application status
                     const statusColor = 
                       application.status === "Approved" ? "green" :
                       application.status === "Pending" ? "yellow" : "red";
                     
-                                          return (
-                        <VStack key={role} spacing={1} align="start">
-                          <HStack spacing={1}>
-                            <Text fontSize="sm" fontWeight="medium">{role}:</Text>
-                            <Badge colorScheme={statusColor} variant="solid">
-                              {application.status}
-                            </Badge>
-                          </HStack>
-                          <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-                            {roleMatchPercent}% match
-                          </Badge>
-                        </VStack>
-                      );
-                  } else if (application && application.isWithdrawn) {
-                    // Show withdrawn status with match percentage
                     return (
-                      <VStack key={role} spacing={1} align="start">
-                        <HStack spacing={1}>
-                          <Text fontSize="sm" fontWeight="medium">{role}:</Text>
-                          <Badge colorScheme="purple" variant="outline">
-                            Withdrawn
-                          </Badge>
-                        </HStack>
-                        <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-                          {roleMatchPercent}% match
+                      <HStack key={role} spacing={1}>
+                        <Text fontSize="sm" fontWeight="medium">{role}:</Text>
+                        <Badge colorScheme={statusColor} variant="solid">
+                          {application.status}
                         </Badge>
-                      </VStack>
+                      </HStack>
+                    );
+                  } else if (application && application.isWithdrawn) {
+                    // Show withdrawn status
+                    return (
+                      <HStack key={role} spacing={1}>
+                        <Text fontSize="sm" fontWeight="medium">{role}:</Text>
+                        <Badge colorScheme="purple" variant="outline">
+                          Withdrawn
+                        </Badge>
+                      </HStack>
                     );
                   } else {
-                    // Show available to apply with match percentage
+                    // Show available to apply
                     return (
-                      <VStack key={role} spacing={1} align="start">
-                        <HStack spacing={1}>
-                          <Text fontSize="sm" fontWeight="medium">{role}:</Text>
-                          <Badge colorScheme="gray" variant="outline">
-                            Available
-                          </Badge>
-                        </HStack>
-                        <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-                          {roleMatchPercent}% match
+                      <HStack key={role} spacing={1}>
+                        <Text fontSize="sm" fontWeight="medium">{role}:</Text>
+                        <Badge colorScheme="gray" variant="outline">
+                          Available
                         </Badge>
-                      </VStack>
+                      </HStack>
                     );
                   }
                 })}
@@ -298,19 +234,16 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
 
               {/* Skills Preview */}
               <HStack spacing={1} flexWrap="wrap">
-                {course.skills.slice(0, 4).map((skill) => {
-                  const isMissing = missingSkills.includes(skill);
-                  return (
-                    <Tag
-                      key={skill}
-                      size="sm"
-                      colorScheme={isMissing ? "gray" : "green"}
-                      variant="subtle"
-                    >
-                      {skill}
-                    </Tag>
-                  );
-                })}
+                {course.skills.slice(0, 4).map((skill) => (
+                  <Tag
+                    key={skill}
+                    size="sm"
+                    colorScheme="blue"
+                    variant="subtle"
+                  >
+                    {skill}
+                  </Tag>
+                ))}
                 {course.skills.length > 4 && (
                   <Text fontSize="sm" color="gray.500">
                     +{course.skills.length - 4} more
@@ -441,9 +374,9 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
     <VStack spacing={6} align="stretch">
       {/* Filter Tabs */}
       <Tabs 
-        index={["all", "accepted", "applied", "saved", "recommended", "rejected"].indexOf(activeFilter)}
+        index={["all", "accepted", "applied", "saved", "rejected"].indexOf(activeFilter)}
         onChange={(index) => {
-          const filters: FilterType[] = ["all", "accepted", "applied", "saved", "recommended", "rejected"];
+          const filters: FilterType[] = ["all", "accepted", "applied", "saved", "rejected"];
           setActiveFilter(filters[index]);
         }}
         variant="enclosed"
@@ -453,13 +386,12 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
           <Tab>Accepted ({filterCounts.accepted})</Tab>
           <Tab>Applied ({filterCounts.applied})</Tab>
           <Tab>Saved ({filterCounts.saved})</Tab>
-          <Tab>Recommended ({filterCounts.recommended})</Tab>
           <Tab>Rejected ({filterCounts.rejected})</Tab>
         </TabList>
 
         <TabPanels>
           {/* All tabs use the same panel content */}
-          {Array(6).fill(0).map((_, index) => (
+          {Array(5).fill(0).map((_, index) => (
             <TabPanel key={index} px={0}>
               {filteredCourses.length === 0 ? (
                 <Box textAlign="center" py={8}>
@@ -467,7 +399,6 @@ const UnifiedCourseDashboard: React.FC<UnifiedCourseDashboardProps> = ({
                     {activeFilter === "accepted" && "No accepted applications"}
                     {activeFilter === "applied" && "No pending applications"}
                     {activeFilter === "saved" && "No saved courses"}
-                    {activeFilter === "recommended" && "No recommended courses (70%+ match)"}
                     {activeFilter === "rejected" && "No rejected applications"}
                     {activeFilter === "all" && "No courses found"}
                   </Text>

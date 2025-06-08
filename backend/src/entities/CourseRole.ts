@@ -14,7 +14,6 @@ import {
   MaxLength,
 } from "class-validator";
 import { Course } from "./Course";
-import { CourseSkill } from "./CourseSkill";
 
 export enum CourseRoleType {
   TUTOR = "Tutor",
@@ -53,8 +52,5 @@ export class CourseRole {
   @Column({ type: "int", default: 1 })
   positions_available!: number;
 
-  @OneToMany(() => CourseSkill, (courseSkill) => courseSkill.courseRole, {
-    cascade: true,
-  })
-  courseSkills!: CourseSkill[];
+
 } 

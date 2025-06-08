@@ -13,7 +13,7 @@ import {
   SEARCH_SKILLS,
   CREATE_SKILL,
   CREATE_COURSE_ROLE,
-  ADD_SKILL_TO_COURSE_ROLE
+  ADD_SKILL_TO_COURSE
 } from '../graphql/queries';
 
 interface User {
@@ -35,7 +35,6 @@ interface CourseRole {
   description?: string;
   is_active: boolean;
   positions_available: number;
-  skills: Skill[];
 }
 
 interface Course {
@@ -45,6 +44,7 @@ interface Course {
   semester: string;
   lecturer: User | null;
   courseRoles: CourseRole[];
+  skills: Skill[];
   is_disabled: boolean;
 }
 
@@ -68,24 +68,19 @@ const CourseManagement: React.FC = () => {
   
   // Enhanced course creation state
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [roleSkills, setRoleSkills] = useState<Record<string, Skill[]>>({});
-  const [skillSearchTerms, setSkillSearchTerms] = useState<Record<string, string>>({});
-  const [showSkillDropdowns, setShowSkillDropdowns] = useState<Record<string, boolean>>({});
+  const [courseSkills, setCourseSkills] = useState<Skill[]>([]);
+  const [skillSearchTerm, setSkillSearchTerm] = useState<string>('');
+  const [showSkillDropdown, setShowSkillDropdown] = useState<boolean>(false);
 
   // Queries
   const { data: coursesData, loading: coursesLoading, error: coursesError, refetch: refetchCourses } = useQuery(GET_ALL_COURSES);
   const { data: lecturersData, loading: lecturersLoading, error: lecturersError } = useQuery(GET_LECTURERS);
   const { data: applicationsData, loading: applicationsLoading, error: applicationsError } = useQuery(GET_ALL_APPLICATIONS);
 
-  // Skill search queries for each role
-  const tutorSkillSearch = useQuery(SEARCH_SKILLS, {
-    variables: { search: skillSearchTerms['Tutor'] || '' },
-    skip: (skillSearchTerms['Tutor'] || '').length < 2
-  });
-  
-  const labAssistantSkillSearch = useQuery(SEARCH_SKILLS, {
-    variables: { search: skillSearchTerms['Lab-Assistant'] || '' },
-    skip: (skillSearchTerms['Lab-Assistant'] || '').length < 2
+  // Skill search query for course
+  const skillSearch = useQuery(SEARCH_SKILLS, {
+    variables: { search: skillSearchTerm },
+    skip: skillSearchTerm.length < 2
   });
 
   // Mutations
@@ -95,7 +90,7 @@ const CourseManagement: React.FC = () => {
   const [deleteCourse] = useMutation(DELETE_COURSE);
   const [createSkill] = useMutation(CREATE_SKILL);
   const [createCourseRole] = useMutation(CREATE_COURSE_ROLE);
-  const [addSkillToCourseRole] = useMutation(ADD_SKILL_TO_COURSE_ROLE);
+  const [addSkillToCourse] = useMutation(ADD_SKILL_TO_COURSE);
 
   const courses: Course[] = coursesData?.courses || [];
   const lecturers: User[] = lecturersData?.lecturers || [];
@@ -132,47 +127,27 @@ const CourseManagement: React.FC = () => {
   const handleRoleToggle = (role: string) => {
     if (selectedRoles.includes(role)) {
       setSelectedRoles(selectedRoles.filter(r => r !== role));
-      // Clean up skills for removed role
-      const newRoleSkills = { ...roleSkills };
-      delete newRoleSkills[role];
-      setRoleSkills(newRoleSkills);
-      
-      const newSearchTerms = { ...skillSearchTerms };
-      delete newSearchTerms[role];
-      setSkillSearchTerms(newSearchTerms);
-      
-      const newDropdowns = { ...showSkillDropdowns };
-      delete newDropdowns[role];
-      setShowSkillDropdowns(newDropdowns);
     } else {
       setSelectedRoles([...selectedRoles, role]);
-      setRoleSkills({ ...roleSkills, [role]: [] });
     }
   };
 
-  // Handle skill selection for a role
-  const handleSkillSelect = (role: string, skill: Skill) => {
-    const currentSkills = roleSkills[role] || [];
-    if (!currentSkills.find(s => s.skill_ID === skill.skill_ID)) {
-      setRoleSkills({
-        ...roleSkills,
-        [role]: [...currentSkills, skill]
-      });
+  // Handle skill selection for course
+  const handleSkillSelect = (skill: Skill) => {
+    if (!courseSkills.find(s => s.skill_ID === skill.skill_ID)) {
+      setCourseSkills([...courseSkills, skill]);
     }
-    setSkillSearchTerms({ ...skillSearchTerms, [role]: '' });
-    setShowSkillDropdowns({ ...showSkillDropdowns, [role]: false });
+    setSkillSearchTerm('');
+    setShowSkillDropdown(false);
   };
 
-  // Handle skill removal for a role
-  const handleSkillRemove = (role: string, skillId: string) => {
-    setRoleSkills({
-      ...roleSkills,
-      [role]: (roleSkills[role] || []).filter(s => s.skill_ID !== skillId)
-    });
+  // Handle skill removal from course
+  const handleSkillRemove = (skillId: string) => {
+    setCourseSkills(courseSkills.filter(s => s.skill_ID !== skillId));
   };
 
   // Handle creating new skill
-  const handleCreateNewSkill = async (role: string, skillName: string) => {
+  const handleCreateNewSkill = async (skillName: string) => {
     if (!skillName.trim()) return;
     
     try {
@@ -181,7 +156,7 @@ const CourseManagement: React.FC = () => {
       });
       
       if (data.createSkill) {
-        handleSkillSelect(role, data.createSkill);
+        handleSkillSelect(data.createSkill);
       }
     } catch (error) {
       console.error('Error creating skill:', error);
@@ -192,9 +167,9 @@ const CourseManagement: React.FC = () => {
   // Reset form state
   const resetFormState = () => {
     setSelectedRoles([]);
-    setRoleSkills({});
-    setSkillSearchTerms({});
-    setShowSkillDropdowns({});
+    setCourseSkills([]);
+    setSkillSearchTerm('');
+    setShowSkillDropdown(false);
     setShowCreateForm(false);
   };
 
@@ -202,6 +177,13 @@ const CourseManagement: React.FC = () => {
   const handleCreateCourse = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // Validate that at least one skill is selected
+    if (courseSkills.length === 0) {
+      alert('Please select at least one skill for the course.');
+      return;
+    }
+    
+    // Validate that at least one role is selected
     if (selectedRoles.length === 0) {
       alert('Please select at least one role for the course.');
       return;
@@ -223,34 +205,33 @@ const CourseManagement: React.FC = () => {
       if (data.createCourse.success && data.createCourse.course_ID) {
         const courseId = data.createCourse.course_ID;
         
-        // Create course roles and assign skills
+        // Create course roles
         for (const role of selectedRoles) {
           try {
             // Create the course role
-            const roleResponse = await createCourseRole({
+            await createCourseRole({
               variables: {
                 course_ID: courseId,
                 role: role,
                 positions_available: 1
               }
             });
-            
-            if (roleResponse.data.createCourseRole.course_role_ID) {
-              const courseRoleId = roleResponse.data.createCourseRole.course_role_ID;
-              
-              // Add skills to the course role
-              const skills = roleSkills[role] || [];
-              for (const skill of skills) {
-                await addSkillToCourseRole({
-                  variables: {
-                    course_role_ID: courseRoleId,
-                    skill_ID: skill.skill_ID
-                  }
-                });
-              }
-            }
           } catch (roleError) {
             console.error(`Error creating role ${role}:`, roleError);
+          }
+        }
+        
+        // Add all course skills to the course
+        for (const skill of courseSkills) {
+          try {
+            await addSkillToCourse({
+              variables: {
+                course_ID: courseId,
+                skill_ID: skill.skill_ID
+              }
+            });
+          } catch (skillError) {
+            console.error(`Error adding skill ${skill.skill_ID} to course:`, skillError);
           }
         }
         
@@ -330,21 +311,9 @@ const CourseManagement: React.FC = () => {
     }
   };
 
-  // Get all skills from all course roles for display
+  // Get all skills for the course (now directly on course level)
   const getAllSkillsForCourse = (course: Course): Skill[] => {
-    const allSkills: Skill[] = [];
-    const seenSkillIds = new Set<string>();
-    
-    course.courseRoles.forEach(role => {
-      role.skills.forEach(skill => {
-        if (!seenSkillIds.has(skill.skill_ID)) {
-          allSkills.push(skill);
-          seenSkillIds.add(skill.skill_ID);
-        }
-      });
-    });
-    
-    return allSkills;
+    return course.skills || [];
   };
 
   // Get roles available for a course
@@ -450,10 +419,96 @@ const CourseManagement: React.FC = () => {
                     ))}
                   </select>
                 </div>
+                {/* Course Skills Section */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Course Skills *
+                    <span className="text-xs text-gray-500 block font-normal">
+                      Select skills that will be required for this course
+                    </span>
+                  </label>
+                  
+                  {/* Selected Skills */}
+                  {courseSkills.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {courseSkills.map((skill) => (
+                        <span
+                          key={skill.skill_ID}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                        >
+                          {skill.name}
+                          <button
+                            type="button"
+                            onClick={() => handleSkillRemove(skill.skill_ID)}
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Skill Search Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={skillSearchTerm}
+                      onChange={(e) => {
+                        setSkillSearchTerm(e.target.value);
+                        setShowSkillDropdown(e.target.value.length >= 2);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      placeholder="Search or type to create skills..."
+                    />
+                    
+                    {/* Skill Dropdown */}
+                    {showSkillDropdown && skillSearchTerm.length >= 2 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {(() => {
+                          const { data, loading } = skillSearch;
+                          const searchedSkills = data?.searchSkills || [];
+                          
+                          if (loading) {
+                            return <div className="px-3 py-2 text-gray-500">Searching...</div>;
+                          }
+                          
+                          return (
+                            <>
+                              {searchedSkills.map((skill: Skill) => (
+                                <button
+                                  key={skill.skill_ID}
+                                  type="button"
+                                  onClick={() => handleSkillSelect(skill)}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-100 text-gray-900"
+                                >
+                                  {skill.name}
+                                </button>
+                              ))}
+                              {searchedSkills.length === 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCreateNewSkill(skillSearchTerm)}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-100 text-blue-600 font-medium"
+                                >
+                                  + Create &quot;{skillSearchTerm}&quot;
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Role Selection */}
                 <div className="mb-4">
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Course Roles
+                    Course Roles *
+                    <span className="text-xs text-gray-500 block font-normal">
+                      Select which roles will be available for this course
+                    </span>
                   </label>
                   <div className="space-y-2">
                     {['Tutor', 'Lab-Assistant'].map((role) => (
@@ -469,89 +524,6 @@ const CourseManagement: React.FC = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Skills for Selected Roles */}
-                {selectedRoles.map((role) => (
-                  <div key={role} className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Skills for {role}
-                    </label>
-                    
-                    {/* Selected Skills */}
-                    {(roleSkills[role] || []).length > 0 && (
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        {(roleSkills[role] || []).map((skill) => (
-                          <span
-                            key={skill.skill_ID}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                          >
-                            {skill.name}
-                            <button
-                              type="button"
-                              onClick={() => handleSkillRemove(role, skill.skill_ID)}
-                              className="ml-2 text-blue-600 hover:text-blue-800"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Skill Search Input */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={skillSearchTerms[role] || ''}
-                        onChange={(e) => {
-                          setSkillSearchTerms({ ...skillSearchTerms, [role]: e.target.value });
-                          setShowSkillDropdowns({ ...showSkillDropdowns, [role]: e.target.value.length >= 2 });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                        placeholder={`Search skills for ${role}...`}
-                      />
-                      
-                      {/* Skill Dropdown */}
-                      {showSkillDropdowns[role] && (skillSearchTerms[role] || '').length >= 2 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                          {(() => {
-                            const searchData = role === 'Tutor' ? tutorSkillSearch : labAssistantSkillSearch;
-                            const { data, loading } = searchData;
-                            const searchedSkills = data?.searchSkills || [];
-                            
-                            if (loading) {
-                              return <div className="px-3 py-2 text-gray-500">Searching...</div>;
-                            }
-                            
-                            return (
-                              <>
-                                {searchedSkills.map((skill: Skill) => (
-                                  <button
-                                    key={skill.skill_ID}
-                                    type="button"
-                                    onClick={() => handleSkillSelect(role, skill)}
-                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 text-gray-900"
-                                  >
-                                    {skill.name}
-                                  </button>
-                                ))}
-                                {searchedSkills.length === 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCreateNewSkill(role, skillSearchTerms[role] || '')}
-                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 text-blue-600 font-medium"
-                                  >
-                                    + Create &quot;{skillSearchTerms[role]}&quot;
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </form>
             </div>
             <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200">
@@ -669,11 +641,11 @@ const CourseManagement: React.FC = () => {
                 {/* Lecturer Assignment Form */}
                 {showAssignForm === course.course_ID && (
                   <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium mb-2">Assign Lecturer</h4>
+                    <h4 className="font-medium mb-2 text-left text-gray-900">Assign Lecturer</h4>
                     <div className="flex space-x-2">
                       <select
                         id={`lecturer-${course.course_ID}`}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                       >
                         <option value="">Select Lecturer</option>
                         {lecturers.map((lecturer) => (

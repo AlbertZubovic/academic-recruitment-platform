@@ -23,8 +23,8 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         "lecturer.userSkills", 
         "lecturer.userSkills.skill",
         "courseRoles",
-        "courseRoles.courseSkills",
-        "courseRoles.courseSkills.skill"
+        "courseSkills",
+        "courseSkills.skill"
       ],
     });
 

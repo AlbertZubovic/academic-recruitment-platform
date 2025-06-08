@@ -66,9 +66,10 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
   );
 
   // 2. Choose which role to pre‐select
-  const firstAllowedRole: ApplicationRole = course.rolesAvailable[0];
+  const roleNames = course.rolesAvailable.map(r => typeof r === 'string' ? r : r.role);
+  const firstAllowedRole: ApplicationRole = roleNames[0] as ApplicationRole;
   const initialRole: ApplicationRole =
-    defaultRole && course.rolesAvailable.includes(defaultRole)
+    defaultRole && roleNames.includes(defaultRole)
       ? defaultRole
       : firstAllowedRole;
 
@@ -94,10 +95,11 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
     if (!isOpen) return;
 
     // Re‐compute chosenRole & chosenApp each time
+    const availableRoleNames = course.rolesAvailable.map(r => typeof r === 'string' ? r : r.role);
     const chosenRole: ApplicationRole =
-      defaultRole && course.rolesAvailable.includes(defaultRole)
+      defaultRole && availableRoleNames.includes(defaultRole)
         ? (defaultRole as ApplicationRole)
-        : (course.rolesAvailable[0] as ApplicationRole);
+        : (availableRoleNames[0] as ApplicationRole);
 
     const chosenApp = (course.applicationDetails || []).find(
       (app) => app.role === chosenRole
@@ -221,11 +223,14 @@ const ApplicationDetailsForm: React.FC<ApplyModalProps> = ({
                 value={role}
                 onChange={(e) => setRole(e.target.value as ApplicationRole)}
               >
-                {course.rolesAvailable.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
+                {course.rolesAvailable.map((r) => {
+                  const roleValue = typeof r === 'string' ? r : r.role;
+                  return (
+                    <option key={roleValue} value={roleValue}>
+                      {roleValue}
+                    </option>
+                  );
+                })}
               </Select>
             </FormControl>
 

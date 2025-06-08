@@ -115,10 +115,10 @@ export const GET_ALL_COURSES = gql`
         description
         is_active
         positions_available
-        skills {
-          skill_ID
-          name
-        }
+      }
+      skills {
+        skill_ID
+        name
       }
     }
   }
@@ -143,10 +143,10 @@ export const GET_ACTIVE_COURSES = gql`
         description
         is_active
         positions_available
-        skills {
-          skill_ID
-          name
-        }
+      }
+      skills {
+        skill_ID
+        name
       }
     }
   }
@@ -171,10 +171,10 @@ export const GET_DISABLED_COURSES = gql`
         description
         is_active
         positions_available
-        skills {
-          skill_ID
-          name
-        }
+      }
+      skills {
+        skill_ID
+        name
       }
     }
   }
@@ -220,10 +220,10 @@ export const GET_COURSE_WITH_APPLICATIONS = gql`
         description
         is_active
         positions_available
-        skills {
-          skill_ID
-          name
-        }
+      }
+      skills {
+        skill_ID
+        name
       }
       applications {
         application_ID
@@ -419,18 +419,18 @@ export const DELETE_COURSE_ROLE = gql`
   }
 `;
 
-export const ADD_SKILL_TO_COURSE_ROLE = gql`
-  mutation AddSkillToCourseRole($course_role_ID: ID!, $skill_ID: ID!) {
-    addSkillToCourseRole(course_role_ID: $course_role_ID, skill_ID: $skill_ID) {
+export const ADD_SKILL_TO_COURSE = gql`
+  mutation AddSkillToCourse($course_ID: ID!, $skill_ID: ID!) {
+    addSkillToCourse(course_ID: $course_ID, skill_ID: $skill_ID) {
       success
       message
     }
   }
 `;
 
-export const REMOVE_SKILL_FROM_COURSE_ROLE = gql`
-  mutation RemoveSkillFromCourseRole($course_role_ID: ID!, $skill_ID: ID!) {
-    removeSkillFromCourseRole(course_role_ID: $course_role_ID, skill_ID: $skill_ID) {
+export const REMOVE_SKILL_FROM_COURSE = gql`
+  mutation RemoveSkillFromCourse($course_ID: ID!, $skill_ID: ID!) {
+    removeSkillFromCourse(course_ID: $course_ID, skill_ID: $skill_ID) {
       success
       message
     }

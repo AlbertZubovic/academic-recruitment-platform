@@ -72,7 +72,6 @@ const typeDefs = `#graphql
     description: String
     is_active: Boolean!
     positions_available: Int!
-    skills: [Skill!]!
   }
 
   type Course {
@@ -84,6 +83,7 @@ const typeDefs = `#graphql
     is_disabled: Boolean!
     courseRoles: [CourseRole!]!
     applications: [Application!]
+    skills: [Skill!]!
   }
 
   type Application {
@@ -163,8 +163,8 @@ const typeDefs = `#graphql
     deleteCourseRole(course_role_ID: ID!): MutationResponse!
     
     # Course Role Skill management
-    addSkillToCourseRole(course_role_ID: ID!, skill_ID: ID!): MutationResponse!
-    removeSkillFromCourseRole(course_role_ID: ID!, skill_ID: ID!): MutationResponse!
+    addSkillToCourse(course_ID: ID!, skill_ID: ID!): MutationResponse!
+    removeSkillFromCourse(course_ID: ID!, skill_ID: ID!): MutationResponse!
     
     # Application management
     updateApplicationStatus(application_ID: ID!, accepted: Boolean!, lecturer_comment: String): MutationResponse!
@@ -259,7 +259,7 @@ const resolvers = {
       try {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
-          relations: ['lecturer', 'courseRoles', 'courseRoles.courseSkills', 'courseRoles.courseSkills.skill'],
+          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
           order: { course_code: 'ASC' }
         });
       } catch (error) {
@@ -273,7 +273,7 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
         const course = await courseRepository.findOne({
           where: { course_ID },
-          relations: ['lecturer', 'courseRoles', 'courseRoles.courseSkills', 'courseRoles.courseSkills.skill']
+          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill']
         });
 
         if (!course) return null;
@@ -324,7 +324,7 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
           where: { is_disabled: false },
-          relations: ['lecturer', 'courseRoles', 'courseRoles.courseSkills', 'courseRoles.courseSkills.skill'],
+          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
           order: { course_code: 'ASC' }
         });
       } catch (error) {
@@ -338,7 +338,7 @@ const resolvers = {
         const courseRepository = AppDataSource.getRepository(Course);
         return await courseRepository.find({
           where: { is_disabled: true },
-          relations: ['lecturer', 'courseRoles', 'courseRoles.courseSkills', 'courseRoles.courseSkills.skill'],
+          relations: ['lecturer', 'courseRoles', 'courseSkills', 'courseSkills.skill'],
           order: { course_code: 'ASC' }
         });
       } catch (error) {
@@ -379,15 +379,30 @@ const resolvers = {
     },
   },
 
-  CourseRole: {
-    skills: async (courseRole: any) => {
+  User: {
+    created: (user: any) => {
       try {
-        if (courseRole.courseSkills) {
-          return courseRole.courseSkills.map((cs: any) => cs.skill);
+        // Ensure the created field is properly serialized as an ISO string
+        if (user.created instanceof Date) {
+          return user.created.toISOString();
+        }
+        return user.created;
+      } catch (error) {
+        console.error('[ADMIN] Error resolving User created field:', error);
+        return null;
+      }
+    }
+  },
+
+  Course: {
+    skills: async (course: any) => {
+      try {
+        if (course.courseSkills) {
+          return course.courseSkills.map((cs: any) => cs.skill);
         }
         return [];
       } catch (error) {
-        console.error('[ADMIN] Error resolving CourseRole skills:', error);
+        console.error('[ADMIN] Error resolving Course skills:', error);
         return [];
       }
     }
@@ -726,15 +741,15 @@ const resolvers = {
       }
     },
 
-    addSkillToCourseRole: async (_: any, { course_role_ID, skill_ID }: { course_role_ID: string; skill_ID: string }) => {
+    addSkillToCourse: async (_: any, { course_ID, skill_ID }: { course_ID: string; skill_ID: string }) => {
       try {
-        const courseRoleRepository = AppDataSource.getRepository(CourseRole);
+        const courseRepository = AppDataSource.getRepository(Course);
         const skillRepository = AppDataSource.getRepository(Skill);
         const courseSkillRepository = AppDataSource.getRepository(CourseSkill);
 
-        const courseRole = await courseRoleRepository.findOne({ where: { course_role_ID } });
-        if (!courseRole) {
-          return { success: false, message: 'Course role not found' };
+        const course = await courseRepository.findOne({ where: { course_ID } });
+        if (!course) {
+          return { success: false, message: 'Course not found' };
         }
 
         const skill = await skillRepository.findOne({ where: { skill_ID } });
@@ -742,44 +757,44 @@ const resolvers = {
           return { success: false, message: 'Skill not found' };
         }
 
-        // Check if skill is already associated with this course role
+        // Check if skill is already associated with this course
         const existingCourseSkill = await courseSkillRepository.findOne({
-          where: { course_role_ID, skill_ID }
+          where: { course_ID, skill_ID }
         });
         if (existingCourseSkill) {
-          return { success: false, message: 'Skill is already associated with this course role' };
+          return { success: false, message: 'Skill is already associated with this course' };
         }
 
         const courseSkill = new CourseSkill();
-        courseSkill.course_role_ID = course_role_ID;
+        courseSkill.course_ID = course_ID;
         courseSkill.skill_ID = skill_ID;
-        courseSkill.courseRole = courseRole;
+        courseSkill.course = course;
         courseSkill.skill = skill;
 
         await courseSkillRepository.save(courseSkill);
-        return { success: true, message: 'Skill added to course role successfully' };
+        return { success: true, message: 'Skill added to course successfully' };
       } catch (error) {
-        console.error('[ADMIN] Error adding skill to course role:', error);
-        return { success: false, message: 'Failed to add skill to course role' };
+        console.error('[ADMIN] Error adding skill to course:', error);
+        return { success: false, message: 'Failed to add skill to course' };
       }
     },
 
-    removeSkillFromCourseRole: async (_: any, { course_role_ID, skill_ID }: { course_role_ID: string; skill_ID: string }) => {
+    removeSkillFromCourse: async (_: any, { course_ID, skill_ID }: { course_ID: string; skill_ID: string }) => {
       try {
         const courseSkillRepository = AppDataSource.getRepository(CourseSkill);
 
         const courseSkill = await courseSkillRepository.findOne({
-          where: { course_role_ID, skill_ID }
+          where: { course_ID, skill_ID }
         });
         if (!courseSkill) {
-          return { success: false, message: 'Skill is not associated with this course role' };
+          return { success: false, message: 'Skill is not associated with this course' };
         }
 
-        await courseSkillRepository.delete({ course_role_ID, skill_ID });
-        return { success: true, message: 'Skill removed from course role successfully' };
+        await courseSkillRepository.delete({ course_ID, skill_ID });
+        return { success: true, message: 'Skill removed from course successfully' };
       } catch (error) {
-        console.error('[ADMIN] Error removing skill from course role:', error);
-        return { success: false, message: 'Failed to remove skill from course role' };
+        console.error('[ADMIN] Error removing skill from course:', error);
+        return { success: false, message: 'Failed to remove skill from course' };
       }
     }
   }

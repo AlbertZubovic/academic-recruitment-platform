@@ -33,8 +33,8 @@ export const getCandidateCourses = async (
       relations: [
         "lecturer",
         "courseRoles",
-        "courseRoles.courseSkills",
-        "courseRoles.courseSkills.skill"
+        "courseSkills",
+        "courseSkills.skill"
       ],
     });
     const applications = await applicationRepo.find({
@@ -71,11 +71,9 @@ export const getCandidateCourses = async (
         semester: course.semester,
         rolesAvailable: course.courseRoles?.map(cr => ({
           role: cr.role,
-          skills: cr.courseSkills?.map(cs => cs.skill.name) || []
+          skills: course.courseSkills?.map(cs => cs.skill.name) || []
         })) || [],
-        skills: [...new Set(course.courseRoles?.flatMap(cr => 
-          cr.courseSkills?.map(cs => cs.skill.name) || []
-        ) || [])],
+        skills: course.courseSkills?.map(cs => cs.skill.name) || [],
         appliedRoles,
         applicationDetails,
       };

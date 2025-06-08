@@ -5,6 +5,7 @@ import { useQuery } from '@apollo/client';
 import { GET_DASHBOARD_STATS } from '../../graphql/queries';
 import CourseManagement from '../CourseManagement';
 import UserManagement from '../UserManagement';
+import Reports from '../Reports';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -123,17 +124,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           )}
 
           {activeTab === 'reports' && (
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Reports
-                </h3>
-                <p className="text-gray-600">
-                  Reporting functionality will be implemented here.
-                  This will include candidate reports and analytics.
-                </p>
-              </div>
-            </div>
+            <Reports />
           )}
         </div>
       </main>
