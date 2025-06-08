@@ -88,7 +88,7 @@ Once the containers are running, you can access the services at the following UR
 
 -   **Main Frontend**: [http://localhost:3000](http://localhost:3000)
 -   **Admin Frontend**: [http://localhost:3001](http://localhost:3001)
--   **Main Backend (GraphQL)**: [http://localhost:5000/graphql](http://localhost:5000)
+-   **Main Backend (Express)**: [http://localhost:5000](http://localhost:5000)
 -   **Admin Backend (GraphQL)**: [http://localhost:4000/graphql](http://localhost:4000/graphql)
 
 ### 4. Test User Accounts
